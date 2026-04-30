@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sidebar"
 import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
 
-const data = {
+export const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",

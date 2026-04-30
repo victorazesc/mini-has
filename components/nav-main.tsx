@@ -9,7 +9,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { CirclePlusIcon, MailIcon } from "lucide-react"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 export function NavMain({
@@ -21,7 +21,6 @@ export function NavMain({
     icon?: React.ReactNode
   }[]
 }) {
-  const router = useRouter()
   const pathname = usePathname()
   return (
     <SidebarGroup>
@@ -50,7 +49,7 @@ export function NavMain({
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title} className={cn(pathname === item.url && "bg-sidebar-accent text-sidebar-accent-foreground rounded-xl")}>
-              <SidebarMenuButton tooltip={item.title} onClick={() => router.push(item.url)}>
+              <SidebarMenuButton tooltip={item.title} render={<a href={item.url} />}>
                 {item.icon}
                 <span>{item.title}</span>
               </SidebarMenuButton>
