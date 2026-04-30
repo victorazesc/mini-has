@@ -8,13 +8,14 @@ import { DEVICE_TYPES } from "@/src/constants/devices_types"
 import { Blinds, Camera, Lightbulb, PawPrint, PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
+import { DeviceCard } from "@/components/device-card"
 
 const devices = [
   {
     name: "Churrasqueira",
     provider: "Tuya",
     type: "LAMP",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Cozinha",
   },
@@ -22,7 +23,7 @@ const devices = [
     name: "Interruptor Escritório 1",
     provider: "Tuya",
     type: "LAMP",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Escritório",
   },
@@ -30,7 +31,7 @@ const devices = [
     name: "Interruptor Escritório 2",
     provider: "Tuya",
     type: "LAMP",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Escritório",
   },
@@ -38,7 +39,7 @@ const devices = [
     name: "Câmera da Frente",
     provider: "INTELBRAS",
     type: "CAM",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Área externa",
   },
@@ -46,7 +47,7 @@ const devices = [
     name: "Câmera dos Fundos",
     provider: "INTELBRAS",
     type: "CAM",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Área externa",
   },
@@ -54,7 +55,7 @@ const devices = [
     name: "Alimentador de Gatos",
     provider: "TUYA",
     type: "FEEDER",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Cozinha",
   },
@@ -62,7 +63,7 @@ const devices = [
     name: "Persiana",
     provider: "DIY",
     type: "CURTAIN",
-    status: "online",
+    status: "ONLINE",
     active: true,
     room: "Escritório",
   },
@@ -114,6 +115,18 @@ export default function Devices() {
     return matchesType && matchesSearch
   })
   const activeCount = Object.values(activeDevices).filter(Boolean).length
+
+  const handleActiveChange = (deviceName: string, active: boolean) => {
+    setActiveDevices((current) => {
+      const newState = { ...current }
+      newState[deviceName] = active
+      return newState
+    })
+    const device = devices.find((device) => device.name === deviceName)
+    if (device) {
+      device.active = active
+    }
+  } 
 
   return (
     <main className="flex flex-1 flex-col px-4 lg:px-6">
@@ -221,53 +234,12 @@ export default function Devices() {
         {/* Devices list */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {filteredDevices.map((device) => {
-            const DeviceIcon = DEVICE_ICON_BY_TYPE[device.type as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
-            const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
-            const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
-
             return (
-              <Card className="col-span-1" key={device.name}>
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="flex items-center justify-center rounded-full bg-secondary p-4">
-                    <DeviceIcon className="size-5" />
-                  </div>
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <CardTitle>{device.name}</CardTitle>
-                    <CardDescription>{device.room}</CardDescription>
-                  </div>
-                  <CardAction className="ml-auto self-start">
-                    <EllipsisVertical className="size-4" />
-                  </CardAction>
-                </CardHeader>
-                <CardFooter className="flex-row justify-between items-center gap-1.5 text-sm">
-                  <div className="flex flex-col gap-2 font-medium pt-4">
-                    <h3 className="uppercase text-xs text-muted-foreground">Provider</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center rounded-sm bg-secondary p-1">
-                        <Image src={ProviderIcon} alt={ProviderName} width={24} height={24} />
-                      </div>
-                      <span>{ProviderName}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-row gap-2">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={activeDevices[device.name]}
-                      aria-label={`Alternar ${device.name}`}
-                      className="group relative h-7 w-17 rounded-full border-2 border-primary bg-primary transition-colors aria-[checked=false]:border-transparent aria-[checked=false]:bg-input/90"
-                      onClick={() =>
-                        setActiveDevices((current) => ({
-                          ...current,
-                          [device.name]: !current[device.name],
-                        }))
-                      }
-                    >
-                      <span className="block h-6 w-9 translate-x-[calc(100%-8px)] rounded-full bg-primary-foreground shadow-sm transition-transform group-aria-[checked=false]:translate-x-0" />
-                    </button>
-                  </div>
-                </CardFooter>
-              </Card>
+              <DeviceCard
+                key={device.name}
+                device={device}
+                onActiveChange={(active: boolean) => handleActiveChange(device.name, active)}
+              />
             )
           })}
         </section>
