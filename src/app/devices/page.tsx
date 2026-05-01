@@ -5,128 +5,90 @@ import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Separator } from "@/components/ui/separator"
 import { DEVICE_TYPES } from "@/src/constants/devices_types"
-import { Blinds, Camera, Lightbulb, PawPrint, PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff } from "lucide-react"
+import { PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff, Loader2Icon } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Image from "next/image"
-import { DeviceCard } from "@/components/device-card"
+import { DeviceCard, DeviceCardSkeleton } from "@/components/device-card"
+import { useDevices } from "@/hooks/use-devices"
+import { useState } from "react"
+import { useDebounce } from "@/hooks/use-debounce"
+import { Button } from "@/components/ui/button"
 
-const devices = [
-  {
-    name: "Churrasqueira",
-    provider: "Tuya",
-    type: "LAMP",
-    status: "ONLINE",
-    active: true,
-    room: "Cozinha",
-  },
-  {
-    name: "Interruptor Escritório 1",
-    provider: "Tuya",
-    type: "LAMP",
-    status: "ONLINE",
-    active: true,
-    room: "Escritório",
-  },
-  {
-    name: "Interruptor Escritório 2",
-    provider: "Tuya",
-    type: "LAMP",
-    status: "ONLINE",
-    active: true,
-    room: "Escritório",
-  },
-  {
-    name: "Câmera da Frente",
-    provider: "INTELBRAS",
-    type: "CAM",
-    status: "ONLINE",
-    active: true,
-    room: "Área externa",
-  },
-  {
-    name: "Câmera dos Fundos",
-    provider: "INTELBRAS",
-    type: "CAM",
-    status: "ONLINE",
-    active: true,
-    room: "Área externa",
-  },
-  {
-    name: "Alimentador de Gatos",
-    provider: "TUYA",
-    type: "FEEDER",
-    status: "ONLINE",
-    active: true,
-    room: "Cozinha",
-  },
-  {
-    name: "Persiana",
-    provider: "DIY",
-    type: "CURTAIN",
-    status: "ONLINE",
-    active: true,
-    room: "Escritório",
-  },
+// const devices = [
+//   {
+//     name: "Churrasqueira",
+//     provider: "Tuya",
+//     type: "LAMP",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Cozinha",
+//   },
+//   {
+//     name: "Interruptor Escritório 1",
+//     provider: "Tuya",
+//     type: "LAMP",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Escritório",
+//   },
+//   {
+//     name: "Interruptor Escritório 2",
+//     provider: "Tuya",
+//     type: "LAMP",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Escritório",
+//   },
+//   {
+//     name: "Câmera da Frente",
+//     provider: "INTELBRAS",
+//     type: "CAM",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Área externa",
+//   },
+//   {
+//     name: "Câmera dos Fundos",
+//     provider: "INTELBRAS",
+//     type: "CAM",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Área externa",
+//   },
+//   {
+//     name: "Alimentador de Gatos",
+//     provider: "TUYA",
+//     type: "FEEDER",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Cozinha",
+//   },
+//   {
+//     name: "Persiana",
+//     provider: "DIY",
+//     type: "CURTAIN",
+//     status: "ONLINE",
+//     active: true,
+//     room: "Escritório",
+//   },
 
-]
+// ]
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
   ...DEVICE_TYPES,
 ]
 
-const DEVICE_ICON_BY_TYPE = {
-  LAMP: Lightbulb,
-  CAM: Camera,
-  FEEDER: PawPrint,
-  CURTAIN: Blinds,
-}
-
-const PROVIDERS_ICON_BY_TYPE = {
-  TUYA: "./providers/tuya.svg",
-  INTELBRAS: "./providers/intelbras.svg",
-  SMARTTHINGS: "./providers/smartthings.svg",
-  DIY: "./providers/diy.svg",
-}
-
-const PROVIDERS_NAME_BY_TYPE = {
-  TUYA: "Tuya",
-  INTELBRAS: "Intelbras",
-  SMARTTHINGS: "SmartThings",
-  DIY: "DIY",
-}
-
 export default function Devices() {
-  const [query, setQuery] = React.useState("")
+  const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = React.useState("all")
-  const [activeDevices, setActiveDevices] = React.useState<Record<string, boolean>>(
-    () => Object.fromEntries(devices.map((device) => [device.name, device.active]))
+
+  const debouncedSearch = useDebounce(search, 500)
+
+  const { data: devices = [], isLoading, isError, error, refetch } = useDevices(
+    { name: debouncedSearch, type: selectedType }
   )
 
-  const filteredDevices = devices.filter((device) => {
-    const matchesType = selectedType === "all" || device.type === selectedType
-    const search = query.trim().toLowerCase()
-    const matchesSearch =
-      !search ||
-      device.name.toLowerCase().includes(search) ||
-      device.room.toLowerCase().includes(search) ||
-      device.provider.toLowerCase().includes(search)
 
-    return matchesType && matchesSearch
-  })
-  const activeCount = Object.values(activeDevices).filter(Boolean).length
-
-  const handleActiveChange = (deviceName: string, active: boolean) => {
-    setActiveDevices((current) => {
-      const newState = { ...current }
-      newState[deviceName] = active
-      return newState
-    })
-    const device = devices.find((device) => device.name === deviceName)
-    if (device) {
-      device.active = active
-    }
-  } 
 
   return (
     <main className="flex flex-1 flex-col px-4 lg:px-6">
@@ -142,8 +104,8 @@ export default function Devices() {
           <InputGroup>
             <InputGroupInput
               placeholder="Buscar dispositivos..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
             />
             <InputGroupAddon>
               <SearchIcon />
@@ -188,7 +150,7 @@ export default function Devices() {
             <CardHeader>
               <CardDescription>Online & Ativos</CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {activeCount.toString().padStart(2, "0")}/{devices.length}
+                10/{devices.length}
               </CardTitle>
               <CardAction>
                 <div className="flex items-center justify-center bg-secondary rounded-full p-4">
@@ -200,7 +162,7 @@ export default function Devices() {
               <div className="line-clamp-1 flex gap-2 font-medium bg-secondary rounded-full p-1 w-full">
                 <div
                   className="line-clamp-1 flex gap-2 font-medium bg-primary rounded-full p-1"
-                  style={{ width: `${(activeCount / devices.length) * 100}%` }}
+                // style={{ width: `${(activeCount / devices.length) * 100}%` }}
                 >
 
                 </div>
@@ -231,14 +193,34 @@ export default function Devices() {
 
         <Separator className="my-4" />
 
+        {isLoading && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+            {Array.from({ length: 9 }).map((_, index) => (
+              <DeviceCardSkeleton key={index} />
+            ))}
+          </div>
+        )}
+
+        {isError && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Erro ao carregar dispositivos.</CardTitle>
+              <CardDescription>{error.message}</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button onClick={() => refetch()}>Tentar novamente</Button>
+            </CardFooter>
+          </Card>
+        )}
+
         {/* Devices list */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-          {filteredDevices.map((device) => {
+          {devices.map((device) => {
             return (
               <DeviceCard
                 key={device.name}
                 device={device}
-                onActiveChange={(active: boolean) => handleActiveChange(device.name, active)}
+                onActiveChange={() => { }}
               />
             )
           })}

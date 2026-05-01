@@ -4,6 +4,7 @@ import Image from "next/image"
 import { Switch } from "./ui/switch"
 import { Badge } from "./ui/badge"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "./ui/skeleton"
 
 const DEVICE_ICON_BY_TYPE = {
     LAMP: Lightbulb,
@@ -69,5 +70,13 @@ export function DeviceCard({ device, onActiveChange }: {
                 </div>
             </CardFooter>
         </Card>
+    )
+}
+
+
+
+export function DeviceCardSkeleton() {
+    return (
+        <Skeleton className="w-full h-48" />
     )
 }
