@@ -18,6 +18,12 @@ coverage/
 out/
 **/out/
 
+# python
+__pycache__/
+**/__pycache__/
+.venv/
+**/venv/
+
 # production
 build/
 **/build/
@@ -28,6 +34,10 @@ dist/
 .DS_Store
 **/.DS_Store
 *.pem
+data/
+**/data/
+.cache/
+**/.cache/
 
 # debug
 npm-debug.log*
