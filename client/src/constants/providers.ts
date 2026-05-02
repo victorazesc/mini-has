@@ -1,22 +1,22 @@
 export const PROVIDERS = [
     {
-        label: "Tuya",
-        value: "TUYA",
+        label: "Tuya Cloud",
+        value: "tuya_cloud",
         icon: "./providers/tuya.png",
     },
     {
-        label: "Intelbras",
-        value: "INTELBRAS",
+        label: "Intelbras Izy",
+        value: "intelbras_izy",
         icon: "./providers/intelbras.png",
     },
     {
-        label: "SmartThings",
-        value: "SMARTTHINGS",
+        label: "SmartThings Cloud",
+        value: "smartthings_cloud",
         icon: "./providers/smartthings.png",
     },
     {
         label: "DIY",
-        value: "DIY",
+        value: "generic_iot",
         icon: "./providers/diy.png",
     },
 ]

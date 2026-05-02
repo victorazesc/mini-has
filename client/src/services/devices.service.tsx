@@ -1,16 +1,26 @@
 // src/services/devices.service.ts
 export type Device = {
-    id: string;
+    id: number;
+    integrationId: number;
+    inbox_id: number;
+    external_id: string;
+    local_device_key: string;
     name: string;
-    status: "ONLINE" | "OFFLINE";
+    deviceType: string;
     provider: string;
-    type: string;
-    room: string;
-    active: boolean;
+    roomId: number;
+    roomName: string;
+    status: {
+        online: boolean;
+        state: string;
+    };
+    capabilities: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
 };
 
 export async function getDevices(filters: { name?: string; type?: string } | undefined): Promise<Device[]> {
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    // await new Promise(resolve => setTimeout(resolve, 10000));
     const response = await fetch(`/api/devices?name=${filters?.name ?? ""}&type=${filters?.type ?? ""}`);
 
     if (!response.ok) {

@@ -5,6 +5,7 @@ import { Switch } from "./ui/switch"
 import { Badge } from "./ui/badge"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./ui/skeleton"
+import { Device } from "@/src/services/devices.service"
 
 const DEVICE_ICON_BY_TYPE = {
     LAMP: Lightbulb,
@@ -27,27 +28,28 @@ const PROVIDERS_NAME_BY_TYPE = {
     DIY: "DIY",
 }
 
-export function DeviceCard({ device, onActiveChange }: {
-    device: { name: string, room: string, provider: string, type: string, active: boolean, status: string },
+export function DeviceCard({ device, onActiveChange, isNew = false }: {
+    device: Device,
     onActiveChange: (active: boolean) => void,
+    isNew?: boolean,
 }) {
-    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.type as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
+    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
     const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
 
     return (
-        <Card className="col-span-1" key={device.name}>
+        <Card className={cn("col-span-1", isNew ? "border-2 border-primary" : "")} key={device.name}>
             <CardHeader className="flex flex-row items-center gap-4">
                 <div className="flex items-center justify-center rounded-full bg-secondary p-4">
                     <DeviceIcon className="size-5" />
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
                     <CardTitle className="flex items-center gap-2">
-                        <Wifi className="size-4" color={device.status === "ONLINE" ? "green" : "red"} />
+                        <Wifi className="size-4" color={device.status.online ? "green" : "red"} />
                         {device.name}
                     </CardTitle>
 
-                    <CardDescription>{device.room}</CardDescription>
+                    <CardDescription>{device.roomName}</CardDescription>
                 </div>
                 <CardAction className="ml-auto self-start">
                     <EllipsisVertical className="size-4" />
@@ -64,7 +66,7 @@ export function DeviceCard({ device, onActiveChange }: {
                     </div>
                 </div>
                 <div className="flex flex-row gap-2">
-                    <Switch size="xl" checked={device.active}
+                    <Switch size="xl" checked={device.status.state === "on"}
                         onCheckedChange={(active: boolean) =>
                             onActiveChange(active)} />
                 </div>

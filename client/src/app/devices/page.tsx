@@ -12,66 +12,8 @@ import { useDevices } from "@/hooks/use-devices"
 import { useState } from "react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Button } from "@/components/ui/button"
-
-// const devices = [
-//   {
-//     name: "Churrasqueira",
-//     provider: "Tuya",
-//     type: "LAMP",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Cozinha",
-//   },
-//   {
-//     name: "Interruptor Escritório 1",
-//     provider: "Tuya",
-//     type: "LAMP",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Escritório",
-//   },
-//   {
-//     name: "Interruptor Escritório 2",
-//     provider: "Tuya",
-//     type: "LAMP",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Escritório",
-//   },
-//   {
-//     name: "Câmera da Frente",
-//     provider: "INTELBRAS",
-//     type: "CAM",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Área externa",
-//   },
-//   {
-//     name: "Câmera dos Fundos",
-//     provider: "INTELBRAS",
-//     type: "CAM",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Área externa",
-//   },
-//   {
-//     name: "Alimentador de Gatos",
-//     provider: "TUYA",
-//     type: "FEEDER",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Cozinha",
-//   },
-//   {
-//     name: "Persiana",
-//     provider: "DIY",
-//     type: "CURTAIN",
-//     status: "ONLINE",
-//     active: true,
-//     room: "Escritório",
-//   },
-
-// ]
+import { ScanDevicesDialog } from "@/components/scan-devices-dialog"
+import { NewIntegrationDialog } from "@/components/new-integration-dialog"
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
@@ -93,11 +35,17 @@ export default function Devices() {
   return (
     <main className="flex flex-1 flex-col px-4 lg:px-6">
       <div className="@container/main flex flex-1 flex-col gap-2 space-y-4">
+
         {/* Status and IP */}
-        <section className="flex flex-row gap-2">
-          <Badge variant="outline">LAN Ativa</Badge>
-          <Badge variant="outline">Atualizando em 30/04, 14:53</Badge>
-          <Badge variant="outline">IP 192.168.1.136</Badge>
+        <section className="flex flex-row gap-2 justify-between items-center">
+          <div>
+            <Badge variant="outline">LAN Ativa</Badge>
+            <Badge variant="outline">Atualizando em 30/04, 14:53</Badge>
+            <Badge variant="outline">IP 192.168.1.136</Badge>
+          </div>
+          <NewIntegrationDialog>
+            <Button variant="outline"><PlusCircle className="size-4" /> Nova Integração</Button>
+          </NewIntegrationDialog>
         </section>
         {/* Search and Filter */}
         <section className="flex flex-row gap-4 justify-between">
@@ -128,24 +76,28 @@ export default function Devices() {
         </section>
         {/* Total devices and active devices */}
         <section className="flex flex-row gap-4">
-          <Card className="w-full">
-            <CardHeader>
-              <CardDescription>Total de dispositivos</CardDescription>
-              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                {devices.length}
-              </CardTitle>
-              <CardAction>
-                <div className="flex items-center justify-center bg-secondary rounded-full p-4">
-                  <Router className="size-8" />
+          <ScanDevicesDialog provider={"tuya_cloud"} integrationId={0}>
+            <Card className="w-full">
+              <CardHeader>
+                <CardDescription>Total de dispositivos</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                  {devices.length}
+                </CardTitle>
+                <CardAction>
+                  <div className="flex items-center justify-center bg-secondary rounded-full p-4">
+                    <Router className="size-8" />
+                  </div>
+                </CardAction>
+              </CardHeader>
+              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  <PlusCircle className="size-4" /> 7 novo(s) dispositivo(s) encontrado(s)
                 </div>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className="flex-col items-start gap-1.5 text-sm">
-              <div className="line-clamp-1 flex gap-2 font-medium">
-                <PlusCircle className="size-4" /> 7 novo(s) dispositivo(s) encontrado(s)
-              </div>
-            </CardFooter>
-          </Card>
+              </CardFooter>
+            </Card>
+          </ScanDevicesDialog>
+
+          {/* Online & Ativos */}
           <Card className="w-full">
             <CardHeader>
               <CardDescription>Online & Ativos</CardDescription>
@@ -169,6 +121,7 @@ export default function Devices() {
               </div>
             </CardFooter>
           </Card>
+
           {/* Requerem atenção */}
           <Card className="w-full">
             <CardHeader>
