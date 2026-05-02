@@ -8,29 +8,8 @@ import { Button } from "./ui/button"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { useState } from "react"
 import { Room } from "@/src/services/rooms.service"
-
-const DEVICE_ICON_BY_TYPE = {
-    LAMP: Lightbulb,
-    switch: Power,
-    iot: Brain,
-    CAM: Camera,
-    FEEDER: PawPrint,
-    CURTAIN: Blinds,
-}
-
-const PROVIDERS_ICON_BY_TYPE = {
-    tuya_cloud: "./providers/tuya.svg",
-    intelbras_izy: "./providers/intelbras.svg",
-    smartthings_cloud: "./providers/smartthings.svg",
-    discovery: "./providers/discovery.svg",
-}
-
-const PROVIDERS_NAME_BY_TYPE = {
-    tuya_cloud: "Tuya",
-    intelbras_izy: "Intelbras",
-    smartthings_cloud: "SmartThings",
-    discovery: "Discovery",
-}
+import { DEVICE_ICON_BY_TYPE } from "@/src/constants/devices_types"
+import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers"
 
 const CLEAR_ROOM_VALUE = "__clear_room__"
 

@@ -1,4 +1,5 @@
 import { IconName } from "lucide-react/dynamic"
+import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds } from "lucide-react"
 export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
     {
         label: "Lampada",
@@ -21,3 +22,12 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
         icon: 'blinds',
     }
 ]
+
+export const DEVICE_ICON_BY_TYPE = {
+    LAMP: Lightbulb,
+    switch: Power,
+    iot: Brain,
+    CAM: Camera,
+    FEEDER: PawPrint,
+    CURTAIN: Blinds,
+}

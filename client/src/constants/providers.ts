@@ -20,3 +20,17 @@ export const PROVIDERS = [
         icon: "./providers/diy.png",
     },
 ]
+
+export const PROVIDERS_ICON_BY_TYPE = {
+    tuya_cloud: "./providers/tuya.svg",
+    intelbras_izy: "./providers/intelbras.svg",
+    smartthings_cloud: "./providers/smartthings.svg",
+    generic_iot: "./providers/diy.svg",
+}
+
+export const PROVIDERS_NAME_BY_TYPE = {
+    tuya_cloud: "Tuya",
+    intelbras_izy: "Intelbras",
+    smartthings_cloud: "SmartThings",
+    generic_iot: "DIY",
+}

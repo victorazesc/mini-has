@@ -1,32 +1,13 @@
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardAction } from "@/components/ui/card"
-import { Blinds, Camera, CircleCheckIcon, EllipsisVertical, Lightbulb, PawPrint, Wifi } from "lucide-react"
+import { EllipsisVertical, Lightbulb, Wifi } from "lucide-react"
 import Image from "next/image"
 import { Switch } from "./ui/switch"
 import { Badge } from "./ui/badge"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./ui/skeleton"
 import { Device } from "@/src/services/devices.service"
-
-const DEVICE_ICON_BY_TYPE = {
-    LAMP: Lightbulb,
-    CAM: Camera,
-    FEEDER: PawPrint,
-    CURTAIN: Blinds,
-}
-
-const PROVIDERS_ICON_BY_TYPE = {
-    TUYA: "./providers/tuya.svg",
-    INTELBRAS: "./providers/intelbras.svg",
-    SMARTTHINGS: "./providers/smartthings.svg",
-    DIY: "./providers/diy.svg",
-}
-
-const PROVIDERS_NAME_BY_TYPE = {
-    TUYA: "Tuya",
-    INTELBRAS: "Intelbras",
-    SMARTTHINGS: "SmartThings",
-    DIY: "DIY",
-}
+import { DEVICE_ICON_BY_TYPE } from "@/src/constants/devices_types"
+import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers"
 
 export function DeviceCard({ device, onActiveChange, isNew = false }: {
     device: Device,

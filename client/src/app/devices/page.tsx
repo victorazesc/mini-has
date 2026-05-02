@@ -14,6 +14,7 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { Button } from "@/components/ui/button"
 import { ScanDevicesDialog } from "@/components/scan-devices-dialog"
 import { NewIntegrationDialog } from "@/components/new-integration-dialog"
+import { useInboxDevices } from "@/hooks/use-inbox-devices"
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
@@ -24,12 +25,14 @@ export default function Devices() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = React.useState("all")
 
+
   const debouncedSearch = useDebounce(search, 500)
 
   const { data: devices = [], isLoading, isError, error, refetch } = useDevices(
     { name: debouncedSearch, type: selectedType }
   )
 
+  const { data: inboxDevices = [], isPending: isLoadingInboxDevices } = useInboxDevices( { status: "pending" } )
 
 
   return (
@@ -91,7 +94,7 @@ export default function Devices() {
               </CardHeader>
               <CardFooter className="flex-col items-start gap-1.5 text-sm">
                 <div className="line-clamp-1 flex gap-2 font-medium">
-                  <PlusCircle className="size-4" /> 7 novo(s) dispositivo(s) encontrado(s)
+                  <PlusCircle className="size-4" /> {isLoadingInboxDevices ? <Loader2Icon className="size-4 animate-spin" /> : inboxDevices.length} novo(s) dispositivo(s) encontrado(s)
                 </div>
               </CardFooter>
             </Card>
@@ -102,7 +105,7 @@ export default function Devices() {
             <CardHeader>
               <CardDescription>Online & Ativos</CardDescription>
               <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                10/{devices.length}
+                {devices.filter((device) => device.status.online).length}/{devices.length}
               </CardTitle>
               <CardAction>
                 <div className="flex items-center justify-center bg-secondary rounded-full p-4">
@@ -114,9 +117,8 @@ export default function Devices() {
               <div className="line-clamp-1 flex gap-2 font-medium bg-secondary rounded-full p-1 w-full">
                 <div
                   className="line-clamp-1 flex gap-2 font-medium bg-primary rounded-full p-1"
-                // style={{ width: `${(activeCount / devices.length) * 100}%` }}
+                style={{ width: `${(devices.filter((device) => device.status.online).length / devices.length) * 100}%` }}
                 >
-
                 </div>
               </div>
             </CardFooter>

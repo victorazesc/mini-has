@@ -11,8 +11,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const provider = searchParams.get("provider");
+    const backendQueryParams = new URLSearchParams();
 
-    const response = await fetch(`${env.SERVER_URL}/inbox/devices?status=${status}&provider=${provider}`);
+    if (status) {
+        backendQueryParams.set("status", status);
+    }
+
+    if (provider) {
+        backendQueryParams.set("provider", provider);
+    }
+
+    const queryString = backendQueryParams.toString();
+    const endpoint = `${env.SERVER_URL}/inbox/devices${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(endpoint);
 
     if (!response.ok) {
         return NextResponse.json(
