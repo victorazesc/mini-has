@@ -127,6 +127,21 @@ def sync_provider(integration: StoredIntegration) -> tuple[list[ProviderDevice],
     return [], {"note": "Provider planejado."}
 
 
+def send_tuya_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:
+    token, region = _tuya_get_token_for_integration(integration)
+    response = _tuya_request(
+        integration,
+        region,
+        "POST",
+        f"/v1.0/iot-03/devices/{device_id}/commands",
+        body={"commands": commands},
+        access_token=token,
+    )
+    if not response.get("success"):
+        raise RuntimeError(response.get("msg") or "Falha ao enviar comando Tuya.")
+    return {"region": region["key"], "response": response}
+
+
 def _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:
     token, region = _tuya_get_token_for_integration(integration)
     devices: list[dict[str, Any]] = []

@@ -268,6 +268,72 @@ POST /devices/{id}/link-local
 }
 ```
 
+### Enviar comando
+
+```http
+POST /devices/{id}/command
+```
+
+Switch Tuya:
+
+```json
+{
+  "command": "turn_on",
+  "params": {}
+}
+```
+
+Por padrão, devices Tuya usam execução local LAN quando houver `ip` e `localKey`.
+
+Comando Tuya bruto:
+
+```json
+{
+  "command": "set",
+  "params": {
+    "dpsId": "1",
+    "value": true
+  }
+}
+```
+
+Consultar status local:
+
+```json
+{
+  "command": "query",
+  "params": {}
+}
+```
+
+Forçar cloud Tuya, somente se quiser fallback remoto:
+
+```json
+{
+  "command": "turn_on",
+  "params": {
+    "transport": "cloud"
+  }
+}
+```
+
+HTTP local/custom:
+
+```json
+{
+  "command": "open",
+  "params": {
+    "path": "/open"
+  }
+}
+```
+
+Executores atuais:
+
+- `tuya_cloud` e `tuya_local`: tentam Tuya LAN local primeiro.
+- `generic_iot` e `persiana_custom`: envia HTTP para `baseUrl`.
+- demais providers: retornam `unsupported` até receberem executor dedicado.
+
 ## Entities
 
 Entities são os pontos controláveis:
@@ -300,7 +366,7 @@ POST /entities/{id}/command
 }
 ```
 
-Hoje o comando é registrado em `command_logs`. O executor real por provider entra na próxima etapa.
+Esta rota continua disponível para logs/compatibilidade. Para controle real por provider, prefira `POST /devices/{id}/command`.
 
 ## Banco SQLite
 
@@ -318,6 +384,7 @@ Tabelas principais:
 - `entities`
 - `rooms`
 - `command_logs`
+- `device_command_logs`
 - `discovery_scans`
 - `discovery_devices`
 

@@ -10,6 +10,9 @@ export type Device = {
     provider: string;
     roomId: number;
     roomName: string;
+    payload: {
+        entities: Record<string, unknown>;
+    };
     status: {
         online: boolean;
         state: string;
@@ -28,4 +31,15 @@ export async function getDevices(filters: { name?: string; type?: string } | und
     }
 
     return response.json();
+}
+
+export async function sendCommand(deviceId: number, command: string): Promise<void> {
+    const response = await fetch(`/api/devices/${deviceId}/command`, {
+        method: "POST",
+        body: JSON.stringify({ command }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao enviar comando");
+    }
 }

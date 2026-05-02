@@ -217,6 +217,22 @@
         "documentation": {}
     },
     {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
         "label": "os",
         "kind": 6,
         "isExtraImport": true,
@@ -435,6 +451,374 @@
         "documentation": {}
     },
     {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "urljoin",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "urlparse",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "urlencode",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceCreateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceUpdateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "LinkLocalDeviceRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceCreateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceUpdateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_PORT",
+        "importPath": "src.app.modules.devices.tuya_lan",
+        "description": "src.app.modules.devices.tuya_lan",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_TIMEOUT_MS",
+        "importPath": "src.app.modules.devices.tuya_lan",
+        "description": "src.app.modules.devices.tuya_lan",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "TuyaLanClient",
+        "importPath": "src.app.modules.devices.tuya_lan",
+        "description": "src.app.modules.devices.tuya_lan",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "_http_json",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "send_tuya_device_commands",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "list_provider_definitions",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "split_provider_config",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "sync_provider",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "test_provider",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "get_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "find_integration_by_config_value",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_integrations",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_integration_status",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
         "label": "APIRouter",
         "importPath": "fastapi",
         "description": "fastapi",
@@ -555,67 +939,11 @@
         "documentation": {}
     },
     {
-        "label": "Device",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
+        "label": "execute_device_command",
+        "importPath": "src.app.modules.devices.commands",
+        "description": "src.app.modules.devices.commands",
         "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "DeviceCreateRequest",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "DeviceUpdateRequest",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "LinkLocalDeviceRequest",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "Device",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "DeviceCreateRequest",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "DeviceUpdateRequest",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
-        "documentation": {}
-    },
-    {
-        "label": "Device",
-        "importPath": "src.app.modules.devices.schema",
-        "description": "src.app.modules.devices.schema",
-        "isExtraImport": true,
-        "detail": "src.app.modules.devices.schema",
+        "detail": "src.app.modules.devices.commands",
         "documentation": {}
     },
     {
@@ -643,6 +971,14 @@
         "documentation": {}
     },
     {
+        "label": "get_device_with_secrets",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
         "label": "link_local_device",
         "importPath": "src.app.modules.devices.store",
         "description": "src.app.modules.devices.store",
@@ -652,6 +988,14 @@
     },
     {
         "label": "list_devices",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "log_device_command",
         "importPath": "src.app.modules.devices.store",
         "description": "src.app.modules.devices.store",
         "isExtraImport": true,
@@ -1035,83 +1379,65 @@
         "documentation": {}
     },
     {
-        "label": "ensure_home_schema",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "hashlib",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "hashlib",
+        "description": "hashlib",
+        "detail": "hashlib",
         "documentation": {}
     },
     {
-        "label": "ensure_home_schema",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "hmac",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "hmac",
+        "description": "hmac",
+        "detail": "hmac",
         "documentation": {}
     },
     {
-        "label": "ensure_home_schema",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "socket",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "socket",
+        "description": "socket",
+        "detail": "socket",
         "documentation": {}
     },
     {
-        "label": "create_integration",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "struct",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "struct",
+        "description": "struct",
+        "detail": "struct",
         "documentation": {}
     },
     {
-        "label": "delete_integration",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "subprocess",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "subprocess",
+        "description": "subprocess",
+        "detail": "subprocess",
         "documentation": {}
     },
     {
-        "label": "find_integration_by_config_value",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "time",
+        "kind": 6,
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "importPath": "time",
+        "description": "time",
+        "detail": "time",
         "documentation": {}
     },
     {
-        "label": "get_integration",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
+        "label": "dataclass",
+        "importPath": "dataclasses",
+        "description": "dataclasses",
         "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
-        "documentation": {}
-    },
-    {
-        "label": "list_integrations",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
-        "documentation": {}
-    },
-    {
-        "label": "update_integration_status",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
-        "documentation": {}
-    },
-    {
-        "label": "ensure_home_schema",
-        "importPath": "src.app.modules.integrations.store",
-        "description": "src.app.modules.integrations.store",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.store",
+        "detail": "dataclasses",
         "documentation": {}
     },
     {
@@ -1148,15 +1474,6 @@
         "importPath": "re",
         "description": "re",
         "detail": "re",
-        "documentation": {}
-    },
-    {
-        "label": "subprocess",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "subprocess",
-        "description": "subprocess",
-        "detail": "subprocess",
         "documentation": {}
     },
     {
@@ -1353,33 +1670,6 @@
         "documentation": {}
     },
     {
-        "label": "socket",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "socket",
-        "description": "socket",
-        "detail": "socket",
-        "documentation": {}
-    },
-    {
-        "label": "struct",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "struct",
-        "description": "struct",
-        "detail": "struct",
-        "documentation": {}
-    },
-    {
-        "label": "time",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "time",
-        "description": "time",
-        "detail": "time",
-        "documentation": {}
-    },
-    {
         "label": "csv",
         "kind": 6,
         "isExtraImport": true,
@@ -1435,22 +1725,6 @@
         "description": "html",
         "isExtraImport": true,
         "detail": "html",
-        "documentation": {}
-    },
-    {
-        "label": "urlparse",
-        "importPath": "urllib.parse",
-        "description": "urllib.parse",
-        "isExtraImport": true,
-        "detail": "urllib.parse",
-        "documentation": {}
-    },
-    {
-        "label": "urlencode",
-        "importPath": "urllib.parse",
-        "description": "urllib.parse",
-        "isExtraImport": true,
-        "detail": "urllib.parse",
         "documentation": {}
     },
     {
@@ -1638,54 +1912,6 @@
         "documentation": {}
     },
     {
-        "label": "CommandRequest",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "CommandResult",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "Entity",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "CommandRequest",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "CommandResult",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "Entity",
-        "importPath": "src.app.modules.entities.schemas",
-        "description": "src.app.modules.entities.schemas",
-        "isExtraImport": true,
-        "detail": "src.app.modules.entities.schemas",
-        "documentation": {}
-    },
-    {
         "label": "get_entity",
         "importPath": "src.app.modules.entities.store",
         "description": "src.app.modules.entities.store",
@@ -1755,24 +1981,6 @@
         "description": "src.app.modules.inbox.store",
         "isExtraImport": true,
         "detail": "src.app.modules.inbox.store",
-        "documentation": {}
-    },
-    {
-        "label": "hashlib",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "hashlib",
-        "description": "hashlib",
-        "detail": "hashlib",
-        "documentation": {}
-    },
-    {
-        "label": "hmac",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "hmac",
-        "description": "hmac",
-        "detail": "hmac",
         "documentation": {}
     },
     {
@@ -1958,38 +2166,6 @@
         "description": "src.app.modules.integrations.schemas",
         "isExtraImport": true,
         "detail": "src.app.modules.integrations.schemas",
-        "documentation": {}
-    },
-    {
-        "label": "list_provider_definitions",
-        "importPath": "src.app.modules.integrations.providers",
-        "description": "src.app.modules.integrations.providers",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.providers",
-        "documentation": {}
-    },
-    {
-        "label": "split_provider_config",
-        "importPath": "src.app.modules.integrations.providers",
-        "description": "src.app.modules.integrations.providers",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.providers",
-        "documentation": {}
-    },
-    {
-        "label": "sync_provider",
-        "importPath": "src.app.modules.integrations.providers",
-        "description": "src.app.modules.integrations.providers",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.providers",
-        "documentation": {}
-    },
-    {
-        "label": "test_provider",
-        "importPath": "src.app.modules.integrations.providers",
-        "description": "src.app.modules.integrations.providers",
-        "isExtraImport": true,
-        "detail": "src.app.modules.integrations.providers",
         "documentation": {}
     },
     {
@@ -2194,6 +2370,15 @@
         "documentation": {}
     },
     {
+        "label": "execute_device_command",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.commands",
+        "description": "server.src.app.modules.devices.commands",
+        "peekOfCode": "def execute_device_command(device: Device, secrets: dict[str, Any], request: CommandRequest) -> CommandResult:\n    try:\n        if device.provider in {\"tuya_cloud\", \"tuya_local\", \"intelbras_izy_tuya\"}:\n            return _execute_tuya_command(device, secrets, request)\n        if device.provider in {\"generic_iot\", \"persiana_custom\"}:\n            return _execute_http_command(device, request)\n        return CommandResult(ok=False, status=\"unsupported\", message=f\"Provider {device.provider} ainda nao tem executor.\", result={})\n    except Exception as exc:\n        return CommandResult(ok=False, status=\"error\", message=str(exc), result={\"deviceId\": device.id, \"command\": request.command})\ndef _execute_tuya_command(device: Device, secrets: dict[str, Any], request: CommandRequest) -> CommandResult:",
+        "detail": "server.src.app.modules.devices.commands",
+        "documentation": {}
+    },
+    {
         "label": "read_devices",
         "kind": 2,
         "importPath": "server.src.app.modules.devices.router",
@@ -2234,7 +2419,16 @@
         "kind": 2,
         "importPath": "server.src.app.modules.devices.router",
         "description": "server.src.app.modules.devices.router",
-        "peekOfCode": "def link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> Device:\n    device = link_local_device(device_id, request.local_device_key, request.payload)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.delete(\"/{device_id}\")\ndef delete_device_route(device_id: int) -> dict[str, bool]:\n    deleted = delete_device(device_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Device not found\")",
+        "peekOfCode": "def link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> Device:\n    device = link_local_device(device_id, request.local_device_key, request.payload)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.post(\"/{device_id}/command\", response_model=CommandResult, response_model_by_alias=True)\ndef command_device(device_id: int, request: CommandRequest) -> CommandResult:\n    item = get_device_with_secrets(device_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Device not found\")",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "command_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def command_device(device_id: int, request: CommandRequest) -> CommandResult:\n    item = get_device_with_secrets(device_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    device, secrets = item\n    result = execute_device_command(device, secrets, request)\n    log_device_command(device_id, request, result)\n    return result\n@router.delete(\"/{device_id}\")\ndef delete_device_route(device_id: int) -> dict[str, bool]:",
         "detail": "server.src.app.modules.devices.router",
         "documentation": {}
     },
@@ -2311,6 +2505,15 @@
         "documentation": {}
     },
     {
+        "label": "get_device_with_secrets",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def get_device_with_secrets(device_id: int) -> tuple[Device, dict[str, Any]] | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\n            \"\"\"\n            SELECT devices.*, rooms.name AS room_name\n            FROM devices\n            LEFT JOIN rooms ON rooms.id = devices.room_id\n            WHERE devices.id = ?\n            \"\"\",",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
         "label": "create_device",
         "kind": 2,
         "importPath": "server.src.app.modules.devices.store",
@@ -2347,12 +2550,174 @@
         "documentation": {}
     },
     {
+        "label": "log_device_command",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def log_device_command(device_id: int, request: CommandRequest, result: CommandResult) -> None:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\n            \"\"\"\n            INSERT INTO device_command_logs (device_id, command_json, result_json, status, created_at)\n            VALUES (?, ?, ?, ?, ?)\n            \"\"\",\n            (\n                device_id,",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
         "label": "accept_inbox_device",
         "kind": 2,
         "importPath": "server.src.app.modules.devices.store",
         "description": "server.src.app.modules.devices.store",
         "peekOfCode": "def accept_inbox_device(inbox: InboxDevice, secrets: dict[str, Any], name: str | None, room_id: int | None) -> Device:\n    payload = inbox.payload\n    now = utc_now()\n    provider = str(payload.get(\"provider\") or inbox.source_type)\n    external_id = str(payload.get(\"externalId\") or inbox.external_id)\n    with connect() as connection:\n        existing = connection.execute(\n            \"SELECT id FROM devices WHERE provider = ? AND external_id = ?\",\n            (provider, external_id),\n        ).fetchone()",
         "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "ParsedMessage",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "class ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int\n    payload: bytes\nclass TuyaLanClient:\n    def __init__(self, ip: str, device_id: str, local_key: str, port: int = DEFAULT_PORT, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:\n        if len(local_key) != 16:\n            raise ValueError(\"A local key precisa ter 16 caracteres.\")\n        self.ip = ip",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "TuyaLanClient",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "class TuyaLanClient:\n    def __init__(self, ip: str, device_id: str, local_key: str, port: int = DEFAULT_PORT, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:\n        if len(local_key) != 16:\n            raise ValueError(\"A local key precisa ter 16 caracteres.\")\n        self.ip = ip\n        self.device_id = device_id\n        self.real_local_key = local_key.encode()\n        self.port = port\n        self.timeout = timeout_ms / 1000\n        self.current_key = self.real_local_key",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_PORT",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "DEFAULT_PORT = 6668\nDEFAULT_TIMEOUT_MS = 3500\nCMD_SESS_KEY_NEG_START = 3\nCMD_SESS_KEY_NEG_RESP = 4\nCMD_SESS_KEY_NEG_FINISH = 5\nCMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_TIMEOUT_MS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "DEFAULT_TIMEOUT_MS = 3500\nCMD_SESS_KEY_NEG_START = 3\nCMD_SESS_KEY_NEG_RESP = 4\nCMD_SESS_KEY_NEG_FINISH = 5\nCMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CMD_SESS_KEY_NEG_START",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "CMD_SESS_KEY_NEG_START = 3\nCMD_SESS_KEY_NEG_RESP = 4\nCMD_SESS_KEY_NEG_FINISH = 5\nCMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CMD_SESS_KEY_NEG_RESP",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "CMD_SESS_KEY_NEG_RESP = 4\nCMD_SESS_KEY_NEG_FINISH = 5\nCMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CMD_SESS_KEY_NEG_FINISH",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "CMD_SESS_KEY_NEG_FINISH = 5\nCMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CMD_CONTROL_NEW",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "CMD_CONTROL_NEW = 0x0D\nCMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "CMD_DP_QUERY_NEW",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "CMD_DP_QUERY_NEW = 0x10\nPREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "PREFIX_55AA",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "PREFIX_55AA = 0x000055AA\nSUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "SUFFIX_55AA",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "SUFFIX_55AA = 0x0000AA55\nHEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "HEADER_SIZE",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "HEADER_SIZE = 16\nRETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "RETCODE_SIZE",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "RETCODE_SIZE = 4\nHMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "HMAC_SIZE",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "HMAC_SIZE = 32\nSUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int\n    payload: bytes",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "SUFFIX_SIZE",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "SUFFIX_SIZE = 4\nVERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int\n    payload: bytes\nclass TuyaLanClient:",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "VERSION_34_HEADER",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "VERSION_34_HEADER = b\"3.4\" + (b\"\\x00\" * 13)\nLOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int\n    payload: bytes\nclass TuyaLanClient:\n    def __init__(self, ip: str, device_id: str, local_key: str, port: int = DEFAULT_PORT, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:",
+        "detail": "server.src.app.modules.devices.tuya_lan",
+        "documentation": {}
+    },
+    {
+        "label": "LOCAL_NONCE",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.tuya_lan",
+        "description": "server.src.app.modules.devices.tuya_lan",
+        "peekOfCode": "LOCAL_NONCE = b\"0123456789abcdef\"\n@dataclass(frozen=True)\nclass ParsedMessage:\n    sequence: int\n    command: int\n    retcode: int\n    payload: bytes\nclass TuyaLanClient:\n    def __init__(self, ip: str, device_id: str, local_key: str, port: int = DEFAULT_PORT, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> None:\n        if len(local_key) != 16:",
+        "detail": "server.src.app.modules.devices.tuya_lan",
         "documentation": {}
     },
     {
@@ -3000,6 +3365,15 @@
         "importPath": "server.src.app.modules.integrations.providers",
         "description": "server.src.app.modules.integrations.providers",
         "peekOfCode": "def sync_provider(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:\n    if integration.type == IntegrationType.tuya_cloud:\n        return _sync_tuya_cloud(integration)\n    if integration.type == IntegrationType.smartthings_cloud:\n        return _sync_smartthings(integration)\n    if integration.type in {IntegrationType.persiana_custom, IntegrationType.generic_iot}:\n        return [_device_from_http_like_provider(integration)], {}\n    if integration.type == IntegrationType.intelbras_izy_tuya:\n        return [], {\"note\": \"Use discovery LAN para achar Tuya 6667/6668 e Tuya Cloud para obter nomes/localKey.\"}\n    return [], {\"note\": \"Provider planejado.\"}",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "send_tuya_device_commands",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def send_tuya_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:\n    token, region = _tuya_get_token_for_integration(integration)\n    response = _tuya_request(\n        integration,\n        region,\n        \"POST\",\n        f\"/v1.0/iot-03/devices/{device_id}/commands\",\n        body={\"commands\": commands},\n        access_token=token,\n    )",
         "detail": "server.src.app.modules.integrations.providers",
         "documentation": {}
     },

@@ -8,13 +8,14 @@ import { DEVICE_TYPES } from "@/src/constants/devices_types"
 import { PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff, Loader2Icon } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DeviceCard, DeviceCardSkeleton } from "@/components/device-card"
-import { useDevices } from "@/hooks/use-devices"
+import { useDevices, useSendCommand } from "@/hooks/use-devices"
 import { useState } from "react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Button } from "@/components/ui/button"
 import { ScanDevicesDialog } from "@/components/scan-devices-dialog"
 import { NewIntegrationDialog } from "@/components/new-integration-dialog"
 import { useInboxDevices } from "@/hooks/use-inbox-devices"
+import { Device } from "@/src/services/devices.service"
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
@@ -32,8 +33,9 @@ export default function Devices() {
     { name: debouncedSearch, type: selectedType }
   )
 
-  const { data: inboxDevices = [], isPending: isLoadingInboxDevices } = useInboxDevices( { status: "pending" } )
+  const { data: inboxDevices = [], isPending: isLoadingInboxDevices } = useInboxDevices({ status: "pending" })
 
+  // const { mutate: sendActiveCommand } = useSendCommand(deviceId, "set_active")
 
   return (
     <main className="flex flex-1 flex-col px-4 lg:px-6">
@@ -117,7 +119,7 @@ export default function Devices() {
               <div className="line-clamp-1 flex gap-2 font-medium bg-secondary rounded-full p-1 w-full">
                 <div
                   className="line-clamp-1 flex gap-2 font-medium bg-primary rounded-full p-1"
-                style={{ width: `${(devices.filter((device) => device.status.online).length / devices.length) * 100}%` }}
+                  style={{ width: `${(devices.filter((device) => device.status.online).length / devices.length) * 100}%` }}
                 >
                 </div>
               </div>
@@ -175,7 +177,7 @@ export default function Devices() {
               <DeviceCard
                 key={device.name}
                 device={device}
-                onActiveChange={() => { }}
+                onActiveChange={() => {}}
               />
             )
           })}

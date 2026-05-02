@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 
+from src.app.modules.devices.commands import execute_device_command
 from src.app.modules.devices.schema import Device, DeviceCreateRequest, DeviceUpdateRequest, LinkLocalDeviceRequest
-from src.app.modules.devices.store import create_device, delete_device, get_device, link_local_device, list_devices, update_device
+from src.app.modules.devices.store import create_device, delete_device, get_device, get_device_with_secrets, link_local_device, list_devices, log_device_command, update_device
+from src.app.modules.entities.schemas import CommandRequest, CommandResult
 
 router = APIRouter()
 
@@ -38,6 +40,17 @@ def link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> 
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     return device
+
+
+@router.post("/{device_id}/command", response_model=CommandResult, response_model_by_alias=True)
+def command_device(device_id: int, request: CommandRequest) -> CommandResult:
+    item = get_device_with_secrets(device_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Device not found")
+    device, secrets = item
+    result = execute_device_command(device, secrets, request)
+    log_device_command(device_id, request, result)
+    return result
 
 
 @router.delete("/{device_id}")

@@ -115,6 +115,19 @@ def ensure_home_schema() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS device_command_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id INTEGER NOT NULL,
+                command_json TEXT NOT NULL,
+                result_json TEXT NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(device_id) REFERENCES devices(id)
+            )
+            """
+        )
         connection.execute("CREATE INDEX IF NOT EXISTS idx_device_inbox_status ON device_inbox(status)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_devices_room_id ON devices(room_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id)")

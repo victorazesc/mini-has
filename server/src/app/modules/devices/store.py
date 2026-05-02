@@ -4,6 +4,7 @@ from typing import Any
 
 from src.app.core.storage import connect, json_dumps, json_loads, utc_now
 from src.app.modules.devices.schema import Device, DeviceCreateRequest, DeviceUpdateRequest
+from src.app.modules.entities.schemas import CommandRequest, CommandResult
 from src.app.modules.inbox.schemas import InboxDevice
 from src.app.modules.integrations.store import ensure_home_schema
 
@@ -35,6 +36,23 @@ def get_device(device_id: int) -> Device | None:
             (device_id,),
         ).fetchone()
     return _from_row(row) if row else None
+
+
+def get_device_with_secrets(device_id: int) -> tuple[Device, dict[str, Any]] | None:
+    ensure_home_schema()
+    with connect() as connection:
+        row = connection.execute(
+            """
+            SELECT devices.*, rooms.name AS room_name
+            FROM devices
+            LEFT JOIN rooms ON rooms.id = devices.room_id
+            WHERE devices.id = ?
+            """,
+            (device_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return _from_row(row), json_loads(row["secrets_json"], {})
 
 
 def create_device(request: DeviceCreateRequest) -> Device:
@@ -124,6 +142,38 @@ def link_local_device(device_id: int, local_device_key: str, payload: dict[str, 
             (local_device_key, json_dumps(next_payload), utc_now(), device_id),
         )
     return get_device(device_id)
+
+
+def log_device_command(device_id: int, request: CommandRequest, result: CommandResult) -> None:
+    ensure_home_schema()
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO device_command_logs (device_id, command_json, result_json, status, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                device_id,
+                json_dumps(_redact_secrets(request.model_dump())),
+                json_dumps(result.model_dump(mode="json", by_alias=True)),
+                result.status,
+                utc_now(),
+            ),
+        )
+
+
+def _redact_secrets(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted = {}
+        for key, item in value.items():
+            if key.lower() in {"accesssecret", "localkey", "token", "secret", "password"}:
+                redacted[key] = "***"
+            else:
+                redacted[key] = _redact_secrets(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_secrets(item) for item in value]
+    return value
 
 
 def accept_inbox_device(inbox: InboxDevice, secrets: dict[str, Any], name: str | None, room_id: int | None) -> Device:
