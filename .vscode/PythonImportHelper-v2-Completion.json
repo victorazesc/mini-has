@@ -1,0 +1,3411 @@
+[
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "sqlite3",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sqlite3",
+        "description": "sqlite3",
+        "detail": "sqlite3",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "timezone",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "timezone",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "timezone",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "BackgroundTasks",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Response",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "APIRouter",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceCreateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceUpdateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "LinkLocalDeviceRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceCreateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceUpdateRequest",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "importPath": "src.app.modules.devices.schema",
+        "description": "src.app.modules.devices.schema",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "create_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "link_local_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_devices",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "accept_inbox_device",
+        "importPath": "src.app.modules.devices.store",
+        "description": "src.app.modules.devices.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_dumps",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_loads",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_dumps",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_loads",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_dumps",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_loads",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_dumps",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_loads",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "importPath": "src.app.core.storage",
+        "description": "src.app.core.storage",
+        "isExtraImport": true,
+        "detail": "src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "InboxDevice",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "AcceptInboxDeviceRequest",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IgnoreInboxDeviceRequest",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxDevice",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxStatus",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxDevice",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxStatus",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxDevice",
+        "importPath": "src.app.modules.inbox.schemas",
+        "description": "src.app.modules.inbox.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "find_integration_by_config_value",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_integration",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_integrations",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_integration_status",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "importPath": "src.app.modules.integrations.store",
+        "description": "src.app.modules.integrations.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "asyncio",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "asyncio",
+        "description": "asyncio",
+        "detail": "asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "ipaddress",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "ipaddress",
+        "description": "ipaddress",
+        "detail": "ipaddress",
+        "documentation": {}
+    },
+    {
+        "label": "platform",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "platform",
+        "description": "platform",
+        "detail": "platform",
+        "documentation": {}
+    },
+    {
+        "label": "re",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "re",
+        "description": "re",
+        "detail": "re",
+        "documentation": {}
+    },
+    {
+        "label": "subprocess",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "subprocess",
+        "description": "subprocess",
+        "detail": "subprocess",
+        "documentation": {}
+    },
+    {
+        "label": "lookup_manufacturer",
+        "importPath": "src.app.modules.discovery.discoverers.oui",
+        "description": "src.app.modules.discovery.discoverers.oui",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredService",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProbeMode",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobRequest",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredService",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveryJob",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "JobStatus",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobRequest",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobResponse",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveryJob",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "JobStatus",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryScan",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobRequest",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveryJob",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "JobStatus",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryDevice",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryScan",
+        "importPath": "src.app.modules.discovery.schemas",
+        "description": "src.app.modules.discovery.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "random",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "random",
+        "description": "random",
+        "detail": "random",
+        "documentation": {}
+    },
+    {
+        "label": "socket",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "socket",
+        "description": "socket",
+        "detail": "socket",
+        "documentation": {}
+    },
+    {
+        "label": "struct",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "struct",
+        "description": "struct",
+        "detail": "struct",
+        "documentation": {}
+    },
+    {
+        "label": "time",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "time",
+        "description": "time",
+        "detail": "time",
+        "documentation": {}
+    },
+    {
+        "label": "csv",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "csv",
+        "description": "csv",
+        "detail": "csv",
+        "documentation": {}
+    },
+    {
+        "label": "urlopen",
+        "importPath": "urllib.request",
+        "description": "urllib.request",
+        "isExtraImport": true,
+        "detail": "urllib.request",
+        "documentation": {}
+    },
+    {
+        "label": "urlopen",
+        "importPath": "urllib.request",
+        "description": "urllib.request",
+        "isExtraImport": true,
+        "detail": "urllib.request",
+        "documentation": {}
+    },
+    {
+        "label": "Request",
+        "importPath": "urllib.request",
+        "description": "urllib.request",
+        "isExtraImport": true,
+        "detail": "urllib.request",
+        "documentation": {}
+    },
+    {
+        "label": "urlopen",
+        "importPath": "urllib.request",
+        "description": "urllib.request",
+        "isExtraImport": true,
+        "detail": "urllib.request",
+        "documentation": {}
+    },
+    {
+        "label": "ssl",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "ssl",
+        "description": "ssl",
+        "detail": "ssl",
+        "documentation": {}
+    },
+    {
+        "label": "unescape",
+        "importPath": "html",
+        "description": "html",
+        "isExtraImport": true,
+        "detail": "html",
+        "documentation": {}
+    },
+    {
+        "label": "urlparse",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "urlencode",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "ElementTree",
+        "importPath": "xml.etree",
+        "description": "xml.etree",
+        "isExtraImport": true,
+        "detail": "xml.etree",
+        "documentation": {}
+    },
+    {
+        "label": "discover_arp",
+        "importPath": "src.app.modules.discovery.discoverers.arp",
+        "description": "src.app.modules.discovery.discoverers.arp",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.arp",
+        "documentation": {}
+    },
+    {
+        "label": "enrich_device",
+        "importPath": "src.app.modules.discovery.discoverers.fingerprint",
+        "description": "src.app.modules.discovery.discoverers.fingerprint",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.fingerprint",
+        "documentation": {}
+    },
+    {
+        "label": "discover_mdns",
+        "importPath": "src.app.modules.discovery.discoverers.mdns",
+        "description": "src.app.modules.discovery.discoverers.mdns",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.mdns",
+        "documentation": {}
+    },
+    {
+        "label": "scan_open_ports",
+        "importPath": "src.app.modules.discovery.discoverers.ports",
+        "description": "src.app.modules.discovery.discoverers.ports",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.ports",
+        "documentation": {}
+    },
+    {
+        "label": "probe_devices",
+        "importPath": "src.app.modules.discovery.discoverers.probes",
+        "description": "src.app.modules.discovery.discoverers.probes",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.probes",
+        "documentation": {}
+    },
+    {
+        "label": "discover_ssdp",
+        "importPath": "src.app.modules.discovery.discoverers.ssdp",
+        "description": "src.app.modules.discovery.discoverers.ssdp",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.discoverers.ssdp",
+        "documentation": {}
+    },
+    {
+        "label": "create_scan_record",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "save_job",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_job",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_scan_record",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_job",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_saved_scan",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_discovery_jobs",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_saved_devices",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_saved_scans",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_scan_record",
+        "importPath": "src.app.modules.discovery.store",
+        "description": "src.app.modules.discovery.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_discovery_job",
+        "importPath": "src.app.modules.discovery.jobs",
+        "description": "src.app.modules.discovery.jobs",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.jobs",
+        "documentation": {}
+    },
+    {
+        "label": "run_discovery",
+        "importPath": "src.app.modules.discovery.jobs",
+        "description": "src.app.modules.discovery.jobs",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.jobs",
+        "documentation": {}
+    },
+    {
+        "label": "run_discovery_job_sync",
+        "importPath": "src.app.modules.discovery.jobs",
+        "description": "src.app.modules.discovery.jobs",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.jobs",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "importPath": "src.app.modules.entities.schemas",
+        "description": "src.app.modules.entities.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "get_entity",
+        "importPath": "src.app.modules.entities.store",
+        "description": "src.app.modules.entities.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_entities",
+        "importPath": "src.app.modules.entities.store",
+        "description": "src.app.modules.entities.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "log_command",
+        "importPath": "src.app.modules.entities.store",
+        "description": "src.app.modules.entities.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_entities_for_device",
+        "importPath": "src.app.modules.entities.store",
+        "description": "src.app.modules.entities.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_inbox_payload_with_secrets",
+        "importPath": "src.app.modules.inbox.store",
+        "description": "src.app.modules.inbox.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_inbox_devices",
+        "importPath": "src.app.modules.inbox.store",
+        "description": "src.app.modules.inbox.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "mark_inbox_status",
+        "importPath": "src.app.modules.inbox.store",
+        "description": "src.app.modules.inbox.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_inbox_device",
+        "importPath": "src.app.modules.inbox.store",
+        "description": "src.app.modules.inbox.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "upsert_inbox_item",
+        "importPath": "src.app.modules.inbox.store",
+        "description": "src.app.modules.inbox.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "hashlib",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "hashlib",
+        "description": "hashlib",
+        "detail": "hashlib",
+        "documentation": {}
+    },
+    {
+        "label": "hmac",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "hmac",
+        "description": "hmac",
+        "detail": "hmac",
+        "documentation": {}
+    },
+    {
+        "label": "uuid",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "uuid",
+        "description": "uuid",
+        "detail": "uuid",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPError",
+        "importPath": "urllib.error",
+        "description": "urllib.error",
+        "isExtraImport": true,
+        "detail": "urllib.error",
+        "documentation": {}
+    },
+    {
+        "label": "URLError",
+        "importPath": "urllib.error",
+        "description": "urllib.error",
+        "isExtraImport": true,
+        "detail": "urllib.error",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationStatus",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationTestResult",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationType",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderDefinition",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderDevice",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderEntity",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderField",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "StoredIntegration",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateIntegrationRequest",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Integration",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationStatus",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationSyncResult",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationTestResult",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationType",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderDefinition",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "StoredIntegration",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateIntegrationRequest",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationStatus",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationType",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "StoredIntegration",
+        "importPath": "src.app.modules.integrations.schemas",
+        "description": "src.app.modules.integrations.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "list_provider_definitions",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "split_provider_config",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "sync_provider",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "test_provider",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "Room",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "RoomRequest",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Room",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "RoomRequest",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "create_room",
+        "importPath": "src.app.modules.rooms.store",
+        "description": "src.app.modules.rooms.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_room",
+        "importPath": "src.app.modules.rooms.store",
+        "description": "src.app.modules.rooms.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_room",
+        "importPath": "src.app.modules.rooms.store",
+        "description": "src.app.modules.rooms.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_rooms",
+        "importPath": "src.app.modules.rooms.store",
+        "description": "src.app.modules.rooms.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.discovery.router",
+        "description": "src.app.modules.discovery.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.devices.router",
+        "description": "src.app.modules.devices.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.entities.router",
+        "description": "src.app.modules.entities.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.entities.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.inbox.router",
+        "description": "src.app.modules.inbox.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.inbox.router",
+        "documentation": {}
+    },
+    {
+        "label": "providers_router",
+        "importPath": "src.app.modules.integrations.router",
+        "description": "src.app.modules.integrations.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.integrations.router",
+        "description": "src.app.modules.integrations.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "importPath": "src.app.modules.rooms.router",
+        "description": "src.app.modules.rooms.router",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "_Known",
+        "kind": 6,
+        "importPath": "client.node_modules.flatted.python.flatted",
+        "description": "client.node_modules.flatted.python.flatted",
+        "peekOfCode": "class _Known:\n    def __init__(self):\n        self.key = []\n        self.value = []\nclass _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    for i in range(len(value)):\n        yield i",
+        "detail": "client.node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "_String",
+        "kind": 6,
+        "importPath": "client.node_modules.flatted.python.flatted",
+        "description": "client.node_modules.flatted.python.flatted",
+        "peekOfCode": "class _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    for i in range(len(value)):\n        yield i\ndef _object_keys(value):\n    for key in value:\n        yield key\ndef _is_array(value):",
+        "detail": "client.node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "parse",
+        "kind": 2,
+        "importPath": "client.node_modules.flatted.python.flatted",
+        "description": "client.node_modules.flatted.python.flatted",
+        "peekOfCode": "def parse(value, *args, **kwargs):\n    json = _json.loads(value, *args, **kwargs)\n    wrapped = []\n    for value in json:\n        wrapped.append(_wrap(value))\n    input = []\n    for value in wrapped:\n        if isinstance(value, _String):\n            input.append(value.value)\n        else:",
+        "detail": "client.node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "stringify",
+        "kind": 2,
+        "importPath": "client.node_modules.flatted.python.flatted",
+        "description": "client.node_modules.flatted.python.flatted",
+        "peekOfCode": "def stringify(value, *args, **kwargs):\n    known = _Known()\n    input = []\n    output = []\n    i = int(_index(known, input, value))\n    while i < len(input):\n        output.append(_transform(known, input, input[i]))\n        i += 1\n    return _json.dumps(output, *args, **kwargs)",
+        "detail": "client.node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "connect",
+        "kind": 2,
+        "importPath": "server.src.app.core.storage",
+        "description": "server.src.app.core.storage",
+        "peekOfCode": "def connect() -> sqlite3.Connection:\n    DB_PATH.parent.mkdir(parents=True, exist_ok=True)\n    connection = sqlite3.connect(DB_PATH, timeout=10)\n    connection.row_factory = sqlite3.Row\n    return connection\ndef utc_now() -> str:\n    return datetime.now(timezone.utc).isoformat()\ndef json_dumps(value: Any) -> str:\n    return json.dumps(value, ensure_ascii=False, separators=(\",\", \":\"))\ndef json_loads(value: str | None, fallback: Any) -> Any:",
+        "detail": "server.src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "utc_now",
+        "kind": 2,
+        "importPath": "server.src.app.core.storage",
+        "description": "server.src.app.core.storage",
+        "peekOfCode": "def utc_now() -> str:\n    return datetime.now(timezone.utc).isoformat()\ndef json_dumps(value: Any) -> str:\n    return json.dumps(value, ensure_ascii=False, separators=(\",\", \":\"))\ndef json_loads(value: str | None, fallback: Any) -> Any:\n    if not value:\n        return fallback\n    try:\n        return json.loads(value)\n    except json.JSONDecodeError:",
+        "detail": "server.src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_dumps",
+        "kind": 2,
+        "importPath": "server.src.app.core.storage",
+        "description": "server.src.app.core.storage",
+        "peekOfCode": "def json_dumps(value: Any) -> str:\n    return json.dumps(value, ensure_ascii=False, separators=(\",\", \":\"))\ndef json_loads(value: str | None, fallback: Any) -> Any:\n    if not value:\n        return fallback\n    try:\n        return json.loads(value)\n    except json.JSONDecodeError:\n        return fallback",
+        "detail": "server.src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "json_loads",
+        "kind": 2,
+        "importPath": "server.src.app.core.storage",
+        "description": "server.src.app.core.storage",
+        "peekOfCode": "def json_loads(value: str | None, fallback: Any) -> Any:\n    if not value:\n        return fallback\n    try:\n        return json.loads(value)\n    except json.JSONDecodeError:\n        return fallback",
+        "detail": "server.src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "DB_PATH",
+        "kind": 5,
+        "importPath": "server.src.app.core.storage",
+        "description": "server.src.app.core.storage",
+        "peekOfCode": "DB_PATH = Path(os.getenv(\"MINI_HAS_DB\", \"data/mini-has.db\"))\ndef connect() -> sqlite3.Connection:\n    DB_PATH.parent.mkdir(parents=True, exist_ok=True)\n    connection = sqlite3.connect(DB_PATH, timeout=10)\n    connection.row_factory = sqlite3.Row\n    return connection\ndef utc_now() -> str:\n    return datetime.now(timezone.utc).isoformat()\ndef json_dumps(value: Any) -> str:\n    return json.dumps(value, ensure_ascii=False, separators=(\",\", \":\"))",
+        "detail": "server.src.app.core.storage",
+        "documentation": {}
+    },
+    {
+        "label": "read_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def read_devices() -> list[Device]:\n    return list_devices()\n@router.get(\"/{device_id}\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_device(device_id: int) -> Device:\n    device = get_device(device_id)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.post(\"\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_device_route(request: DeviceCreateRequest) -> Device:",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def read_device(device_id: int) -> Device:\n    device = get_device(device_id)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.post(\"\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_device_route(request: DeviceCreateRequest) -> Device:\n    return create_device(request)\n@router.patch(\"/{device_id}\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef update_device_route(device_id: int, request: DeviceUpdateRequest) -> Device:",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "create_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def create_device_route(request: DeviceCreateRequest) -> Device:\n    return create_device(request)\n@router.patch(\"/{device_id}\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef update_device_route(device_id: int, request: DeviceUpdateRequest) -> Device:\n    device = update_device(device_id, request)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.post(\"/{device_id}/link-local\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> Device:",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "update_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def update_device_route(device_id: int, request: DeviceUpdateRequest) -> Device:\n    device = update_device(device_id, request)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.post(\"/{device_id}/link-local\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> Device:\n    device = link_local_device(device_id, request.local_device_key, request.payload)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "link_local_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def link_local_device_route(device_id: int, request: LinkLocalDeviceRequest) -> Device:\n    device = link_local_device(device_id, request.local_device_key, request.payload)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device\n@router.delete(\"/{device_id}\")\ndef delete_device_route(device_id: int) -> dict[str, bool]:\n    deleted = delete_device(device_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Device not found\")",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "delete_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "def delete_device_route(device_id: int) -> dict[str, bool]:\n    deleted = delete_device(device_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return {\"deleted\": True}",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.devices.router",
+        "description": "server.src.app.modules.devices.router",
+        "peekOfCode": "router = APIRouter()\n@router.get(\"\", response_model=list[Device], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_devices() -> list[Device]:\n    return list_devices()\n@router.get(\"/{device_id}\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_device(device_id: int) -> Device:\n    device = get_device(device_id)\n    if not device:\n        raise HTTPException(status_code=404, detail=\"Device not found\")\n    return device",
+        "detail": "server.src.app.modules.devices.router",
+        "documentation": {}
+    },
+    {
+        "label": "Device",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.schema",
+        "description": "server.src.app.modules.devices.schema",
+        "peekOfCode": "class Device(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    integration_id: int | None = Field(default=None, alias=\"integrationId\")\n    inbox_id: int | None = Field(default=None, alias=\"inboxId\")\n    external_id: str = Field(alias=\"externalId\")\n    local_device_key: str | None = Field(default=None, alias=\"localDeviceKey\")\n    name: str\n    device_type: str = Field(alias=\"deviceType\")\n    provider: str",
+        "detail": "server.src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceCreateRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.schema",
+        "description": "server.src.app.modules.devices.schema",
+        "peekOfCode": "class DeviceCreateRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    external_id: str = Field(alias=\"externalId\")\n    name: str\n    device_type: str = Field(default=\"unknown\", alias=\"deviceType\")\n    provider: str = \"manual\"\n    room_id: int | None = Field(default=None, alias=\"roomId\")\n    local_device_key: str | None = Field(default=None, alias=\"localDeviceKey\")\n    payload: dict[str, Any] = Field(default_factory=dict)\n    capabilities: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "DeviceUpdateRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.schema",
+        "description": "server.src.app.modules.devices.schema",
+        "peekOfCode": "class DeviceUpdateRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    name: str | None = None\n    device_type: str | None = Field(default=None, alias=\"deviceType\")\n    room_id: int | None = Field(default=None, alias=\"roomId\")\n    local_device_key: str | None = Field(default=None, alias=\"localDeviceKey\")\n    payload: dict[str, Any] | None = None\n    capabilities: dict[str, Any] | None = None\n    status: dict[str, Any] | None = None\nclass LinkLocalDeviceRequest(BaseModel):",
+        "detail": "server.src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "LinkLocalDeviceRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.devices.schema",
+        "description": "server.src.app.modules.devices.schema",
+        "peekOfCode": "class LinkLocalDeviceRequest(BaseModel):\n    local_device_key: str = Field(alias=\"localDeviceKey\")\n    payload: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.devices.schema",
+        "documentation": {}
+    },
+    {
+        "label": "list_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def list_devices() -> list[Device]:\n    ensure_home_schema()\n    with connect() as connection:\n        rows = connection.execute(\n            \"\"\"\n            SELECT devices.*, rooms.name AS room_name\n            FROM devices\n            LEFT JOIN rooms ON rooms.id = devices.room_id\n            ORDER BY devices.id\n            \"\"\"",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def get_device(device_id: int) -> Device | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\n            \"\"\"\n            SELECT devices.*, rooms.name AS room_name\n            FROM devices\n            LEFT JOIN rooms ON rooms.id = devices.room_id\n            WHERE devices.id = ?\n            \"\"\",",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def create_device(request: DeviceCreateRequest) -> Device:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(\n            \"\"\"\n            INSERT INTO devices\n                (integration_id, inbox_id, external_id, local_device_key, name, device_type, provider, room_id,\n                 payload_json, secrets_json, capabilities_json, status_json, created_at, updated_at)\n            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def update_device(device_id: int, request: DeviceUpdateRequest) -> Device | None:\n    current = get_device(device_id)\n    if not current:\n        return None\n    updates = request.model_dump(exclude_unset=True)\n    field_map = {\n        \"name\": \"name\",\n        \"device_type\": \"device_type\",\n        \"room_id\": \"room_id\",\n        \"local_device_key\": \"local_device_key\",",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def delete_device(device_id: int) -> bool:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"DELETE FROM entities WHERE device_id = ?\", (device_id,))\n        cursor = connection.execute(\"DELETE FROM devices WHERE id = ?\", (device_id,))\n    return cursor.rowcount > 0\ndef link_local_device(device_id: int, local_device_key: str, payload: dict[str, Any] | None = None) -> Device | None:\n    device = get_device(device_id)\n    if not device:\n        return None",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "link_local_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def link_local_device(device_id: int, local_device_key: str, payload: dict[str, Any] | None = None) -> Device | None:\n    device = get_device(device_id)\n    if not device:\n        return None\n    next_payload = {**device.payload, \"local\": payload or {}, \"localDeviceKey\": local_device_key}\n    with connect() as connection:\n        connection.execute(\n            \"UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?\",\n            (local_device_key, json_dumps(next_payload), utc_now(), device_id),\n        )",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "accept_inbox_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.devices.store",
+        "description": "server.src.app.modules.devices.store",
+        "peekOfCode": "def accept_inbox_device(inbox: InboxDevice, secrets: dict[str, Any], name: str | None, room_id: int | None) -> Device:\n    payload = inbox.payload\n    now = utc_now()\n    provider = str(payload.get(\"provider\") or inbox.source_type)\n    external_id = str(payload.get(\"externalId\") or inbox.external_id)\n    with connect() as connection:\n        existing = connection.execute(\n            \"SELECT id FROM devices WHERE provider = ? AND external_id = ?\",\n            (provider, external_id),\n        ).fetchone()",
+        "detail": "server.src.app.modules.devices.store",
+        "documentation": {}
+    },
+    {
+        "label": "enrich_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.discoverers.fingerprint",
+        "description": "server.src.app.modules.discovery.discoverers.fingerprint",
+        "peekOfCode": "def enrich_device(device: DiscoveredDevice) -> DiscoveredDevice:\n    manufacturer = device.manufacturer or lookup_manufacturer(device.mac)\n    device_type = device.device_type or _infer_device_type(device, manufacturer)\n    confidence = _confidence(device, manufacturer, device_type)\n    return device.model_copy(\n        update={\n            \"manufacturer\": manufacturer,\n            \"device_type\": device_type,\n            \"confidence\": confidence,\n        }",
+        "detail": "server.src.app.modules.discovery.discoverers.fingerprint",
+        "documentation": {}
+    },
+    {
+        "label": "discover_mdns",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.discoverers.mdns",
+        "description": "server.src.app.modules.discovery.discoverers.mdns",
+        "peekOfCode": "def discover_mdns(timeout: float = 3.0) -> list[dict[str, Any]]:\n    devices: dict[str, dict[str, Any]] = {}\n    services_by_name: dict[str, dict[str, Any]] = {}\n    target_to_ips: dict[str, set[str]] = {}\n    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)\n    sock.settimeout(0.2)\n    try:\n        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)\n        for service_type in DEFAULT_SERVICE_TYPES:\n            sock.sendto(_build_ptr_query(service_type), (\"224.0.0.251\", 5353))",
+        "detail": "server.src.app.modules.discovery.discoverers.mdns",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_SERVICE_TYPES",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.mdns",
+        "description": "server.src.app.modules.discovery.discoverers.mdns",
+        "peekOfCode": "DEFAULT_SERVICE_TYPES = [\n    \"_http._tcp.local.\",\n    \"_hap._tcp.local.\",\n    \"_matter._tcp.local.\",\n    \"_esphomelib._tcp.local.\",\n    \"_mqtt._tcp.local.\",\n    \"_googlecast._tcp.local.\",\n    \"_arduino._tcp.local.\",\n    \"_printer._tcp.local.\",\n]",
+        "detail": "server.src.app.modules.discovery.discoverers.mdns",
+        "documentation": {}
+    },
+    {
+        "label": "lookup_manufacturer",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.discoverers.oui",
+        "description": "server.src.app.modules.discovery.discoverers.oui",
+        "peekOfCode": "def lookup_manufacturer(mac: str | None) -> str | None:\n    prefix = _mac_prefix(mac)\n    if not prefix:\n        return None\n    return _manufacturers().get(prefix)\ndef _manufacturers() -> dict[str, str]:\n    global _cache\n    if _cache is None:\n        _cache = {**FALLBACK_MANUFACTURERS, **_load_cache()}\n    return _cache",
+        "detail": "server.src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "OUI_URL",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.oui",
+        "description": "server.src.app.modules.discovery.discoverers.oui",
+        "peekOfCode": "OUI_URL = \"https://standards-oui.ieee.org/oui/oui.csv\"\nCACHE_PATH = Path(os.getenv(\"MINI_HAS_OUI_CACHE\", \".cache/mini-has/oui.csv\"))\nCACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30\nFALLBACK_MANUFACTURERS = {\n    \"08:3A:F2\": \"Espressif\",\n    \"24:0A:C4\": \"Espressif\",\n    \"30:AE:A4\": \"Espressif\",\n    \"3C:61:05\": \"Espressif\",\n    \"7C:DF:A1\": \"Espressif\",\n    \"84:F3:EB\": \"Espressif\",",
+        "detail": "server.src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "CACHE_PATH",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.oui",
+        "description": "server.src.app.modules.discovery.discoverers.oui",
+        "peekOfCode": "CACHE_PATH = Path(os.getenv(\"MINI_HAS_OUI_CACHE\", \".cache/mini-has/oui.csv\"))\nCACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30\nFALLBACK_MANUFACTURERS = {\n    \"08:3A:F2\": \"Espressif\",\n    \"24:0A:C4\": \"Espressif\",\n    \"30:AE:A4\": \"Espressif\",\n    \"3C:61:05\": \"Espressif\",\n    \"7C:DF:A1\": \"Espressif\",\n    \"84:F3:EB\": \"Espressif\",\n    \"A0:20:A6\": \"Espressif\",",
+        "detail": "server.src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "CACHE_MAX_AGE_SECONDS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.oui",
+        "description": "server.src.app.modules.discovery.discoverers.oui",
+        "peekOfCode": "CACHE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30\nFALLBACK_MANUFACTURERS = {\n    \"08:3A:F2\": \"Espressif\",\n    \"24:0A:C4\": \"Espressif\",\n    \"30:AE:A4\": \"Espressif\",\n    \"3C:61:05\": \"Espressif\",\n    \"7C:DF:A1\": \"Espressif\",\n    \"84:F3:EB\": \"Espressif\",\n    \"A0:20:A6\": \"Espressif\",\n    \"AC:67:B2\": \"Espressif\",",
+        "detail": "server.src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "FALLBACK_MANUFACTURERS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.oui",
+        "description": "server.src.app.modules.discovery.discoverers.oui",
+        "peekOfCode": "FALLBACK_MANUFACTURERS = {\n    \"08:3A:F2\": \"Espressif\",\n    \"24:0A:C4\": \"Espressif\",\n    \"30:AE:A4\": \"Espressif\",\n    \"3C:61:05\": \"Espressif\",\n    \"7C:DF:A1\": \"Espressif\",\n    \"84:F3:EB\": \"Espressif\",\n    \"A0:20:A6\": \"Espressif\",\n    \"AC:67:B2\": \"Espressif\",\n    \"B4:E6:2D\": \"Espressif\",",
+        "detail": "server.src.app.modules.discovery.discoverers.oui",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_PORTS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.ports",
+        "description": "server.src.app.modules.discovery.discoverers.ports",
+        "peekOfCode": "DEFAULT_PORTS = [\n    21,\n    22,\n    23,\n    53,\n    80,\n    81,\n    443,\n    554,\n    1883,",
+        "detail": "server.src.app.modules.discovery.discoverers.ports",
+        "documentation": {}
+    },
+    {
+        "label": "HTTP_PORTS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.probes",
+        "description": "server.src.app.modules.discovery.discoverers.probes",
+        "peekOfCode": "HTTP_PORTS = {80, 81, 5000, 8000, 8008, 8009, 8080, 8123, 8266, 9000}\nHTTPS_PORTS = {443}\nRTSP_PORTS = {554, 8554}\nasync def probe_devices(devices: list[DiscoveredDevice], probe_mode: ProbeMode) -> list[DiscoveredDevice]:\n    if probe_mode == ProbeMode.light:\n        return [_with_reverse_dns(device) for device in devices]\n    semaphore = asyncio.Semaphore(64 if probe_mode == ProbeMode.aggressive else 24)\n    async def probe(device: DiscoveredDevice) -> DiscoveredDevice:\n        async with semaphore:\n            return await _probe_device(device, probe_mode)",
+        "detail": "server.src.app.modules.discovery.discoverers.probes",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPS_PORTS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.probes",
+        "description": "server.src.app.modules.discovery.discoverers.probes",
+        "peekOfCode": "HTTPS_PORTS = {443}\nRTSP_PORTS = {554, 8554}\nasync def probe_devices(devices: list[DiscoveredDevice], probe_mode: ProbeMode) -> list[DiscoveredDevice]:\n    if probe_mode == ProbeMode.light:\n        return [_with_reverse_dns(device) for device in devices]\n    semaphore = asyncio.Semaphore(64 if probe_mode == ProbeMode.aggressive else 24)\n    async def probe(device: DiscoveredDevice) -> DiscoveredDevice:\n        async with semaphore:\n            return await _probe_device(device, probe_mode)\n    return await asyncio.gather(*(probe(device) for device in devices))",
+        "detail": "server.src.app.modules.discovery.discoverers.probes",
+        "documentation": {}
+    },
+    {
+        "label": "RTSP_PORTS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.probes",
+        "description": "server.src.app.modules.discovery.discoverers.probes",
+        "peekOfCode": "RTSP_PORTS = {554, 8554}\nasync def probe_devices(devices: list[DiscoveredDevice], probe_mode: ProbeMode) -> list[DiscoveredDevice]:\n    if probe_mode == ProbeMode.light:\n        return [_with_reverse_dns(device) for device in devices]\n    semaphore = asyncio.Semaphore(64 if probe_mode == ProbeMode.aggressive else 24)\n    async def probe(device: DiscoveredDevice) -> DiscoveredDevice:\n        async with semaphore:\n            return await _probe_device(device, probe_mode)\n    return await asyncio.gather(*(probe(device) for device in devices))\nasync def _probe_device(device: DiscoveredDevice, probe_mode: ProbeMode) -> DiscoveredDevice:",
+        "detail": "server.src.app.modules.discovery.discoverers.probes",
+        "documentation": {}
+    },
+    {
+        "label": "discover_ssdp",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.discoverers.ssdp",
+        "description": "server.src.app.modules.discovery.discoverers.ssdp",
+        "peekOfCode": "def discover_ssdp(timeout: float = 3.0) -> list[dict[str, Any]]:\n    request = \"\\r\\n\".join(\n        [\n            \"M-SEARCH * HTTP/1.1\",\n            \"HOST: 239.255.255.250:1900\",\n            'MAN: \"ssdp:discover\"',\n            \"MX: 2\",\n            \"ST: ssdp:all\",\n            \"\",\n            \"\",",
+        "detail": "server.src.app.modules.discovery.discoverers.ssdp",
+        "documentation": {}
+    },
+    {
+        "label": "SSDP_TARGET",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.discoverers.ssdp",
+        "description": "server.src.app.modules.discovery.discoverers.ssdp",
+        "peekOfCode": "SSDP_TARGET = (\"239.255.255.250\", 1900)\ndef discover_ssdp(timeout: float = 3.0) -> list[dict[str, Any]]:\n    request = \"\\r\\n\".join(\n        [\n            \"M-SEARCH * HTTP/1.1\",\n            \"HOST: 239.255.255.250:1900\",\n            'MAN: \"ssdp:discover\"',\n            \"MX: 2\",\n            \"ST: ssdp:all\",\n            \"\",",
+        "detail": "server.src.app.modules.discovery.discoverers.ssdp",
+        "documentation": {}
+    },
+    {
+        "label": "create_discovery_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.jobs",
+        "description": "server.src.app.modules.discovery.jobs",
+        "peekOfCode": "def create_discovery_job(request: CreateDiscoveryJobRequest) -> DiscoveryJob:\n    now = _now()\n    scan_id = create_scan_record(request, status=JobStatus.pending, created_at=now)\n    job = DiscoveryJob(id=str(scan_id), status=JobStatus.pending, created_at=now)\n    save_job(job)\n    return job\nasync def run_discovery(request: CreateDiscoveryJobRequest) -> list[DiscoveredDevice]:\n    mdns_task = asyncio.to_thread(discover_mdns, request.timeout_seconds)\n    ssdp_task = asyncio.to_thread(discover_ssdp, request.timeout_seconds)\n    arp_task = discover_arp(request.subnet_prefix, timeout=0.8)",
+        "detail": "server.src.app.modules.discovery.jobs",
+        "documentation": {}
+    },
+    {
+        "label": "run_discovery_job_sync",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.jobs",
+        "description": "server.src.app.modules.discovery.jobs",
+        "peekOfCode": "def run_discovery_job_sync(job_id: str, request: CreateDiscoveryJobRequest) -> None:\n    asyncio.run(run_discovery_job(job_id, request))\ndef _merge_results(items: list[dict]) -> list[DiscoveredDevice]:\n    devices: dict[str, DiscoveredDevice] = {}\n    for item in items:\n        normalized = _to_device(item)\n        key = _find_existing_key(devices, normalized) or _device_key(normalized)\n        existing = devices.get(key)\n        devices[key] = _merge_device(existing, normalized) if existing else normalized\n    return list(devices.values())",
+        "detail": "server.src.app.modules.discovery.jobs",
+        "documentation": {}
+    },
+    {
+        "label": "create_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def create_job(request: CreateDiscoveryJobRequest, background_tasks: BackgroundTasks) -> CreateDiscoveryJobResponse:\n    job = create_discovery_job(request)\n    background_tasks.add_task(run_discovery_job_sync, job.id, request)\n    return CreateDiscoveryJobResponse(job_id=job.id, status=job.status)\n@router.get(\"/jobs\", response_model=list[DiscoveryJob], response_model_by_alias=True, response_model_exclude_none=True)\ndef list_jobs() -> list[DiscoveryJob]:\n    return list_discovery_jobs()\n@router.get(\"/jobs/{job_id}\", response_model=DiscoveryJob, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_job(job_id: str) -> DiscoveryJob:\n    job = get_job(job_id)",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "list_jobs",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def list_jobs() -> list[DiscoveryJob]:\n    return list_discovery_jobs()\n@router.get(\"/jobs/{job_id}\", response_model=DiscoveryJob, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_job(job_id: str) -> DiscoveryJob:\n    job = get_job(job_id)\n    if not job:\n        raise HTTPException(status_code=404, detail=\"Discovery job not found\")\n    return job\n@router.post(\"/scan\", response_model=list[DiscoveredDevice], response_model_by_alias=True, response_model_exclude_none=True)\nasync def scan_now(request: CreateDiscoveryJobRequest, response: Response) -> list[DiscoveredDevice]:",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def read_job(job_id: str) -> DiscoveryJob:\n    job = get_job(job_id)\n    if not job:\n        raise HTTPException(status_code=404, detail=\"Discovery job not found\")\n    return job\n@router.post(\"/scan\", response_model=list[DiscoveredDevice], response_model_by_alias=True, response_model_exclude_none=True)\nasync def scan_now(request: CreateDiscoveryJobRequest, response: Response) -> list[DiscoveredDevice]:\n    now = _now()\n    scan_id = create_scan_record(request, status=JobStatus.running, created_at=now, started_at=now)\n    response.headers[\"X-Discovery-Scan-Id\"] = str(scan_id)",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "list_scans",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def list_scans() -> list[SavedDiscoveryScan]:\n    return list_saved_scans()\n@router.get(\"/scans/{scan_id}\", response_model=SavedDiscoveryScan, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_scan(scan_id: int) -> SavedDiscoveryScan:\n    scan = get_saved_scan(scan_id)\n    if not scan:\n        raise HTTPException(status_code=404, detail=\"Discovery scan not found\")\n    return scan\n@router.get(\"/devices\", response_model=list[SavedDiscoveryDevice], response_model_by_alias=True, response_model_exclude_none=True)\ndef list_devices() -> list[SavedDiscoveryDevice]:",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_scan",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def read_scan(scan_id: int) -> SavedDiscoveryScan:\n    scan = get_saved_scan(scan_id)\n    if not scan:\n        raise HTTPException(status_code=404, detail=\"Discovery scan not found\")\n    return scan\n@router.get(\"/devices\", response_model=list[SavedDiscoveryDevice], response_model_by_alias=True, response_model_exclude_none=True)\ndef list_devices() -> list[SavedDiscoveryDevice]:\n    return list_saved_devices()\ndef _now() -> str:\n    return datetime.now(timezone.utc).isoformat()",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "list_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "def list_devices() -> list[SavedDiscoveryDevice]:\n    return list_saved_devices()\ndef _now() -> str:\n    return datetime.now(timezone.utc).isoformat()",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.router",
+        "description": "server.src.app.modules.discovery.router",
+        "peekOfCode": "router = APIRouter()\n@router.post(\"/jobs\", response_model=CreateDiscoveryJobResponse, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_job(request: CreateDiscoveryJobRequest, background_tasks: BackgroundTasks) -> CreateDiscoveryJobResponse:\n    job = create_discovery_job(request)\n    background_tasks.add_task(run_discovery_job_sync, job.id, request)\n    return CreateDiscoveryJobResponse(job_id=job.id, status=job.status)\n@router.get(\"/jobs\", response_model=list[DiscoveryJob], response_model_by_alias=True, response_model_exclude_none=True)\ndef list_jobs() -> list[DiscoveryJob]:\n    return list_discovery_jobs()\n@router.get(\"/jobs/{job_id}\", response_model=DiscoveryJob, response_model_by_alias=True, response_model_exclude_none=True)",
+        "detail": "server.src.app.modules.discovery.router",
+        "documentation": {}
+    },
+    {
+        "label": "JobStatus",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class JobStatus(str, Enum):\n    pending = \"pending\"\n    running = \"running\"\n    finished = \"finished\"\n    failed = \"failed\"\nclass ProbeMode(str, Enum):\n    light = \"light\"\n    balanced = \"balanced\"\n    aggressive = \"aggressive\"\nclass CreateDiscoveryJobRequest(BaseModel):",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProbeMode",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class ProbeMode(str, Enum):\n    light = \"light\"\n    balanced = \"balanced\"\n    aggressive = \"aggressive\"\nclass CreateDiscoveryJobRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    subnet_prefix: str = Field(default=\"192.168.0\")\n    scan_ports: bool = True\n    timeout_seconds: float = Field(default=3.0, ge=1.0, le=15.0)\n    probe_mode: ProbeMode = Field(default=ProbeMode.aggressive, alias=\"probeMode\")",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class CreateDiscoveryJobRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    subnet_prefix: str = Field(default=\"192.168.0\")\n    scan_ports: bool = True\n    timeout_seconds: float = Field(default=3.0, ge=1.0, le=15.0)\n    probe_mode: ProbeMode = Field(default=ProbeMode.aggressive, alias=\"probeMode\")\n    ports: list[int] | None = None\nclass DiscoveredService(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    type: str | None = None",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredService",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class DiscoveredService(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    type: str | None = None\n    port: int | None = None\n    name: str | None = None\n    properties: dict[str, Any] = Field(default_factory=dict)\nclass DiscoveredDevice(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    ip: str | None = None\n    hostname: str | None = None",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveredDevice",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class DiscoveredDevice(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    ip: str | None = None\n    hostname: str | None = None\n    mac: str | None = None\n    name: str | None = None\n    manufacturer: str | None = None\n    model: str | None = None\n    device_type: str | None = Field(default=None, alias=\"deviceType\")\n    source: list[str] = Field(default_factory=list)",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "DiscoveryJob",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class DiscoveryJob(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: str\n    status: JobStatus\n    progress: float = 0\n    result: list[DiscoveredDevice] = Field(default_factory=list)\n    error: str | None = None\n    created_at: str\n    started_at: str | None = None\n    finished_at: str | None = None",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateDiscoveryJobResponse",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class CreateDiscoveryJobResponse(BaseModel):\n    job_id: str\n    status: JobStatus\nclass SavedDiscoveryScan(BaseModel):\n    id: int\n    status: JobStatus\n    request: dict[str, Any] = Field(default_factory=dict)\n    result: list[DiscoveredDevice] = Field(default_factory=list)\n    error: str | None = None\n    created_at: str",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryScan",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class SavedDiscoveryScan(BaseModel):\n    id: int\n    status: JobStatus\n    request: dict[str, Any] = Field(default_factory=dict)\n    result: list[DiscoveredDevice] = Field(default_factory=list)\n    error: str | None = None\n    created_at: str\n    started_at: str | None = None\n    finished_at: str | None = None\nclass SavedDiscoveryDevice(BaseModel):",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "SavedDiscoveryDevice",
+        "kind": 6,
+        "importPath": "server.src.app.modules.discovery.schemas",
+        "description": "server.src.app.modules.discovery.schemas",
+        "peekOfCode": "class SavedDiscoveryDevice(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    last_scan_id: int | None = Field(default=None, alias=\"lastScanId\")\n    first_seen_at: str = Field(alias=\"firstSeenAt\")\n    last_seen_at: str = Field(alias=\"lastSeenAt\")\n    device: DiscoveredDevice",
+        "detail": "server.src.app.modules.discovery.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "create_scan_record",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def create_scan_record(\n    request: CreateDiscoveryJobRequest,\n    status: JobStatus,\n    created_at: str,\n    started_at: str | None = None,\n) -> int:\n    with _connect() as connection:\n        cursor = connection.execute(\n            \"\"\"\n            INSERT INTO discovery_scans (status, request_json, result_json, created_at, started_at)",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "save_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def save_job(job: DiscoveryJob) -> DiscoveryJob:\n    jobs[job.id] = job\n    return job\ndef get_job(job_id: str) -> DiscoveryJob | None:\n    if job_id in jobs:\n        return jobs[job_id]\n    scan = get_saved_scan(_to_int(job_id))\n    if not scan:\n        return None\n    return DiscoveryJob(",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def get_job(job_id: str) -> DiscoveryJob | None:\n    if job_id in jobs:\n        return jobs[job_id]\n    scan = get_saved_scan(_to_int(job_id))\n    if not scan:\n        return None\n    return DiscoveryJob(\n        id=str(scan.id),\n        status=scan.status,\n        result=scan.result,",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_discovery_jobs",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def list_discovery_jobs() -> list[DiscoveryJob]:\n    return [\n        DiscoveryJob(\n            id=str(scan.id),\n            status=scan.status,\n            result=scan.result,\n            error=scan.error,\n            created_at=scan.created_at,\n            started_at=scan.started_at,\n            finished_at=scan.finished_at,",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_job",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def update_job(job_id: str, **kwargs) -> DiscoveryJob | None:\n    job = get_job(job_id)\n    scan_id = _to_int(job_id)\n    if scan_id is not None:\n        update_scan_record(scan_id, **kwargs)\n    if not job:\n        return None\n    updated = job.model_copy(update=kwargs)\n    jobs[job_id] = updated\n    return updated",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_scan_record",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def update_scan_record(scan_id: int, **kwargs) -> SavedDiscoveryScan | None:\n    fields: dict[str, Any] = {}\n    if \"status\" in kwargs:\n        status = kwargs[\"status\"]\n        fields[\"status\"] = status.value if isinstance(status, JobStatus) else str(status)\n    if \"result\" in kwargs:\n        fields[\"result_json\"] = _devices_json(kwargs[\"result\"])\n    if \"error\" in kwargs:\n        fields[\"error\"] = kwargs[\"error\"]\n    if \"started_at\" in kwargs:",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_saved_scan",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def get_saved_scan(scan_id: int | None) -> SavedDiscoveryScan | None:\n    if scan_id is None:\n        return None\n    with _connect() as connection:\n        row = connection.execute(\"SELECT * FROM discovery_scans WHERE id = ?\", (scan_id,)).fetchone()\n    return _scan_from_row(row) if row else None\ndef list_saved_scans(limit: int = 100) -> list[SavedDiscoveryScan]:\n    with _connect() as connection:\n        rows = connection.execute(\"SELECT * FROM discovery_scans ORDER BY id DESC LIMIT ?\", (limit,)).fetchall()\n    return [_scan_from_row(row) for row in rows]",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_saved_scans",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def list_saved_scans(limit: int = 100) -> list[SavedDiscoveryScan]:\n    with _connect() as connection:\n        rows = connection.execute(\"SELECT * FROM discovery_scans ORDER BY id DESC LIMIT ?\", (limit,)).fetchall()\n    return [_scan_from_row(row) for row in rows]\ndef save_discovered_devices(scan_id: int, devices: list[DiscoveredDevice], seen_at: str) -> None:\n    inbox_items: list[tuple[str, DiscoveredDevice]] = []\n    with _connect() as connection:\n        for device in devices:\n            key = _device_key(device)\n            if not key:",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "save_discovered_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def save_discovered_devices(scan_id: int, devices: list[DiscoveredDevice], seen_at: str) -> None:\n    inbox_items: list[tuple[str, DiscoveredDevice]] = []\n    with _connect() as connection:\n        for device in devices:\n            key = _device_key(device)\n            if not key:\n                continue\n            connection.execute(\n                \"\"\"\n                INSERT INTO discovery_devices (device_key, payload_json, first_seen_at, last_seen_at, last_scan_id)",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_saved_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "def list_saved_devices() -> list[SavedDiscoveryDevice]:\n    with _connect() as connection:\n        rows = connection.execute(\"SELECT * FROM discovery_devices ORDER BY id\").fetchall()\n    return [\n        SavedDiscoveryDevice(\n            id=row[\"id\"],\n            lastScanId=row[\"last_scan_id\"],\n            firstSeenAt=row[\"first_seen_at\"],\n            lastSeenAt=row[\"last_seen_at\"],\n            device=DiscoveredDevice.model_validate(_loads(row[\"payload_json\"], {})),",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "DB_PATH",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "DB_PATH = Path(os.getenv(\"MINI_HAS_DB\", \"data/mini-has.db\"))\njobs: dict[str, DiscoveryJob] = {}\n_initialized = False\ndef create_scan_record(\n    request: CreateDiscoveryJobRequest,\n    status: JobStatus,\n    created_at: str,\n    started_at: str | None = None,\n) -> int:\n    with _connect() as connection:",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "_initialized",
+        "kind": 5,
+        "importPath": "server.src.app.modules.discovery.store",
+        "description": "server.src.app.modules.discovery.store",
+        "peekOfCode": "_initialized = False\ndef create_scan_record(\n    request: CreateDiscoveryJobRequest,\n    status: JobStatus,\n    created_at: str,\n    started_at: str | None = None,\n) -> int:\n    with _connect() as connection:\n        cursor = connection.execute(\n            \"\"\"",
+        "detail": "server.src.app.modules.discovery.store",
+        "documentation": {}
+    },
+    {
+        "label": "read_entities",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.router",
+        "description": "server.src.app.modules.entities.router",
+        "peekOfCode": "def read_entities() -> list[Entity]:\n    return list_entities()\n@router.get(\"/{entity_id}\", response_model=Entity, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_entity(entity_id: int) -> Entity:\n    entity = get_entity(entity_id)\n    if not entity:\n        raise HTTPException(status_code=404, detail=\"Entity not found\")\n    return entity\n@router.post(\"/{entity_id}/command\", response_model=CommandResult, response_model_by_alias=True)\ndef command_entity(entity_id: int, request: CommandRequest) -> CommandResult:",
+        "detail": "server.src.app.modules.entities.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_entity",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.router",
+        "description": "server.src.app.modules.entities.router",
+        "peekOfCode": "def read_entity(entity_id: int) -> Entity:\n    entity = get_entity(entity_id)\n    if not entity:\n        raise HTTPException(status_code=404, detail=\"Entity not found\")\n    return entity\n@router.post(\"/{entity_id}/command\", response_model=CommandResult, response_model_by_alias=True)\ndef command_entity(entity_id: int, request: CommandRequest) -> CommandResult:\n    result = log_command(entity_id, request)\n    if not result:\n        raise HTTPException(status_code=404, detail=\"Entity not found\")",
+        "detail": "server.src.app.modules.entities.router",
+        "documentation": {}
+    },
+    {
+        "label": "command_entity",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.router",
+        "description": "server.src.app.modules.entities.router",
+        "peekOfCode": "def command_entity(entity_id: int, request: CommandRequest) -> CommandResult:\n    result = log_command(entity_id, request)\n    if not result:\n        raise HTTPException(status_code=404, detail=\"Entity not found\")\n    return result",
+        "detail": "server.src.app.modules.entities.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.entities.router",
+        "description": "server.src.app.modules.entities.router",
+        "peekOfCode": "router = APIRouter()\n@router.get(\"\", response_model=list[Entity], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_entities() -> list[Entity]:\n    return list_entities()\n@router.get(\"/{entity_id}\", response_model=Entity, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_entity(entity_id: int) -> Entity:\n    entity = get_entity(entity_id)\n    if not entity:\n        raise HTTPException(status_code=404, detail=\"Entity not found\")\n    return entity",
+        "detail": "server.src.app.modules.entities.router",
+        "documentation": {}
+    },
+    {
+        "label": "Entity",
+        "kind": 6,
+        "importPath": "server.src.app.modules.entities.schemas",
+        "description": "server.src.app.modules.entities.schemas",
+        "peekOfCode": "class Entity(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    device_id: int = Field(alias=\"deviceId\")\n    unique_key: str = Field(alias=\"uniqueKey\")\n    type: str\n    name: str\n    command_schema: dict[str, Any] = Field(default_factory=dict, alias=\"commandSchema\")\n    state: dict[str, Any] = Field(default_factory=dict)\n    capabilities: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.entities.schemas",
+        "description": "server.src.app.modules.entities.schemas",
+        "peekOfCode": "class CommandRequest(BaseModel):\n    command: str\n    params: dict[str, Any] = Field(default_factory=dict)\nclass CommandResult(BaseModel):\n    ok: bool\n    status: str\n    message: str\n    result: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CommandResult",
+        "kind": 6,
+        "importPath": "server.src.app.modules.entities.schemas",
+        "description": "server.src.app.modules.entities.schemas",
+        "peekOfCode": "class CommandResult(BaseModel):\n    ok: bool\n    status: str\n    message: str\n    result: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.entities.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "list_entities",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.store",
+        "description": "server.src.app.modules.entities.store",
+        "peekOfCode": "def list_entities() -> list[Entity]:\n    ensure_home_schema()\n    with connect() as connection:\n        rows = connection.execute(\"SELECT * FROM entities ORDER BY id\").fetchall()\n    return [_from_row(row) for row in rows]\ndef get_entity(entity_id: int) -> Entity | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM entities WHERE id = ?\", (entity_id,)).fetchone()\n    return _from_row(row) if row else None",
+        "detail": "server.src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_entity",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.store",
+        "description": "server.src.app.modules.entities.store",
+        "peekOfCode": "def get_entity(entity_id: int) -> Entity | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM entities WHERE id = ?\", (entity_id,)).fetchone()\n    return _from_row(row) if row else None\ndef create_entities_for_device(device_id: int, provider: str, external_id: str, entities: list[dict[str, Any]]) -> list[Entity]:\n    ensure_home_schema()\n    now = utc_now()\n    created: list[Entity] = []\n    with connect() as connection:",
+        "detail": "server.src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_entities_for_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.store",
+        "description": "server.src.app.modules.entities.store",
+        "peekOfCode": "def create_entities_for_device(device_id: int, provider: str, external_id: str, entities: list[dict[str, Any]]) -> list[Entity]:\n    ensure_home_schema()\n    now = utc_now()\n    created: list[Entity] = []\n    with connect() as connection:\n        for entity in entities:\n            key = str(entity.get(\"key\") or entity.get(\"type\") or \"main\")\n            unique_key = f\"{provider}:{external_id}:{key}\"\n            connection.execute(\n                \"\"\"",
+        "detail": "server.src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "log_command",
+        "kind": 2,
+        "importPath": "server.src.app.modules.entities.store",
+        "description": "server.src.app.modules.entities.store",
+        "peekOfCode": "def log_command(entity_id: int, request: CommandRequest) -> CommandResult | None:\n    entity = get_entity(entity_id)\n    if not entity:\n        return None\n    result = CommandResult(\n        ok=True,\n        status=\"accepted\",\n        message=\"Comando registrado. Runtime especifico do provider sera plugado na proxima etapa.\",\n        result={\"entityId\": entity_id, \"command\": request.command, \"params\": request.params},\n    )",
+        "detail": "server.src.app.modules.entities.store",
+        "documentation": {}
+    },
+    {
+        "label": "read_inbox_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.router",
+        "description": "server.src.app.modules.inbox.router",
+        "peekOfCode": "def read_inbox_devices(status: InboxStatus | None = None, provider: str | None = None) -> list[InboxDevice]:\n    return list_inbox_devices(status, provider)\n@router.post(\"/devices/{inbox_id}/accept\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef accept_inbox_device_route(inbox_id: int, request: AcceptInboxDeviceRequest) -> Device:\n    item = get_inbox_payload_with_secrets(inbox_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Inbox device not found\")\n    inbox, secrets = item\n    device = accept_inbox_device(inbox, secrets, request.name, request.room_id)\n    if request.create_entities:",
+        "detail": "server.src.app.modules.inbox.router",
+        "documentation": {}
+    },
+    {
+        "label": "accept_inbox_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.router",
+        "description": "server.src.app.modules.inbox.router",
+        "peekOfCode": "def accept_inbox_device_route(inbox_id: int, request: AcceptInboxDeviceRequest) -> Device:\n    item = get_inbox_payload_with_secrets(inbox_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Inbox device not found\")\n    inbox, secrets = item\n    device = accept_inbox_device(inbox, secrets, request.name, request.room_id)\n    if request.create_entities:\n        create_entities_for_device(device.id, device.provider, device.external_id, inbox.payload.get(\"entities\") or [])\n    mark_inbox_status(inbox_id, InboxStatus.accepted)\n    return device",
+        "detail": "server.src.app.modules.inbox.router",
+        "documentation": {}
+    },
+    {
+        "label": "ignore_inbox_device_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.router",
+        "description": "server.src.app.modules.inbox.router",
+        "peekOfCode": "def ignore_inbox_device_route(inbox_id: int, request: IgnoreInboxDeviceRequest) -> InboxDevice:\n    _ = request\n    inbox = mark_inbox_status(inbox_id, InboxStatus.ignored)\n    if not inbox:\n        raise HTTPException(status_code=404, detail=\"Inbox device not found\")\n    return inbox",
+        "detail": "server.src.app.modules.inbox.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.inbox.router",
+        "description": "server.src.app.modules.inbox.router",
+        "peekOfCode": "router = APIRouter()\n@router.get(\"/devices\", response_model=list[InboxDevice], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_inbox_devices(status: InboxStatus | None = None, provider: str | None = None) -> list[InboxDevice]:\n    return list_inbox_devices(status, provider)\n@router.post(\"/devices/{inbox_id}/accept\", response_model=Device, response_model_by_alias=True, response_model_exclude_none=True)\ndef accept_inbox_device_route(inbox_id: int, request: AcceptInboxDeviceRequest) -> Device:\n    item = get_inbox_payload_with_secrets(inbox_id)\n    if not item:\n        raise HTTPException(status_code=404, detail=\"Inbox device not found\")\n    inbox, secrets = item",
+        "detail": "server.src.app.modules.inbox.router",
+        "documentation": {}
+    },
+    {
+        "label": "InboxStatus",
+        "kind": 6,
+        "importPath": "server.src.app.modules.inbox.schemas",
+        "description": "server.src.app.modules.inbox.schemas",
+        "peekOfCode": "class InboxStatus(str, Enum):\n    pending = \"pending\"\n    accepted = \"accepted\"\n    ignored = \"ignored\"\nclass InboxDevice(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    source_type: str = Field(alias=\"sourceType\")\n    source_id: int = Field(alias=\"sourceId\")\n    external_id: str = Field(alias=\"externalId\")",
+        "detail": "server.src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "InboxDevice",
+        "kind": 6,
+        "importPath": "server.src.app.modules.inbox.schemas",
+        "description": "server.src.app.modules.inbox.schemas",
+        "peekOfCode": "class InboxDevice(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    source_type: str = Field(alias=\"sourceType\")\n    source_id: int = Field(alias=\"sourceId\")\n    external_id: str = Field(alias=\"externalId\")\n    status: InboxStatus\n    payload: dict[str, Any] = Field(default_factory=dict)\n    match_score: float = Field(default=0, alias=\"matchScore\")\n    created_at: str = Field(alias=\"createdAt\")",
+        "detail": "server.src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "AcceptInboxDeviceRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.inbox.schemas",
+        "description": "server.src.app.modules.inbox.schemas",
+        "peekOfCode": "class AcceptInboxDeviceRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    name: str | None = None\n    room_id: int | None = Field(default=None, alias=\"roomId\")\n    create_entities: bool = Field(default=True, alias=\"createEntities\")\nclass IgnoreInboxDeviceRequest(BaseModel):\n    reason: str | None = None",
+        "detail": "server.src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IgnoreInboxDeviceRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.inbox.schemas",
+        "description": "server.src.app.modules.inbox.schemas",
+        "peekOfCode": "class IgnoreInboxDeviceRequest(BaseModel):\n    reason: str | None = None",
+        "detail": "server.src.app.modules.inbox.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "upsert_inbox_item",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.store",
+        "description": "server.src.app.modules.inbox.store",
+        "peekOfCode": "def upsert_inbox_item(\n    source_type: str,\n    source_id: int,\n    external_id: str,\n    payload: dict[str, Any],\n    secrets: dict[str, Any] | None = None,\n    match_score: float = 0,\n) -> int:\n    ensure_home_schema()\n    now = utc_now()",
+        "detail": "server.src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_inbox_devices",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.store",
+        "description": "server.src.app.modules.inbox.store",
+        "peekOfCode": "def list_inbox_devices(status: InboxStatus | None = None, provider: str | None = None) -> list[InboxDevice]:\n    ensure_home_schema()\n    sql = \"SELECT * FROM device_inbox\"\n    params: tuple[Any, ...] = ()\n    if status:\n        sql += \" WHERE status = ?\"\n        params = (status.value,)\n    sql += \" ORDER BY updated_at DESC, id DESC\"\n    with connect() as connection:\n        rows = connection.execute(sql, params).fetchall()",
+        "detail": "server.src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_inbox_device",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.store",
+        "description": "server.src.app.modules.inbox.store",
+        "peekOfCode": "def get_inbox_device(inbox_id: int) -> InboxDevice | None:\n    row = _get_raw_inbox(inbox_id)\n    return _from_row(row) if row else None\ndef get_inbox_payload_with_secrets(inbox_id: int) -> tuple[InboxDevice, dict[str, Any]] | None:\n    row = _get_raw_inbox(inbox_id)\n    if not row:\n        return None\n    return _from_row(row), json_loads(row[\"secrets_json\"], {})\ndef mark_inbox_status(inbox_id: int, status: InboxStatus) -> InboxDevice | None:\n    ensure_home_schema()",
+        "detail": "server.src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_inbox_payload_with_secrets",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.store",
+        "description": "server.src.app.modules.inbox.store",
+        "peekOfCode": "def get_inbox_payload_with_secrets(inbox_id: int) -> tuple[InboxDevice, dict[str, Any]] | None:\n    row = _get_raw_inbox(inbox_id)\n    if not row:\n        return None\n    return _from_row(row), json_loads(row[\"secrets_json\"], {})\ndef mark_inbox_status(inbox_id: int, status: InboxStatus) -> InboxDevice | None:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"UPDATE device_inbox SET status = ?, updated_at = ? WHERE id = ?\", (status.value, utc_now(), inbox_id))\n    return get_inbox_device(inbox_id)",
+        "detail": "server.src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "mark_inbox_status",
+        "kind": 2,
+        "importPath": "server.src.app.modules.inbox.store",
+        "description": "server.src.app.modules.inbox.store",
+        "peekOfCode": "def mark_inbox_status(inbox_id: int, status: InboxStatus) -> InboxDevice | None:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"UPDATE device_inbox SET status = ?, updated_at = ? WHERE id = ?\", (status.value, utc_now(), inbox_id))\n    return get_inbox_device(inbox_id)\ndef _get_raw_inbox(inbox_id: int):\n    ensure_home_schema()\n    with connect() as connection:\n        return connection.execute(\"SELECT * FROM device_inbox WHERE id = ?\", (inbox_id,)).fetchone()\ndef _from_row(row) -> InboxDevice:",
+        "detail": "server.src.app.modules.inbox.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_provider_definitions",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def list_provider_definitions() -> list[ProviderDefinition]:\n    return [\n        ProviderDefinition(\n            type=IntegrationType.tuya_cloud,\n            name=\"Tuya Cloud\",\n            description=\"Importa devices da conta Tuya/Smart Life e localKey quando a API disponibilizar.\",\n            fields=[\n                ProviderField(key=\"accessId\", label=\"Access ID\", required=True),\n                ProviderField(key=\"accessSecret\", label=\"Access Secret\", required=True, secret=True),\n                ProviderField(key=\"region\", label=\"Regiao\", default=\"auto\", help=\"auto, eastern-america, western-america, central-europe, western-europe, india, china\"),",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "split_provider_config",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def split_provider_config(provider_type: IntegrationType, config: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:\n    secrets = {}\n    public_config = {}\n    for key, value in config.items():\n        if key in SECRET_FIELDS.get(provider_type, set()):\n            secrets[key] = value\n        else:\n            public_config[key] = value\n    return public_config, secrets\ndef test_provider(integration: StoredIntegration) -> IntegrationTestResult:",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "test_provider",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def test_provider(integration: StoredIntegration) -> IntegrationTestResult:\n    try:\n        if integration.type == IntegrationType.tuya_cloud:\n            token, region = _tuya_get_token_for_integration(integration)\n            return IntegrationTestResult(ok=bool(token), status=IntegrationStatus.connected, message=f\"Tuya conectada em {region['label']}.\")\n        if integration.type == IntegrationType.smartthings_cloud:\n            devices = _smartthings_request(integration, \"/v1/devices\")\n            return IntegrationTestResult(ok=True, status=IntegrationStatus.connected, message=\"SmartThings conectado.\", details={\"count\": len(devices.get(\"items\", []))})\n        if integration.type in {IntegrationType.persiana_custom, IntegrationType.generic_iot}:\n            return _test_http_like_provider(integration)",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "sync_provider",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def sync_provider(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:\n    if integration.type == IntegrationType.tuya_cloud:\n        return _sync_tuya_cloud(integration)\n    if integration.type == IntegrationType.smartthings_cloud:\n        return _sync_smartthings(integration)\n    if integration.type in {IntegrationType.persiana_custom, IntegrationType.generic_iot}:\n        return [_device_from_http_like_provider(integration)], {}\n    if integration.type == IntegrationType.intelbras_izy_tuya:\n        return [], {\"note\": \"Use discovery LAN para achar Tuya 6667/6668 e Tuya Cloud para obter nomes/localKey.\"}\n    return [], {\"note\": \"Provider planejado.\"}",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "EMPTY_BODY_SHA256",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "EMPTY_BODY_SHA256 = \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\nTUYA_BOOLEAN_PRIORITY = [\"switch_led\", \"switch_1\", \"switch\", \"switch_2\", \"switch_3\", \"switch_4\", \"switch_usb1\", \"switch_usb2\"]\nTUYA_REGIONS = [\n    {\"key\": \"eastern-america\", \"label\": \"Eastern America\", \"baseUrl\": \"https://openapi-ueaz.tuyaus.com\"},\n    {\"key\": \"western-america\", \"label\": \"Western America\", \"baseUrl\": \"https://openapi.tuyaus.com\"},\n    {\"key\": \"central-europe\", \"label\": \"Central Europe\", \"baseUrl\": \"https://openapi.tuyaeu.com\"},\n    {\"key\": \"western-europe\", \"label\": \"Western Europe\", \"baseUrl\": \"https://openapi-weaz.tuyaeu.com\"},\n    {\"key\": \"india\", \"label\": \"India\", \"baseUrl\": \"https://openapi.tuyain.com\"},\n    {\"key\": \"china\", \"label\": \"China\", \"baseUrl\": \"https://openapi.tuyacn.com\"},\n]",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "TUYA_BOOLEAN_PRIORITY",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "TUYA_BOOLEAN_PRIORITY = [\"switch_led\", \"switch_1\", \"switch\", \"switch_2\", \"switch_3\", \"switch_4\", \"switch_usb1\", \"switch_usb2\"]\nTUYA_REGIONS = [\n    {\"key\": \"eastern-america\", \"label\": \"Eastern America\", \"baseUrl\": \"https://openapi-ueaz.tuyaus.com\"},\n    {\"key\": \"western-america\", \"label\": \"Western America\", \"baseUrl\": \"https://openapi.tuyaus.com\"},\n    {\"key\": \"central-europe\", \"label\": \"Central Europe\", \"baseUrl\": \"https://openapi.tuyaeu.com\"},\n    {\"key\": \"western-europe\", \"label\": \"Western Europe\", \"baseUrl\": \"https://openapi-weaz.tuyaeu.com\"},\n    {\"key\": \"india\", \"label\": \"India\", \"baseUrl\": \"https://openapi.tuyain.com\"},\n    {\"key\": \"china\", \"label\": \"China\", \"baseUrl\": \"https://openapi.tuyacn.com\"},\n]\nSECRET_FIELDS = {",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "TUYA_REGIONS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "TUYA_REGIONS = [\n    {\"key\": \"eastern-america\", \"label\": \"Eastern America\", \"baseUrl\": \"https://openapi-ueaz.tuyaus.com\"},\n    {\"key\": \"western-america\", \"label\": \"Western America\", \"baseUrl\": \"https://openapi.tuyaus.com\"},\n    {\"key\": \"central-europe\", \"label\": \"Central Europe\", \"baseUrl\": \"https://openapi.tuyaeu.com\"},\n    {\"key\": \"western-europe\", \"label\": \"Western Europe\", \"baseUrl\": \"https://openapi-weaz.tuyaeu.com\"},\n    {\"key\": \"india\", \"label\": \"India\", \"baseUrl\": \"https://openapi.tuyain.com\"},\n    {\"key\": \"china\", \"label\": \"China\", \"baseUrl\": \"https://openapi.tuyacn.com\"},\n]\nSECRET_FIELDS = {\n    IntegrationType.tuya_cloud: {\"accessSecret\"},",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "SECRET_FIELDS",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "SECRET_FIELDS = {\n    IntegrationType.tuya_cloud: {\"accessSecret\"},\n    IntegrationType.smartthings_cloud: {\"token\"},\n    IntegrationType.tuya_local: {\"localKey\"},\n}\ndef list_provider_definitions() -> list[ProviderDefinition]:\n    return [\n        ProviderDefinition(\n            type=IntegrationType.tuya_cloud,\n            name=\"Tuya Cloud\",",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "read_provider_definitions",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def read_provider_definitions() -> list[ProviderDefinition]:\n    return list_provider_definitions()\n@router.get(\"\", response_model=list[Integration], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integrations() -> list[Integration]:\n    return list_integrations()\n@router.get(\"/{integration_id}\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integration(integration_id: int) -> Integration:\n    integration = get_integration(integration_id)\n    if not integration:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_integrations",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def read_integrations() -> list[Integration]:\n    return list_integrations()\n@router.get(\"/{integration_id}\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integration(integration_id: int) -> Integration:\n    integration = get_integration(integration_id)\n    if not integration:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")\n    return integration\n@router.post(\"\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_integration_route(request: CreateIntegrationRequest) -> Integration:",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_integration",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def read_integration(integration_id: int) -> Integration:\n    integration = get_integration(integration_id)\n    if not integration:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")\n    return integration\n@router.post(\"\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_integration_route(request: CreateIntegrationRequest) -> Integration:\n    config, secrets = split_provider_config(request.type, request.config)\n    if request.type == IntegrationType.tuya_cloud:\n        access_id = str(config.get(\"accessId\") or \"\").strip()",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "create_integration_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def create_integration_route(request: CreateIntegrationRequest) -> Integration:\n    config, secrets = split_provider_config(request.type, request.config)\n    if request.type == IntegrationType.tuya_cloud:\n        access_id = str(config.get(\"accessId\") or \"\").strip()\n        if access_id:\n            config[\"accessId\"] = access_id\n        if find_integration_by_config_value(request.type, \"accessId\", access_id):\n            raise HTTPException(status_code=409, detail=\"Ja existe uma integracao Tuya Cloud com este Access ID.\")\n    status = IntegrationStatus.created\n    if request.test_on_create:",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "test_integration_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def test_integration_route(integration_id: int) -> IntegrationTestResult:\n    integration = get_integration(integration_id)\n    if not integration:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")\n    result = test_provider(integration)\n    update_integration_status(integration_id, result.status, None if result.ok else result.message)\n    return result\n@router.post(\"/{integration_id}/sync\", response_model=IntegrationSyncResult, response_model_by_alias=True)\ndef sync_integration_route(integration_id: int) -> IntegrationSyncResult:\n    integration = get_integration(integration_id)",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "sync_integration_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def sync_integration_route(integration_id: int) -> IntegrationSyncResult:\n    integration = get_integration(integration_id)\n    if not integration:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")\n    update_integration_status(integration_id, IntegrationStatus.syncing)\n    try:\n        devices, details = sync_provider(integration)\n        inbox_ids = []\n        inbox_devices = []\n        for device in devices:",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "delete_integration_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "def delete_integration_route(integration_id: int) -> dict[str, bool]:\n    deleted = delete_integration(integration_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Integration not found\")\n    return {\"deleted\": True}",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "router = APIRouter()\nproviders_router = APIRouter()\n@providers_router.get(\"\", response_model=list[ProviderDefinition], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_provider_definitions() -> list[ProviderDefinition]:\n    return list_provider_definitions()\n@router.get(\"\", response_model=list[Integration], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integrations() -> list[Integration]:\n    return list_integrations()\n@router.get(\"/{integration_id}\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integration(integration_id: int) -> Integration:",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "providers_router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.router",
+        "description": "server.src.app.modules.integrations.router",
+        "peekOfCode": "providers_router = APIRouter()\n@providers_router.get(\"\", response_model=list[ProviderDefinition], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_provider_definitions() -> list[ProviderDefinition]:\n    return list_provider_definitions()\n@router.get(\"\", response_model=list[Integration], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integrations() -> list[Integration]:\n    return list_integrations()\n@router.get(\"/{integration_id}\", response_model=Integration, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_integration(integration_id: int) -> Integration:\n    integration = get_integration(integration_id)",
+        "detail": "server.src.app.modules.integrations.router",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationType",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class IntegrationType(str, Enum):\n    tuya_cloud = \"tuya_cloud\"\n    tuya_local = \"tuya_local\"\n    smartthings_cloud = \"smartthings_cloud\"\n    intelbras_izy_tuya = \"intelbras_izy_tuya\"\n    persiana_custom = \"persiana_custom\"\n    generic_iot = \"generic_iot\"\n    esphome = \"esphome\"\n    onvif_camera = \"onvif_camera\"\n    mqtt = \"mqtt\"",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationStatus",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class IntegrationStatus(str, Enum):\n    created = \"created\"\n    connected = \"connected\"\n    error = \"error\"\n    syncing = \"syncing\"\nclass ProviderField(BaseModel):\n    key: str\n    label: str\n    secret: bool = False\n    required: bool = False",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderField",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class ProviderField(BaseModel):\n    key: str\n    label: str\n    secret: bool = False\n    required: bool = False\n    default: Any = None\n    help: str | None = None\nclass ProviderDefinition(BaseModel):\n    type: IntegrationType\n    name: str",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderDefinition",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class ProviderDefinition(BaseModel):\n    type: IntegrationType\n    name: str\n    description: str\n    status: str = \"available\"\n    fields: list[ProviderField] = Field(default_factory=list)\nclass CreateIntegrationRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    type: IntegrationType\n    name: str",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "CreateIntegrationRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class CreateIntegrationRequest(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    type: IntegrationType\n    name: str\n    config: dict[str, Any] = Field(default_factory=dict)\n    test_on_create: bool = Field(default=True, alias=\"testOnCreate\")\nclass Integration(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    type: IntegrationType",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "Integration",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class Integration(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    type: IntegrationType\n    name: str\n    status: IntegrationStatus\n    config: dict[str, Any] = Field(default_factory=dict)\n    error: str | None = None\n    last_sync_at: str | None = Field(default=None, alias=\"lastSyncAt\")\n    created_at: str = Field(alias=\"createdAt\")",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "StoredIntegration",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class StoredIntegration(Integration):\n    secrets: dict[str, Any] = Field(default_factory=dict, exclude=True)\nclass IntegrationTestResult(BaseModel):\n    ok: bool\n    status: IntegrationStatus\n    message: str\n    details: dict[str, Any] = Field(default_factory=dict)\nclass ProviderEntity(BaseModel):\n    key: str\n    type: str",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationTestResult",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class IntegrationTestResult(BaseModel):\n    ok: bool\n    status: IntegrationStatus\n    message: str\n    details: dict[str, Any] = Field(default_factory=dict)\nclass ProviderEntity(BaseModel):\n    key: str\n    type: str\n    name: str\n    command_schema: dict[str, Any] = Field(default_factory=dict, alias=\"commandSchema\")",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderEntity",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class ProviderEntity(BaseModel):\n    key: str\n    type: str\n    name: str\n    command_schema: dict[str, Any] = Field(default_factory=dict, alias=\"commandSchema\")\n    state: dict[str, Any] = Field(default_factory=dict)\n    capabilities: dict[str, Any] = Field(default_factory=dict)\nclass ProviderDevice(BaseModel):\n    external_id: str = Field(alias=\"externalId\")\n    name: str",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ProviderDevice",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class ProviderDevice(BaseModel):\n    external_id: str = Field(alias=\"externalId\")\n    name: str\n    provider: str\n    device_type: str = Field(alias=\"deviceType\")\n    manufacturer: str | None = None\n    model: str | None = None\n    ip: str | None = None\n    mac: str | None = None\n    product_key: str | None = Field(default=None, alias=\"productKey\")",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "IntegrationSyncResult",
+        "kind": 6,
+        "importPath": "server.src.app.modules.integrations.schemas",
+        "description": "server.src.app.modules.integrations.schemas",
+        "peekOfCode": "class IntegrationSyncResult(BaseModel):\n    ok: bool\n    integration_id: int = Field(alias=\"integrationId\")\n    imported: int\n    inbox_ids: list[int] = Field(default_factory=list, alias=\"inboxIds\")\n    inbox_devices: list[InboxDevice] = Field(default_factory=list, alias=\"inboxDevices\")\n    message: str\n    details: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "server.src.app.modules.integrations.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "ensure_home_schema",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def ensure_home_schema() -> None:\n    global _initialized\n    if _initialized:\n        return\n    with connect() as connection:\n        connection.execute(\n            \"\"\"\n            CREATE TABLE IF NOT EXISTS integrations (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,\n                type TEXT NOT NULL,",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_integration",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def create_integration(\n    request: CreateIntegrationRequest,\n    config: dict[str, Any],\n    secrets: dict[str, Any],\n    status: IntegrationStatus = IntegrationStatus.created,\n) -> StoredIntegration:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "find_integration_by_config_value",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def find_integration_by_config_value(provider_type: IntegrationType, key: str, value: str) -> StoredIntegration | None:\n    ensure_home_schema()\n    normalized = value.strip()\n    if not normalized:\n        return None\n    with connect() as connection:\n        rows = connection.execute(\"SELECT * FROM integrations WHERE type = ?\", (provider_type.value,)).fetchall()\n    for row in rows:\n        config = json_loads(row[\"config_json\"], {})\n        if str(config.get(key) or \"\").strip() == normalized:",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "list_integrations",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def list_integrations() -> list[StoredIntegration]:\n    ensure_home_schema()\n    with connect() as connection:\n        rows = connection.execute(\"SELECT * FROM integrations ORDER BY id\").fetchall()\n    return [_from_row(row) for row in rows]\ndef get_integration(integration_id: int) -> StoredIntegration | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM integrations WHERE id = ?\", (integration_id,)).fetchone()\n    return _from_row(row) if row else None",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_integration",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def get_integration(integration_id: int) -> StoredIntegration | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM integrations WHERE id = ?\", (integration_id,)).fetchone()\n    return _from_row(row) if row else None\ndef update_integration_status(\n    integration_id: int,\n    status: IntegrationStatus,\n    error: str | None = None,\n    last_sync_at: str | None = None,",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_integration_status",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def update_integration_status(\n    integration_id: int,\n    status: IntegrationStatus,\n    error: str | None = None,\n    last_sync_at: str | None = None,\n) -> StoredIntegration | None:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        connection.execute(",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_integration",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "def delete_integration(integration_id: int) -> bool:\n    ensure_home_schema()\n    with connect() as connection:\n        cursor = connection.execute(\"DELETE FROM integrations WHERE id = ?\", (integration_id,))\n    return cursor.rowcount > 0\ndef _from_row(row) -> StoredIntegration:\n    return StoredIntegration(\n        id=row[\"id\"],\n        type=row[\"type\"],\n        name=row[\"name\"],",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "_initialized",
+        "kind": 5,
+        "importPath": "server.src.app.modules.integrations.store",
+        "description": "server.src.app.modules.integrations.store",
+        "peekOfCode": "_initialized = False\ndef ensure_home_schema() -> None:\n    global _initialized\n    if _initialized:\n        return\n    with connect() as connection:\n        connection.execute(\n            \"\"\"\n            CREATE TABLE IF NOT EXISTS integrations (\n                id INTEGER PRIMARY KEY AUTOINCREMENT,",
+        "detail": "server.src.app.modules.integrations.store",
+        "documentation": {}
+    },
+    {
+        "label": "read_rooms",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "def read_rooms() -> list[Room]:\n    return list_rooms()\n@router.get(\"/{room_id}\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_room(room_id: int) -> Room:\n    room = get_room(room_id)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.post(\"\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_room_route(request: RoomRequest) -> Room:",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "read_room",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "def read_room(room_id: int) -> Room:\n    room = get_room(room_id)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.post(\"\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "create_room_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "def create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:\n    deleted = delete_room(room_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return {\"deleted\": True}",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "delete_room_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "def delete_room_route(room_id: int) -> dict[str, bool]:\n    deleted = delete_room(room_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return {\"deleted\": True}",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "router",
+        "kind": 5,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "router = APIRouter()\n@router.get(\"\", response_model=list[Room], response_model_by_alias=True, response_model_exclude_none=True)\ndef read_rooms() -> list[Room]:\n    return list_rooms()\n@router.get(\"/{room_id}\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef read_room(room_id: int) -> Room:\n    room = get_room(room_id)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "Room",
+        "kind": 6,
+        "importPath": "server.src.app.modules.rooms.schemas",
+        "description": "server.src.app.modules.rooms.schemas",
+        "peekOfCode": "class Room(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    name: str\n    description: str | None = None\n    created_at: str = Field(alias=\"createdAt\")\n    updated_at: str = Field(alias=\"updatedAt\")\nclass RoomRequest(BaseModel):\n    name: str\n    description: str | None = None",
+        "detail": "server.src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "RoomRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.rooms.schemas",
+        "description": "server.src.app.modules.rooms.schemas",
+        "peekOfCode": "class RoomRequest(BaseModel):\n    name: str\n    description: str | None = None",
+        "detail": "server.src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "list_rooms",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.store",
+        "description": "server.src.app.modules.rooms.store",
+        "peekOfCode": "def list_rooms() -> list[Room]:\n    ensure_home_schema()\n    with connect() as connection:\n        rows = connection.execute(\"SELECT * FROM rooms ORDER BY name\").fetchall()\n    return [_from_row(row) for row in rows]\ndef get_room(room_id: int) -> Room | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM rooms WHERE id = ?\", (room_id,)).fetchone()\n    return _from_row(row) if row else None",
+        "detail": "server.src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "get_room",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.store",
+        "description": "server.src.app.modules.rooms.store",
+        "peekOfCode": "def get_room(room_id: int) -> Room | None:\n    ensure_home_schema()\n    with connect() as connection:\n        row = connection.execute(\"SELECT * FROM rooms WHERE id = ?\", (room_id,)).fetchone()\n    return _from_row(row) if row else None\ndef create_room(request: RoomRequest) -> Room:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(",
+        "detail": "server.src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "create_room",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.store",
+        "description": "server.src.app.modules.rooms.store",
+        "peekOfCode": "def create_room(request: RoomRequest) -> Room:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(\n            \"INSERT INTO rooms (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)\",\n            (request.name, request.description, now, now),\n        )\n        room_id = int(cursor.lastrowid)\n    return get_room(room_id)  # type: ignore[return-value]",
+        "detail": "server.src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "delete_room",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.store",
+        "description": "server.src.app.modules.rooms.store",
+        "peekOfCode": "def delete_room(room_id: int) -> bool:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"UPDATE devices SET room_id = NULL WHERE room_id = ?\", (room_id,))\n        cursor = connection.execute(\"DELETE FROM rooms WHERE id = ?\", (room_id,))\n    return cursor.rowcount > 0\ndef _from_row(row) -> Room:\n    return Room(id=row[\"id\"], name=row[\"name\"], description=row[\"description\"], createdAt=row[\"created_at\"], updatedAt=row[\"updated_at\"])",
+        "detail": "server.src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "health_check",
+        "kind": 2,
+        "importPath": "server.main",
+        "description": "server.main",
+        "peekOfCode": "def health_check():\n    return {\"status\": \"ok\"}",
+        "detail": "server.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "server.main",
+        "description": "server.main",
+        "peekOfCode": "app = FastAPI()\napp.include_router(discovery_router, prefix=\"/discovery\", tags=[\"Discovery\"])\napp.include_router(devices_router, prefix=\"/devices\", tags=[\"Devices\"])\napp.include_router(entities_router, prefix=\"/entities\", tags=[\"Entities\"])\napp.include_router(inbox_router, prefix=\"/inbox\", tags=[\"Inbox\"])\napp.include_router(providers_router, prefix=\"/integration-providers\", tags=[\"Integration Providers\"])\napp.include_router(integrations_router, prefix=\"/integrations\", tags=[\"Integrations\"])\napp.include_router(rooms_router, prefix=\"/rooms\", tags=[\"Rooms\"])\n@app.get(\"/health\")\ndef health_check():",
+        "detail": "server.main",
+        "documentation": {}
+    }
+]

@@ -139,6 +139,7 @@ def list_saved_scans(limit: int = 100) -> list[SavedDiscoveryScan]:
 
 
 def save_discovered_devices(scan_id: int, devices: list[DiscoveredDevice], seen_at: str) -> None:
+    inbox_items: list[tuple[str, DiscoveredDevice]] = []
     with _connect() as connection:
         for device in devices:
             key = _device_key(device)
@@ -155,6 +156,10 @@ def save_discovered_devices(scan_id: int, devices: list[DiscoveredDevice], seen_
                 """,
                 (key, _device_json(device), seen_at, seen_at, scan_id),
             )
+            inbox_items.append((key, device))
+
+    for key, device in inbox_items:
+        _upsert_discovery_inbox(scan_id, key, device)
 
 
 def list_saved_devices() -> list[SavedDiscoveryDevice]:
@@ -248,6 +253,30 @@ def _devices_json(devices: list[DiscoveredDevice]) -> str:
 
 def _device_json(device: DiscoveredDevice) -> str:
     return _json(device.model_dump(mode="json", by_alias=True, exclude_none=True))
+
+
+def _upsert_discovery_inbox(scan_id: int, key: str, device: DiscoveredDevice) -> None:
+    try:
+        from src.app.modules.inbox.store import upsert_inbox_item
+
+        payload = device.model_dump(mode="json", by_alias=True, exclude_none=True)
+        payload.update(
+            {
+                "externalId": key,
+                "provider": "discovery",
+                "localDeviceKey": key,
+                "scanId": scan_id,
+            }
+        )
+        upsert_inbox_item(
+            source_type="discovery",
+            source_id=0,
+            external_id=key,
+            payload=payload,
+            match_score=device.confidence,
+        )
+    except Exception:
+        return
 
 
 def _json(value: Any) -> str:
