@@ -62,3 +62,35 @@ export async function getInboxDevices(filters: { status?: string; provider?: str
 
     return response.json();
 }
+
+export async function addInboxDevice(device: DiscoveredDevice, roomId?: number): Promise<Device> {
+    console.log("addInboxDevice", device, roomId);
+    const response = await fetch(`/api/inbox/devices/${device.id}/accept`, {
+        method: "POST",
+        body: JSON.stringify({
+            name: device.payload.name,
+            ...(typeof roomId === "number" ? { roomId } : {}),
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao adicionar dispositivo na inbox");
+    }
+
+    return response.json();
+}
+
+export async function ignoreInboxDevice(device: DiscoveredDevice): Promise<void> {
+    const response = await fetch(`/api/inbox/devices/${device.id}/ignore`, {
+        method: "POST",
+        body: JSON.stringify({
+            reason: "Nao quero controlar agora",
+        }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao ignorar dispositivo na inbox");
+    }
+
+    return response.json();
+}

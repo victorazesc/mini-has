@@ -7,6 +7,8 @@ import { DialogContent, DialogHeader } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { DiscoveredDeviceCard } from "./discovered-device-card";
 import { useRooms } from "@/hooks/use-rooms";
+import { useAddInboxDevice, useIgnoreInboxDevice } from "@/hooks/use-inbox-devices";
+import { DiscoveredDevice } from "@/src/services/inbox-devices.service";
 
 export function ScanDevicesDialog({
     children,
@@ -19,7 +21,9 @@ export function ScanDevicesDialog({
     provider: string;
     integrationId?: number;
 }) {
-
+    const { mutateAsync: addInboxDevice, isPending: addDeviceLoading } = useAddInboxDevice();
+    const { mutateAsync: ignoreInboxDevice, isPending: ignoreDeviceLoading } = useIgnoreInboxDevice();
+   
     const providerName =
         PROVIDERS.find((p) => p.value === provider)?.label ?? "DIY";
 
@@ -37,11 +41,7 @@ export function ScanDevicesDialog({
         provider,
     });
 
-    const {
-        data: rooms,
-        isLoading: isLoadingRooms,
-        error: errorRooms,
-    } = useRooms();
+    const { data: rooms } = useRooms();
 
     const handleSyncIntegration = async () => {
         try {
@@ -58,6 +58,16 @@ export function ScanDevicesDialog({
                     : "Erro ao sincronizar integração"
             );
         }
+    };
+
+    const handleAddInboxDevice = async (device: DiscoveredDevice, roomId?: number) => {
+        await addInboxDevice({ device, roomId });
+        toast.success("Dispositivo adicionado com sucesso");
+    };
+
+    const handleIgnoreInboxDevice = async (device: DiscoveredDevice) => {
+        await ignoreInboxDevice(device);
+        toast.success("Dispositivo ignorado com sucesso");
     };
 
     const devices = inboxDevices ?? [];
@@ -110,7 +120,15 @@ export function ScanDevicesDialog({
 
                 <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {devices.map((device) => (
-                        <DiscoveredDeviceCard key={device.id} device={device} onAddDevice={() => { }} onIgnoreDevice={() => { }} rooms={rooms ?? []} />
+                        <DiscoveredDeviceCard
+                            key={device.id}
+                            device={device}
+                            onAddDevice={(currentDevice, roomId) => handleAddInboxDevice(currentDevice, roomId)}
+                            addDeviceLoading={addDeviceLoading}
+                            onIgnoreDevice={(currentDevice) => handleIgnoreInboxDevice(currentDevice)}
+                            ignoreDeviceLoading={ignoreDeviceLoading}
+                            rooms={rooms ?? []}
+                        />
                     ))}
                 </section>
             </DialogContent>

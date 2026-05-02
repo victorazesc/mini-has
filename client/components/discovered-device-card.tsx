@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription } from "@/components/ui/card"
-import { Blinds, Brain, Camera, Lightbulb, PawPrint, Power, Wifi } from "lucide-react"
+import { Blinds, Brain, Camera, Lightbulb, Loader2Icon, PawPrint, Power, Wifi } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./ui/skeleton"
@@ -34,10 +34,12 @@ const PROVIDERS_NAME_BY_TYPE = {
 
 const CLEAR_ROOM_VALUE = "__clear_room__"
 
-export function DiscoveredDeviceCard({ device, onAddDevice, onIgnoreDevice, rooms }: {
+export function DiscoveredDeviceCard({ device, onAddDevice, addDeviceLoading, onIgnoreDevice, ignoreDeviceLoading, rooms }: {
     device: DiscoveredDevice,
-    onAddDevice: (device: DiscoveredDevice, room: string) => void,
+    onAddDevice: (device: DiscoveredDevice, roomId?: number) => void,
+    addDeviceLoading: boolean,
     onIgnoreDevice: (device: DiscoveredDevice) => void,
+    ignoreDeviceLoading: boolean,
     rooms: Room[],
 }) {
     const DeviceIcon = DEVICE_ICON_BY_TYPE[device.payload.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
@@ -91,15 +93,23 @@ export function DiscoveredDeviceCard({ device, onAddDevice, onIgnoreDevice, room
                             </SelectGroup>
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" size="sm" onClick={() => onIgnoreDevice(device)}>Rejeitar</Button>
-                    <Button variant="default" size="sm" onClick={() => onAddDevice(device, selectedRoom ?? "")}>Adicionar</Button>
+                    <Button variant="outline" size="sm" onClick={() => onIgnoreDevice(device)} disabled={ignoreDeviceLoading}> {ignoreDeviceLoading ? <><Loader2Icon className="size-4 animate-spin" /> Ignorando...</> : "Ignorar"}</Button>
+                    <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                            const selectedRoomId = rooms.find((room) => room.name === selectedRoom)?.id
+                            onAddDevice(device, selectedRoomId)
+                        }}
+                        disabled={addDeviceLoading}
+                    >
+                        {addDeviceLoading ? <><Loader2Icon className="size-4 animate-spin" /> Adicionando...</> : "Adicionar"}
+                    </Button>
                 </div>
             </CardFooter>
         </Card>
     )
 }
-
-
 
 export function DiscoveredDeviceCardSkeleton() {
     return (
