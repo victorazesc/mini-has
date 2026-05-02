@@ -226,6 +226,7 @@ def _tuya_request(
 def _normalize_tuya_device(device: dict[str, Any], region: dict[str, str]) -> ProviderDevice:
     status = device.get("status") or []
     switch_code = _primary_switch_code(status)
+    switch_codes = _switch_codes(status)
     kind = _infer_tuya_kind(device, switch_code)
     local_key = (device.get("local_key") or "").strip() or None
     ip = (device.get("last_ip") or device.get("ip") or "").strip() or None
@@ -233,13 +234,14 @@ def _normalize_tuya_device(device: dict[str, Any], region: dict[str, str]) -> Pr
     name = (device.get("name") or device.get("product_name") or "Dispositivo Tuya").strip()
     entity_type = "light" if kind == "light" else "switch" if kind == "switch" else "sensor" if kind == "sensor" else kind
     entities = []
-    if switch_code:
+    for index, code in enumerate(switch_codes, start=1):
+        entity_name = name if len(switch_codes) == 1 else f"{name} {index}"
         entities.append(
             ProviderEntity(
-                key=switch_code,
+                key=code,
                 type=entity_type,
-                name=name,
-                commandSchema={"commands": ["turn_on", "turn_off", "toggle"], "switchCode": switch_code},
+                name=entity_name,
+                commandSchema={"commands": ["turn_on", "turn_off", "toggle"], "switchCode": code},
                 state={"online": device.get("online"), "status": status},
                 capabilities={"status": status},
             )
@@ -389,6 +391,18 @@ def _primary_switch_code(status: list[dict[str, Any]]) -> str | None:
         if isinstance(entry.get("value"), bool):
             return str(entry.get("code"))
     return None
+
+
+def _switch_codes(status: list[dict[str, Any]]) -> list[str]:
+    codes = []
+    for entry in status:
+        code = str(entry.get("code") or "")
+        if code.startswith("switch_") and isinstance(entry.get("value"), bool):
+            codes.append(code)
+    if codes:
+        return codes
+    primary = _primary_switch_code(status)
+    return [primary] if primary else []
 
 
 def _infer_tuya_kind(device: dict[str, Any], switch_code: str | None) -> str:

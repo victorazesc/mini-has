@@ -26,7 +26,21 @@ def _execute_tuya_command(device: Device, secrets: dict[str, Any], request: Comm
     transport = str(request.params.get("transport") or "local").strip()
     if transport == "cloud":
         return _execute_tuya_cloud_command(device, request)
-    return _execute_tuya_local_command(device, secrets, request)
+
+    try:
+        return _execute_tuya_local_command(device, secrets, request)
+    except Exception as local_error:
+        if not device.integration_id:
+            raise
+
+        cloud_result = _execute_tuya_cloud_command(device, request)
+        cloud_result.message = "Comando enviado pela Tuya Cloud apos falha na conexao local."
+        cloud_result.result = {
+            **cloud_result.result,
+            "fallbackFrom": "local",
+            "localError": str(local_error),
+        }
+        return cloud_result
 
 
 def _execute_tuya_cloud_command(device: Device, request: CommandRequest) -> CommandResult:
@@ -41,7 +55,7 @@ def _execute_tuya_cloud_command(device: Device, request: CommandRequest) -> Comm
         ok=True,
         status="sent",
         message="Comando enviado para Tuya.",
-        result={"deviceId": device.id, "provider": device.provider, "commands": commands, **result},
+        result={"deviceId": device.id, "provider": device.provider, "commands": commands, "dps": _dps_from_tuya_commands(commands), **result},
     )
 
 
@@ -54,7 +68,7 @@ def _execute_tuya_local_command(device: Device, secrets: dict[str, Any], request
             return _tuya_local_result(device, config, "query", dps_id, None, payload)
 
         value = _tuya_local_value(device, request, dps_id, client, config.get("cid"))
-        if request.params.get("waitForStatus") is True:
+        if request.params.get("waitForStatus") is not False:
             payload = client.set_dps_value(dps_id, value, config.get("cid"))
         else:
             payload = client.set_dps_value_nowait(dps_id, value, config.get("cid"))
@@ -82,8 +96,8 @@ def _tuya_local_result(device: Device, config: dict[str, Any], action: str, dps_
 def _tuya_local_config(device: Device, secrets: dict[str, Any], request: CommandRequest) -> dict[str, Any]:
     ip = _first_non_empty(
         request.params.get("ip"),
-        device.payload.get("ip"),
         _nested(device.payload, "local", "ip"),
+        device.payload.get("ip"),
         _nested(device.payload, "payload", "ip"),
         _nested(device.payload, "payload", "raw", "last_ip"),
         _nested(device.payload, "payload", "raw", "ip"),
@@ -168,6 +182,11 @@ def _tuya_commands_from_request(device: Device, request: CommandRequest) -> list
 
     code = str(request.params.get("code") or request.params.get("switchCode") or "").strip()
     if not code:
+        dps_id = request.params.get("dpsId") or request.params.get("dpId")
+        if dps_id is not None:
+            dps_code = str(dps_id).strip()
+            code = f"switch_{dps_code}" if dps_code.isdigit() else dps_code
+    if not code:
         code = str(device.capabilities.get("primarySwitchCode") or "").strip()
 
     if request.command == "turn_on":
@@ -188,6 +207,16 @@ def _tuya_commands_from_request(device: Device, request: CommandRequest) -> list
     if code and "value" in request.params:
         return [{"code": code, "value": request.params["value"]}]
     raise ValueError("Comando Tuya invalido. Envie turn_on/turn_off/toggle ou params.commands.")
+
+
+def _dps_from_tuya_commands(commands: list[dict[str, Any]]) -> dict[str, Any]:
+    dps: dict[str, Any] = {}
+    for command in commands:
+        code = str(command.get("code") or "")
+        if not code or "value" not in command:
+            continue
+        dps[_dps_id_from_code(code)] = command["value"]
+    return dps
 
 
 def _required_code(code: str) -> str:

@@ -144,6 +144,77 @@ def link_local_device(device_id: int, local_device_key: str, payload: dict[str, 
     return get_device(device_id)
 
 
+def update_device_runtime_state(device_id: int, command_result: CommandResult) -> Device | None:
+    if not command_result.ok:
+        return get_device(device_id)
+    dps = command_result.result.get("dps")
+    if not isinstance(dps, dict) or not dps:
+        return get_device(device_id)
+
+    current = get_device(device_id)
+    if not current:
+        return None
+
+    now = utc_now()
+    current_dps = current.status.get("dps") if isinstance(current.status.get("dps"), dict) else {}
+    merged_dps = {str(key): value for key, value in current_dps.items()}
+    merged_dps.update({str(key): value for key, value in dps.items()})
+
+    primary_dps_id = str(command_result.result.get("dpsId") or _primary_dps_id(current))
+    current_value = merged_dps.get(primary_dps_id)
+    status = {
+        **current.status,
+        "state": _state_from_value(current_value, current.device_type),
+        "online": True,
+        "lastSeenAt": now,
+        "dps": merged_dps,
+    }
+    capabilities = {
+        **current.capabilities,
+        "status": _merge_status_entries(current.capabilities.get("status") or [], dps),
+    }
+    payload = {
+        **current.payload,
+        "lastStatus": merged_dps,
+        "lastSeenAt": now,
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE devices
+            SET status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (json_dumps(status), json_dumps(capabilities), json_dumps(payload), now, device_id),
+        )
+    _update_entities_runtime_state(device_id, merged_dps, now)
+    return get_device(device_id)
+
+
+def auto_link_local_device(device_id: int) -> Device | None:
+    item = get_device_with_secrets(device_id)
+    if not item:
+        return None
+    device, secrets = item
+    from src.app.modules.devices.local_link import find_local_match
+
+    local = find_local_match(device, secrets)
+    if not local:
+        return device
+    local_device_key = f"local:{local['ip']}:{device.external_id}"
+    next_payload = {**device.payload, "local": local, "localDeviceKey": local_device_key}
+    with connect() as connection:
+        connection.execute(
+            "UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?",
+            (local_device_key, json_dumps(next_payload), utc_now(), device_id),
+        )
+    return get_device(device_id)
+
+
+def auto_link_local_devices() -> list[Device]:
+    return [device for device in (auto_link_local_device(device.id) for device in list_devices()) if device]
+
+
 def log_device_command(device_id: int, request: CommandRequest, result: CommandResult) -> None:
     ensure_home_schema()
     with connect() as connection:
@@ -174,6 +245,79 @@ def _redact_secrets(value: Any) -> Any:
     if isinstance(value, list):
         return [_redact_secrets(item) for item in value]
     return value
+
+
+def _update_entities_runtime_state(device_id: int, dps: dict[str, Any], now: str) -> None:
+    with connect() as connection:
+        rows = connection.execute("SELECT * FROM entities WHERE device_id = ?", (device_id,)).fetchall()
+        for row in rows:
+            command_schema = json_loads(row["command_schema_json"], {})
+            key = str(command_schema.get("switchCode") or row["unique_key"].rsplit(":", 1)[-1])
+            dps_id = _dps_id_from_code(key)
+            state = json_loads(row["state_json"], {})
+            current_dps = state.get("dps") if isinstance(state.get("dps"), dict) else {}
+            merged_dps = {str(code): value for code, value in current_dps.items()}
+            merged_dps.update({str(code): value for code, value in dps.items()})
+            value = merged_dps.get(dps_id)
+            capabilities = json_loads(row["capabilities_json"], {})
+            next_state = {
+                **state,
+                "value": value,
+                "state": _state_from_value(value, row["type"]),
+                "online": True,
+                "lastSeenAt": now,
+                "dps": merged_dps,
+            }
+            next_capabilities = {
+                **capabilities,
+                "status": _merge_status_entries(capabilities.get("status") or [], dps),
+            }
+            connection.execute(
+                """
+                UPDATE entities
+                SET state_json = ?, capabilities_json = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (json_dumps(next_state), json_dumps(next_capabilities), now, row["id"]),
+            )
+
+
+def _merge_status_entries(current: list[Any], dps: dict[str, Any]) -> list[dict[str, Any]]:
+    merged: dict[str, Any] = {}
+    for item in current:
+        if isinstance(item, dict) and item.get("code"):
+            merged[str(item["code"])] = item.get("value")
+    for dps_id, value in dps.items():
+        merged[_code_from_dps_id(str(dps_id))] = value
+    return [{"code": code, "value": value} for code, value in merged.items()]
+
+
+def _primary_dps_id(device: Device) -> str:
+    return _dps_id_from_code(str(device.capabilities.get("primarySwitchCode") or device.payload.get("primarySwitchCode") or "1"))
+
+
+def _dps_id_from_code(code: str) -> str:
+    if code.startswith("switch_") and code.removeprefix("switch_").isdigit():
+        return code.removeprefix("switch_")
+    if code in {"switch", "switch_led"}:
+        return "1"
+    return code
+
+
+def _code_from_dps_id(dps_id: str) -> str:
+    return f"switch_{dps_id}" if dps_id.isdigit() else dps_id
+
+
+def _state_from_value(value: Any, device_type: str) -> str:
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    if value in {"opening", "closing", "moving"}:
+        return "on"
+    if value in {"stop", "stopped", "idle"}:
+        return "idle"
+    if value is None and device_type in {"sensor", "camera"}:
+        return "idle"
+    return "unknown"
 
 
 def accept_inbox_device(inbox: InboxDevice, secrets: dict[str, Any], name: str | None, room_id: int | None) -> Device:
@@ -224,7 +368,7 @@ def accept_inbox_device(inbox: InboxDevice, secrets: dict[str, Any], name: str |
                 (*values, now),
             )
             device_id = int(cursor.lastrowid)
-    return get_device(device_id)  # type: ignore[return-value]
+    return auto_link_local_device(device_id) or get_device(device_id)  # type: ignore[return-value]
 
 
 def _from_row(row) -> Device:

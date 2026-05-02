@@ -268,6 +268,18 @@ POST /devices/{id}/link-local
 }
 ```
 
+### Vincular local automaticamente
+
+Usa os dispositivos salvos por discovery para preencher `payload.local` e `localDeviceKey`.
+Também roda automaticamente quando um item da inbox é aceito.
+
+```http
+POST /devices/{id}/auto-link-local
+POST /devices/auto-link-local
+```
+
+Para Tuya, quando não existe IP no cloud payload, a API tenta descobrir o IP local testando os candidatos da LAN com `deviceId + localKey + cid`.
+
 ### Enviar comando
 
 ```http
@@ -333,6 +345,10 @@ Executores atuais:
 - `tuya_cloud` e `tuya_local`: tentam Tuya LAN local primeiro.
 - `generic_iot` e `persiana_custom`: envia HTTP para `baseUrl`.
 - demais providers: retornam `unsupported` até receberem executor dedicado.
+
+Quando o comando ou `query` retorna `dps`, a API persiste o estado em `devices.status`,
+`devices.capabilities.status` e nas `entities` do device. Depois disso, `GET /devices`
+e `GET /entities` já retornam o último estado conhecido sem consultar o device de novo.
 
 ## Entities
 

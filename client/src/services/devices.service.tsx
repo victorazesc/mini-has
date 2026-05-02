@@ -16,6 +16,7 @@ export type Device = {
     status: {
         online: boolean;
         state: string;
+        dps: Record<string, unknown>;
     };
     capabilities: Record<string, unknown>;
     created_at: string;
@@ -33,13 +34,41 @@ export async function getDevices(filters: { name?: string; type?: string } | und
     return response.json();
 }
 
-export async function sendCommand(deviceId: number, command: string): Promise<void> {
+export async function getDevice(deviceId: number): Promise<Device> {
+    const response = await fetch(`/api/devices/${deviceId}`);
+
+    if (!response.ok) {
+        throw new Error("Erro ao buscar dispositivo");
+    }
+
+    return response.json();
+}
+
+export type CommandResult = {
+    ok: boolean;
+    status: string;
+    message: string;
+    result: Record<string, unknown>;
+};
+
+export async function sendCommand(deviceId: number, command: string, params: Record<string, unknown>): Promise<CommandResult> {
     const response = await fetch(`/api/devices/${deviceId}/command`, {
         method: "POST",
-        body: JSON.stringify({ command }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ command, params }),
     });
 
     if (!response.ok) {
         throw new Error("Erro ao enviar comando");
     }
+
+    const result = await response.json() as CommandResult;
+
+    if (!result.ok) {
+        throw new Error(result.message || "Erro ao enviar comando");
+    }
+
+    return result;
 }

@@ -5,17 +5,18 @@ import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } 
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Separator } from "@/components/ui/separator"
 import { DEVICE_TYPES } from "@/src/constants/devices_types"
-import { PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff, Loader2Icon } from "lucide-react"
+import { PlusCircle, Router, SearchIcon, EllipsisVertical, Wifi, WifiOff, Loader2Icon, Settings2 } from "lucide-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DeviceCard, DeviceCardSkeleton } from "@/components/device-card"
-import { useDevices, useSendCommand } from "@/hooks/use-devices"
-import { useState } from "react"
+import { useDevices } from "@/hooks/use-devices"
+import { useEffect, useState } from "react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Button } from "@/components/ui/button"
 import { ScanDevicesDialog } from "@/components/scan-devices-dialog"
 import { NewIntegrationDialog } from "@/components/new-integration-dialog"
 import { useInboxDevices } from "@/hooks/use-inbox-devices"
-import { Device } from "@/src/services/devices.service"
+import Link from "next/link"
+import { useHeaderTitle } from "@/src/providers/header-title-provider"
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
@@ -25,6 +26,7 @@ const deviceTypeOptions = [
 export default function Devices() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = React.useState("all")
+  const { setTitle, setRightAction } = useHeaderTitle()
 
 
   const debouncedSearch = useDebounce(search, 500)
@@ -36,6 +38,20 @@ export default function Devices() {
   const { data: inboxDevices = [], isPending: isLoadingInboxDevices } = useInboxDevices({ status: "pending" })
 
   // const { mutate: sendActiveCommand } = useSendCommand(deviceId, "set_active")
+
+  useEffect(() => {
+    setTitle(null)
+    setRightAction(
+      <Button variant="outline" size="sm">
+        <Settings2 className="size-4" />
+        Configuração
+      </Button>
+    )
+
+    return () => {
+      setRightAction(null)
+    }
+  }, [setRightAction, setTitle])
 
   return (
     <main className="flex flex-1 flex-col px-4 lg:px-6">
@@ -174,11 +190,11 @@ export default function Devices() {
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {devices.map((device) => {
             return (
-              <DeviceCard
-                key={device.name}
-                device={device}
-                onActiveChange={() => {}}
-              />
+              <Link href={`/devices/${device.id}`} key={device.id}>
+                <DeviceCard
+                  device={device}
+                />
+              </Link>
             )
           })}
         </section>

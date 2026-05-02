@@ -24,7 +24,7 @@ HEADER_SIZE = 16
 RETCODE_SIZE = 4
 HMAC_SIZE = 32
 SUFFIX_SIZE = 4
-VERSION_34_HEADER = b"3.4" + (b"\x00" * 13)
+VERSION_34_HEADER = b"3.4" + (b"\x00" * 12)
 LOCAL_NONCE = b"0123456789abcdef"
 
 
@@ -74,9 +74,12 @@ class TuyaLanClient:
     def set_dps_value(self, dps_id: str, value: Any, cid: str | None = None) -> dict[str, Any]:
         message = self._send_and_receive_non_empty(self._encode_message(self._next_sequence(), CMD_CONTROL_NEW, self._control_payload(dps_id, value, cid)), True)
         if message.payload:
-            response = self._decode_payload(message.payload)
-            if _has_dps(response):
-                return response
+            try:
+                response = self._decode_payload(message.payload)
+                if _has_dps(response):
+                    return response
+            except Exception:
+                pass
         return self.query_status(cid)
 
     def set_dps_value_nowait(self, dps_id: str, value: Any, cid: str | None = None) -> dict[str, Any]:
@@ -199,11 +202,14 @@ class TuyaLanClient:
 
     def _control_payload(self, dps_id: str, value: Any, cid: str | None) -> bytes:
         data: dict[str, Any] = {"dps": {dps_id: value}}
-        request: dict[str, Any] = {"protocol": 5, "t": int(time.time()), "data": data}
+        request: dict[str, Any] = {}
         if cid:
             data["cid"] = cid
             data["ctype"] = 0
             request["cid"] = cid
+        request["protocol"] = 5
+        request["t"] = int(time.time())
+        request["data"] = data
         return _json_bytes(request)
 
 
