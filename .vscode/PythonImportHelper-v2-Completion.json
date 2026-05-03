@@ -2273,6 +2273,14 @@
         "documentation": {}
     },
     {
+        "label": "RoomUpdateRequest",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
         "label": "Room",
         "importPath": "src.app.modules.rooms.schemas",
         "description": "src.app.modules.rooms.schemas",
@@ -2282,6 +2290,14 @@
     },
     {
         "label": "RoomRequest",
+        "importPath": "src.app.modules.rooms.schemas",
+        "description": "src.app.modules.rooms.schemas",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "RoomUpdateRequest",
         "importPath": "src.app.modules.rooms.schemas",
         "description": "src.app.modules.rooms.schemas",
         "isExtraImport": true,
@@ -2314,6 +2330,14 @@
     },
     {
         "label": "list_rooms",
+        "importPath": "src.app.modules.rooms.store",
+        "description": "src.app.modules.rooms.store",
+        "isExtraImport": true,
+        "detail": "src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_room",
         "importPath": "src.app.modules.rooms.store",
         "description": "src.app.modules.rooms.store",
         "isExtraImport": true,
@@ -3821,7 +3845,7 @@
         "kind": 2,
         "importPath": "server.src.app.modules.rooms.router",
         "description": "server.src.app.modules.rooms.router",
-        "peekOfCode": "def read_room(room_id: int) -> Room:\n    room = get_room(room_id)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.post(\"\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:",
+        "peekOfCode": "def read_room(room_id: int) -> Room:\n    room = get_room(room_id)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.post(\"\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.patch(\"/{room_id}\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef update_room_route(room_id: int, request: RoomUpdateRequest) -> Room:",
         "detail": "server.src.app.modules.rooms.router",
         "documentation": {}
     },
@@ -3830,7 +3854,16 @@
         "kind": 2,
         "importPath": "server.src.app.modules.rooms.router",
         "description": "server.src.app.modules.rooms.router",
-        "peekOfCode": "def create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:\n    deleted = delete_room(room_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return {\"deleted\": True}",
+        "peekOfCode": "def create_room_route(request: RoomRequest) -> Room:\n    return create_room(request)\n@router.patch(\"/{room_id}\", response_model=Room, response_model_by_alias=True, response_model_exclude_none=True)\ndef update_room_route(room_id: int, request: RoomUpdateRequest) -> Room:\n    room = update_room(room_id, request)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:",
+        "detail": "server.src.app.modules.rooms.router",
+        "documentation": {}
+    },
+    {
+        "label": "update_room_route",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.router",
+        "description": "server.src.app.modules.rooms.router",
+        "peekOfCode": "def update_room_route(room_id: int, request: RoomUpdateRequest) -> Room:\n    room = update_room(room_id, request)\n    if not room:\n        raise HTTPException(status_code=404, detail=\"Room not found\")\n    return room\n@router.delete(\"/{room_id}\")\ndef delete_room_route(room_id: int) -> dict[str, bool]:\n    deleted = delete_room(room_id)\n    if not deleted:\n        raise HTTPException(status_code=404, detail=\"Room not found\")",
         "detail": "server.src.app.modules.rooms.router",
         "documentation": {}
     },
@@ -3857,7 +3890,7 @@
         "kind": 6,
         "importPath": "server.src.app.modules.rooms.schemas",
         "description": "server.src.app.modules.rooms.schemas",
-        "peekOfCode": "class Room(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    name: str\n    description: str | None = None\n    created_at: str = Field(alias=\"createdAt\")\n    updated_at: str = Field(alias=\"updatedAt\")\nclass RoomRequest(BaseModel):\n    name: str\n    description: str | None = None",
+        "peekOfCode": "class Room(BaseModel):\n    model_config = ConfigDict(populate_by_name=True)\n    id: int\n    name: str\n    icon: str | None = None\n    description: str | None = None\n    created_at: str = Field(alias=\"createdAt\")\n    updated_at: str = Field(alias=\"updatedAt\")\nclass RoomRequest(BaseModel):\n    name: str",
         "detail": "server.src.app.modules.rooms.schemas",
         "documentation": {}
     },
@@ -3866,7 +3899,16 @@
         "kind": 6,
         "importPath": "server.src.app.modules.rooms.schemas",
         "description": "server.src.app.modules.rooms.schemas",
-        "peekOfCode": "class RoomRequest(BaseModel):\n    name: str\n    description: str | None = None",
+        "peekOfCode": "class RoomRequest(BaseModel):\n    name: str\n    icon: str | None = None\n    description: str | None = None\nclass RoomUpdateRequest(BaseModel):\n    name: str | None = None\n    icon: str | None = None\n    description: str | None = None",
+        "detail": "server.src.app.modules.rooms.schemas",
+        "documentation": {}
+    },
+    {
+        "label": "RoomUpdateRequest",
+        "kind": 6,
+        "importPath": "server.src.app.modules.rooms.schemas",
+        "description": "server.src.app.modules.rooms.schemas",
+        "peekOfCode": "class RoomUpdateRequest(BaseModel):\n    name: str | None = None\n    icon: str | None = None\n    description: str | None = None",
         "detail": "server.src.app.modules.rooms.schemas",
         "documentation": {}
     },
@@ -3893,7 +3935,16 @@
         "kind": 2,
         "importPath": "server.src.app.modules.rooms.store",
         "description": "server.src.app.modules.rooms.store",
-        "peekOfCode": "def create_room(request: RoomRequest) -> Room:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(\n            \"INSERT INTO rooms (name, description, created_at, updated_at) VALUES (?, ?, ?, ?)\",\n            (request.name, request.description, now, now),\n        )\n        room_id = int(cursor.lastrowid)\n    return get_room(room_id)  # type: ignore[return-value]",
+        "peekOfCode": "def create_room(request: RoomRequest) -> Room:\n    ensure_home_schema()\n    now = utc_now()\n    with connect() as connection:\n        cursor = connection.execute(\n            \"INSERT INTO rooms (name, icon, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)\",\n            (request.name, request.icon, request.description, now, now),\n        )\n        room_id = int(cursor.lastrowid)\n    return get_room(room_id)  # type: ignore[return-value]",
+        "detail": "server.src.app.modules.rooms.store",
+        "documentation": {}
+    },
+    {
+        "label": "update_room",
+        "kind": 2,
+        "importPath": "server.src.app.modules.rooms.store",
+        "description": "server.src.app.modules.rooms.store",
+        "peekOfCode": "def update_room(room_id: int, request: RoomUpdateRequest) -> Room | None:\n    ensure_home_schema()\n    current = get_room(room_id)\n    if not current:\n        return None\n    updates = request.model_dump(exclude_unset=True)\n    field_map = {\n        \"name\": \"name\",\n        \"icon\": \"icon\",\n        \"description\": \"description\",",
         "detail": "server.src.app.modules.rooms.store",
         "documentation": {}
     },
@@ -3902,7 +3953,7 @@
         "kind": 2,
         "importPath": "server.src.app.modules.rooms.store",
         "description": "server.src.app.modules.rooms.store",
-        "peekOfCode": "def delete_room(room_id: int) -> bool:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"UPDATE devices SET room_id = NULL WHERE room_id = ?\", (room_id,))\n        cursor = connection.execute(\"DELETE FROM rooms WHERE id = ?\", (room_id,))\n    return cursor.rowcount > 0\ndef _from_row(row) -> Room:\n    return Room(id=row[\"id\"], name=row[\"name\"], description=row[\"description\"], createdAt=row[\"created_at\"], updatedAt=row[\"updated_at\"])",
+        "peekOfCode": "def delete_room(room_id: int) -> bool:\n    ensure_home_schema()\n    with connect() as connection:\n        connection.execute(\"UPDATE devices SET room_id = NULL WHERE room_id = ?\", (room_id,))\n        cursor = connection.execute(\"DELETE FROM rooms WHERE id = ?\", (room_id,))\n    return cursor.rowcount > 0\ndef _from_row(row) -> Room:\n    return Room(\n        id=row[\"id\"],\n        name=row[\"name\"],",
         "detail": "server.src.app.modules.rooms.store",
         "documentation": {}
     },

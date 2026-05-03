@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 import { z } from "zod";
 
-const roomSchema = z.object({
-    name: z.string().min(1, "Nome e obrigatorio"),
+const roomUpdateSchema = z.object({
+    name: z.string().min(1, "Nome e obrigatorio").optional(),
     icon: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
 });
 
-export async function GET(request: NextRequest) {
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ room_id: string }> }
+) {
     if (!env.SERVER_URL) {
         return NextResponse.json(
             { message: "SERVER_URL nao configurada no ambiente." },
@@ -16,23 +19,13 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const response = await fetch(`${env.SERVER_URL}/rooms`);
+    const { room_id: roomIdParam } = await params;
+    const roomId = Number(roomIdParam);
 
-    if (!response.ok) {
+    if (!Number.isInteger(roomId) || roomId < 1) {
         return NextResponse.json(
-            { message: "Erro ao buscar comodos." },
-            { status: 500 }
-        );
-    }
-
-    return NextResponse.json(await response.json());
-}
-
-export async function POST(request: NextRequest) {
-    if (!env.SERVER_URL) {
-        return NextResponse.json(
-            { message: "SERVER_URL nao configurada no ambiente." },
-            { status: 500 }
+            { message: "room_id invalido." },
+            { status: 400 }
         );
     }
 
@@ -47,7 +40,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const parsed = roomSchema.safeParse(body);
+    const parsed = roomUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
         return NextResponse.json(
@@ -59,8 +52,8 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const response = await fetch(`${env.SERVER_URL}/rooms`, {
-        method: "POST",
+    const response = await fetch(`${env.SERVER_URL}/rooms/${roomId}`, {
+        method: "PATCH",
         headers: {
             "Content-Type": "application/json",
         },
@@ -71,10 +64,10 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
         return NextResponse.json(
-            { message: data.detail ?? data.message ?? "Erro ao criar comodo." },
+            { message: data.detail ?? data.message ?? "Erro ao atualizar comodo." },
             { status: response.status }
         );
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(data, { status: 200 });
 }

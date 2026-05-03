@@ -40,6 +40,7 @@ def ensure_home_schema() -> None:
             CREATE TABLE IF NOT EXISTS rooms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
+                icon TEXT,
                 description TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -128,11 +129,19 @@ def ensure_home_schema() -> None:
             )
             """
         )
+        _ensure_column(connection, "rooms", "icon", "TEXT")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_device_inbox_status ON device_inbox(status)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_devices_room_id ON devices(room_id)")
         connection.execute("CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id)")
 
     _initialized = True
+
+
+def _ensure_column(connection, table: str, column: str, definition: str) -> None:
+    columns = connection.execute(f"PRAGMA table_info({table})").fetchall()
+    if any(row["name"] == column for row in columns):
+        return
+    connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def create_integration(
