@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 from src.app.modules.devices.schema import Device
 from src.app.modules.devices.tuya_lan import DEFAULT_PORT, DEFAULT_TIMEOUT_MS, TuyaLanClient
 from src.app.modules.entities.schemas import CommandRequest, CommandResult
-from src.app.modules.integrations.providers import _http_json, send_smartthings_device_commands, send_tuya_device_commands
+from src.app.modules.integrations.providers import _http_json, get_smartthings_device_status, send_smartthings_device_commands, send_tuya_device_commands
 from src.app.modules.integrations.store import get_integration
 
 
@@ -51,6 +51,15 @@ def _execute_smartthings_command(device: Device, request: CommandRequest) -> Com
     integration = get_integration(device.integration_id)
     if not integration:
         raise ValueError("Integracao SmartThings nao encontrada.")
+
+    if request.command == "query":
+        result = get_smartthings_device_status(integration, device.external_id)
+        return CommandResult(
+            ok=True,
+            status="ok",
+            message="Status SmartThings consultado.",
+            result={"deviceId": device.id, "provider": device.provider, "transport": "cloud", "action": "query", **result},
+        )
 
     commands = _smartthings_commands_from_request(device, request)
     result = send_smartthings_device_commands(integration, device.external_id, commands)

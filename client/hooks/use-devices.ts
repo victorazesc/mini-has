@@ -3,7 +3,7 @@ import { CommandResult, getDevice, getDevices, sendCommand } from "../src/servic
 import { toast } from "sonner";
 
 export type CommandRequest = {
-    command: string;
+    command: string | Record<string, unknown>;
     params: Record<string, unknown>;
 };
 

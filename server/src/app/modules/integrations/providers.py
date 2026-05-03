@@ -152,6 +152,11 @@ def send_smartthings_device_commands(integration: StoredIntegration, device_id: 
     return {"response": response}
 
 
+def get_smartthings_device_status(integration: StoredIntegration, device_id: str) -> dict[str, Any]:
+    status = _smartthings_request(integration, f"/v1/devices/{device_id}/status")
+    return {"rawStatus": status, "statusSummary": _smartthings_status_summary(status)}
+
+
 def _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:
     token, region = _tuya_get_token_for_integration(integration)
     devices: list[dict[str, Any]] = []

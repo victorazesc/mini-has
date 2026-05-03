@@ -147,6 +147,9 @@ def link_local_device(device_id: int, local_device_key: str, payload: dict[str, 
 def update_device_runtime_state(device_id: int, command_result: CommandResult) -> Device | None:
     if not command_result.ok:
         return get_device(device_id)
+    if _is_smartthings_query_result(command_result.result):
+        return _update_smartthings_query_state(device_id, command_result.result)
+
     dps = command_result.result.get("dps")
     if not isinstance(dps, dict) or not dps:
         return get_device(device_id)
@@ -188,6 +191,50 @@ def update_device_runtime_state(device_id: int, command_result: CommandResult) -
             (json_dumps(status), json_dumps(capabilities), json_dumps(payload), now, device_id),
         )
     _update_entities_runtime_state(device_id, merged_dps, now)
+    return get_device(device_id)
+
+
+def _is_smartthings_query_result(result: dict[str, Any]) -> bool:
+    return (
+        result.get("provider") == "smartthings_cloud"
+        and result.get("action") == "query"
+        and isinstance(result.get("statusSummary"), dict)
+    )
+
+
+def _update_smartthings_query_state(device_id: int, result: dict[str, Any]) -> Device | None:
+    current = get_device(device_id)
+    if not current:
+        return None
+
+    now = utc_now()
+    status_summary = result["statusSummary"]
+    raw_status = result.get("rawStatus") if isinstance(result.get("rawStatus"), dict) else {}
+    status = {
+        **current.status,
+        **status_summary,
+        "lastSeenAt": now,
+    }
+    capabilities = {
+        **current.capabilities,
+        "status": raw_status,
+    }
+    payload = {
+        **current.payload,
+        "status": raw_status,
+        "lastStatus": raw_status,
+        "lastSeenAt": now,
+    }
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE devices
+            SET status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (json_dumps(status), json_dumps(capabilities), json_dumps(payload), now, device_id),
+        )
+    _update_smartthings_entities_runtime_state(device_id, status, raw_status, now)
     return get_device(device_id)
 
 
@@ -271,6 +318,31 @@ def _update_entities_runtime_state(device_id: int, dps: dict[str, Any], now: str
             next_capabilities = {
                 **capabilities,
                 "status": _merge_status_entries(capabilities.get("status") or [], dps),
+            }
+            connection.execute(
+                """
+                UPDATE entities
+                SET state_json = ?, capabilities_json = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (json_dumps(next_state), json_dumps(next_capabilities), now, row["id"]),
+            )
+
+
+def _update_smartthings_entities_runtime_state(device_id: int, status: dict[str, Any], raw_status: dict[str, Any], now: str) -> None:
+    with connect() as connection:
+        rows = connection.execute("SELECT * FROM entities WHERE device_id = ?", (device_id,)).fetchall()
+        for row in rows:
+            state = json_loads(row["state_json"], {})
+            capabilities = json_loads(row["capabilities_json"], {})
+            next_state = {
+                **state,
+                **status,
+                "lastSeenAt": now,
+            }
+            next_capabilities = {
+                **capabilities,
+                "status": raw_status,
             }
             connection.execute(
                 """

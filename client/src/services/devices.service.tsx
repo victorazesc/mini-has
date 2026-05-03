@@ -16,6 +16,7 @@ export type Device = {
         entities: Record<string, unknown>;
     };
     status: {
+        raw: unknown;
         online: boolean;
         state: string;
         dps: Record<string, unknown>;
@@ -54,7 +55,7 @@ export type CommandResult = {
     result: Record<string, unknown>;
 };
 
-export async function sendCommand(deviceId: number, command: string, params: Record<string, unknown>): Promise<CommandResult> {
+export async function sendCommand(deviceId: number, command: string | Record<string, unknown>, params: Record<string, unknown>): Promise<CommandResult> {
     const response = await fetch(`/api/devices/${deviceId}/command`, {
         method: "POST",
         headers: {

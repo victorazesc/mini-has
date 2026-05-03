@@ -1,0 +1,499 @@
+import { useRef } from "react";
+import { ArrowRightLeft, ArrowUpDown, Bed, Circle, CircleGauge, CircleSlash, DropletOff, Fan, Gauge, Minus, Move, Plus, Power, RepeatOff, Rocket, Snowflake, VolumeOff, Wind } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const climateModes = {
+    auto: {
+        icon: <CircleGauge className="size-6" />,
+        label: "Auto",
+        value: "auto",
+    },
+    cool: {
+        icon: <Snowflake className="size-6" />,
+        label: "Frio",
+        value: "cool",
+    },
+    dry: {
+        icon: <DropletOff className="size-6" />,
+        label: "Seco",
+        value: "dry",
+    },
+    fan: {
+        icon: <Fan className="size-6" />,
+        label: "Ventilador",
+        value: "fan",
+    },
+    off: {
+        icon: <Power className="size-6" />,
+        label: "Desligar",
+        value: "off",
+    },
+} as const;
+
+const climateFanModes = {
+    auto: {
+        icon: <CircleGauge className="size-6" />,
+        label: "Auto",
+        value: "auto",
+    },
+    low: {
+        icon: <Fan className="size-6" />,
+        label: "Baixo",
+        value: "low",
+    },
+    medium: {
+        icon: <Fan className="size-6" />,
+        label: "Médio",
+        value: "medium",
+    },
+    high: {
+        icon: <Fan className="size-6" />,
+        label: "Alto",
+        value: "high",
+    },
+} as const;
+
+const climateFanDirections = {
+    fixed: {
+        icon: <CircleSlash className="size-6" />,
+        label: "Desligado",
+        value: "fixed",
+    },
+    vertical: {
+        icon: <ArrowUpDown className="size-6" />,
+        label: "Vertical",
+        value: "vertical",
+    },
+    horizontal: {
+        icon: <ArrowRightLeft className="size-6" />,
+        label: "Horizontal",
+        value: "horizontal",
+    },
+    both: {
+        icon: <Move className="size-6" />,
+        label: "Ambos",
+        value: "both",
+    },
+} as const;
+
+const climatePredefinedModes = {
+    none: {
+        icon: <Circle className="size-6" />,
+        label: "Nenhum",
+        value: "none",
+    },
+    sleep: {
+        icon: <Bed className="size-6" />,
+        label: "Sono",
+        value: "sleep",
+    },
+    quiet: {
+        icon: <VolumeOff className="size-6" />,
+        label: "Silencioso",
+        value: "quiet",
+    },
+    boost: {
+        icon: <Rocket className="size-6" />,
+        label: "Turbo",
+        value: "boost",
+    },
+    windFree: {
+        icon: <Wind className="size-6" />,
+        label: "Sem Vento",
+        value: "windFree",
+    },
+    windFreeSleep: {
+        icon: <Wind className="size-6" />,
+        label: "Sem Vento - Sono",
+        value: "windFreeSleep",
+    },
+
+} as const;
+
+export type ClimateMode = keyof typeof climateModes;
+export type ClimateFanMode = keyof typeof climateFanModes;
+export type ClimateFanDirection = keyof typeof climateFanDirections;
+export type ClimatePredefinedMode = keyof typeof climatePredefinedModes;
+
+type ClimateDialProps = {
+    value: number;
+    min?: number;
+    max?: number;
+    unit?: string;
+    status?: ClimateMode;
+    mode?: ClimateMode;
+    fanMode?: ClimateFanMode;
+    fanDirection?: ClimateFanDirection;
+    predefinedMode?: ClimatePredefinedMode;
+    onChangeMode?: (mode: ClimateMode) => void;
+    onChangeFanMode?: () => void;
+    onChangeFanDirection?: () => void;
+    onChangePredefinedMode?: () => void;
+    onIncrease?: () => void;
+    onDecrease?: () => void;
+    onChange?: (value: number) => void;
+};
+
+export function ClimateDial({
+    value,
+    min = 16,
+    max = 30,
+    unit = "°C",
+    status = "off",
+    mode = "auto",
+    fanMode = "auto",
+    fanDirection = "fixed",
+    predefinedMode = "none",
+    onChangeMode,
+    onChangeFanMode,
+    onChangeFanDirection,
+    onChangePredefinedMode,
+    onIncrease,
+    onDecrease,
+    onChange,
+}: ClimateDialProps) {
+    const svgRef = useRef<SVGSVGElement | null>(null);
+    const safeRange = Math.max(max - min, 1);
+    const percentage = Math.min(Math.max((value - min) / safeRange, 0), 1);
+
+    /**
+     * Sistema de ângulos:
+     * 0° fica no topo, 90° à direita, 180° embaixo e 270° à esquerda.
+     * O arco começa no canto inferior esquerdo e termina no canto inferior direito,
+     * passando pela parte superior. Isso cria o formato de "C" aberto embaixo.
+     */
+    const startAngle = 220;
+    const endAngle = 500;
+    const currentAngle = startAngle + (endAngle - startAngle) * percentage;
+
+    const radius = 128;
+    const center = 160;
+
+    const polarToCartesian = (angle: number) => {
+        const angleRad = ((angle - 90) * Math.PI) / 180;
+
+        return {
+            x: center + radius * Math.cos(angleRad),
+            y: center + radius * Math.sin(angleRad),
+        };
+    };
+
+    const describeArc = (start: number, end: number) => {
+        const startPoint = polarToCartesian(start);
+        const endPoint = polarToCartesian(end);
+
+        const largeArcFlag = end - start <= 180 ? "0" : "1";
+
+        return [
+            "M",
+            startPoint.x,
+            startPoint.y,
+            "A",
+            radius,
+            radius,
+            0,
+            largeArcFlag,
+            1,
+            endPoint.x,
+            endPoint.y,
+        ].join(" ");
+    };
+
+    const getAngleFromPointer = (event: React.PointerEvent<SVGElement>) => {
+        const svg = svgRef.current;
+        if (!svg) return null;
+
+        const rect = svg.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 320;
+        const y = ((event.clientY - rect.top) / rect.height) * 320;
+
+        const dx = x - center;
+        const dy = y - center;
+
+        // Mantém o mesmo sistema usado no polarToCartesian:
+        // 0° no topo, 90° à direita, 180° embaixo, 270° à esquerda.
+        let angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+
+        if (angle < startAngle) {
+            angle += 360;
+        }
+
+        return Math.min(Math.max(angle, startAngle), endAngle);
+    };
+
+    const updateValueFromPointer = (event: React.PointerEvent<SVGElement>) => {
+        if (!onChange) return;
+
+        const angle = getAngleFromPointer(event);
+        if (angle === null) return;
+
+        const nextPercentage = (angle - startAngle) / (endAngle - startAngle);
+        const rawValue = min + nextPercentage * safeRange;
+        const nextValue = Math.round(rawValue);
+
+        onChange(Math.min(Math.max(nextValue, min), max));
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<SVGElement>) => {
+        if (!onChange) return;
+
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateValueFromPointer(event);
+    };
+
+    const handlePointerMove = (event: React.PointerEvent<SVGElement>) => {
+        if (!onChange || !event.currentTarget.hasPointerCapture(event.pointerId)) {
+            return;
+        }
+
+        updateValueFromPointer(event);
+    };
+
+    const handlePointerUp = (event: React.PointerEvent<SVGElement>) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+    };
+
+    const thumb = polarToCartesian(currentAngle);
+
+    return (
+        <Card className="w-fit border-zinc-800 bg-[#1f1f1f] shadow-none overflow-hidden">
+            <CardHeader className="w-full text-center mb-0 pb-0">
+                <CardDescription >
+                    <h3 className="text-sm font-medium">Temperatura Atual</h3>
+                </CardDescription>
+                <CardTitle>20°C</CardTitle>
+            </CardHeader>
+            <CardContent className="relative flex min-h-[320px] flex-col items-center justify-center mt-0 pt-0">
+                <div className="relative h-[320px] w-[340px] -translate-y-3">
+                    <svg
+                        ref={svgRef}
+                        viewBox="0 0 320 320"
+                        className="absolute inset-0 h-full w-full touch-none select-none"
+                    >
+                        {/* arco base */}
+                        <path
+                            d={describeArc(startAngle, endAngle)}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.08)"
+                            strokeWidth="24"
+                            strokeLinecap="round"
+                            pointerEvents="none"
+                        />
+
+                        {/* arco ativo */}
+                        {status !== "off" ? (
+                            <path
+                                d={describeArc(startAngle, Math.max(currentAngle, startAngle + 0.01))}
+                                fill="none"
+                                stroke="rgba(34,197,94,0.85)"
+                                strokeWidth="24"
+                                strokeLinecap="round"
+                                pointerEvents="none"
+                            />
+                        ) : null}
+
+                        {/* bolinha principal */}
+                        <circle
+                            cx={thumb.x}
+                            cy={thumb.y}
+                            r="13"
+                            fill="#f4f4f5"
+                            stroke="rgba(255,255,255,0.45)"
+                            strokeWidth="4"
+                            className="cursor-grab touch-none active:cursor-grabbing"
+                            pointerEvents="all"
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerCancel={handlePointerUp}
+                        />
+                        <circle
+                            cx={thumb.x}
+                            cy={thumb.y}
+                            r="34"
+                            fill="transparent"
+                            className="cursor-grab touch-none active:cursor-grabbing"
+                            pointerEvents="all"
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerCancel={handlePointerUp}
+                        />
+
+                        {/* bolinha pequena ao lado */}
+                        {/* <circle
+              cx={polarToCartesian(Math.min(currentAngle + 10, endAngle)).x}
+              cy={polarToCartesian(Math.min(currentAngle + 10, endAngle)).y}
+              r="5"
+              fill="rgba(255,255,255,0.35)"
+              pointerEvents="none"
+            /> */}
+                    </svg>
+
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="mb-5 text-lg font-semibold text-zinc-300">
+                            {climateModes[status]?.label}
+                        </span>
+
+                        <div className="flex items-start">
+                            <span className="text-7xl font-light tracking-[-0.08em] text-zinc-100 tabular-nums">
+                                {Math.floor(value)}
+                            </span>
+
+                            <div className="ml-3 mt-4 flex flex-col leading-none">
+                                <span className="text-2xl font-light text-zinc-200">{unit}</span>
+                                <span className="mt-2 text-3xl font-light text-zinc-300">
+                                    .0
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="absolute bottom-0 flex items-center gap-10">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onDecrease}
+                        className="h-14 w-14 rounded-full border-zinc-500 bg-transparent text-zinc-200 hover:bg-zinc-800"
+                    >
+                        <Minus className="h-6 w-6" />
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onIncrease}
+                        className="h-14 w-14 rounded-full border-zinc-500 bg-transparent text-zinc-200 hover:bg-zinc-800"
+                    >
+                        <Plus className="h-6 w-6" />
+                    </Button>
+                </div>
+            </CardContent>
+            <CardFooter>
+                <div className="flex items-center gap-4 justify-between w-full">
+                    <div className="flex flex-col items-center gap-2">
+                        <Select value={mode} onValueChange={(value) => onChangeMode?.(value as ClimateMode)}>
+                            <SelectTrigger className="rounded-md h-14!">
+                                <SelectValue>
+                                    {(value) => {
+                                        const mode = climateModes[value as ClimateMode];
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                {mode?.icon}
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-sm font-medium">Modo</span>
+                                                    <span className="text-sm text-muted-foreground">{mode?.label}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(climateModes).map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.value}>
+                                        {mode.icon}
+                                        {mode.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <Select value={fanMode} onValueChange={onChangeFanMode}>
+                            <SelectTrigger className="rounded-md h-14!">
+                                <SelectValue>
+                                    {(value) => {
+                                        const mode = climateFanModes[value as ClimateFanMode];
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                {mode?.icon}
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-sm font-medium">Modo</span>
+                                                    <span className="text-sm text-muted-foreground">{mode?.label}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(climateFanModes).map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.value}>
+                                        {mode.icon}
+                                        {mode.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <Select value={fanDirection} onValueChange={onChangeFanDirection}>
+                            <SelectTrigger className="rounded-md h-14!">
+                                <SelectValue>
+                                    {(value) => {
+                                        const mode = climateFanDirections[value as ClimateFanDirection];
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                {mode?.icon}
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-sm font-medium">Modo</span>
+                                                    <span className="text-sm text-muted-foreground">{mode?.label}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(climateFanDirections).map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.value}>
+                                        {mode.icon}
+                                        {mode.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <Select value={predefinedMode} onValueChange={onChangePredefinedMode}>
+                            <SelectTrigger className="rounded-md h-14!">
+                                <SelectValue>
+                                    {(value) => {
+                                        const mode = climatePredefinedModes[value as ClimatePredefinedMode];
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                {mode?.icon}
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-sm font-medium">Modo</span>
+                                                    <span className="text-sm text-muted-foreground">{mode?.label}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.values(climatePredefinedModes).map((mode) => (
+                                    <SelectItem key={mode.value} value={mode.value}>
+                                        {mode.icon}
+                                        {mode.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </CardFooter>
+        </Card>
+    );
+}

@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useDevice, useSendCommand } from "@/hooks/use-devices";
 import { cn } from "@/lib/utils";
-import { Building, Circle, Home, Power, Settings2 } from "lucide-react";
+import { Building, Circle, Home, Power, SettingsIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
@@ -11,9 +11,10 @@ import { Device } from "@/src/services/devices.service";
 import Image from "next/image";
 import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers";
 import { Badge } from "@/components/ui/badge";
-import { DEVICE_TYPES_NAME_BY_TYPE } from "@/src/constants/devices_types";
+import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus } from "@/src/constants/devices_types";
 import path from "path";
 import { Separator } from "@/components/ui/separator";
+import { ClimateControl } from "@/components/capabilities/climate/control";
 
 type SwitchChannel = {
     dpsId: string;
@@ -97,9 +98,8 @@ export default function DevicePage() {
                 </span>
             </span>);
         setRightAction(
-            <Button variant="outline" size="sm">
-                <Settings2 className="size-4" />
-                Configuração
+            <Button variant="secondary" size="icon">
+                <SettingsIcon className="size-5" />
             </Button>
         );
 
@@ -110,7 +110,7 @@ export default function DevicePage() {
                 params: {},
             },
         });
-        
+
         return () => {
             setTitle(null);
             setRightAction(null);
@@ -194,7 +194,7 @@ export default function DevicePage() {
 
                 <Separator />
 
-                <div className="flex flex-row gap-6 w-full min-h-[calc(100vh-120px)] items-center justify-center">
+                <div className="flex flex-row gap-6 w-full">
                     {switchChannels.map((channel) => (
                         <div key={channel.dpsId} className="flex flex-col gap-2 items-center">
                             <p className="text-lg font-medium text-center text-muted-foreground">{channel.label}</p>
@@ -211,8 +211,17 @@ export default function DevicePage() {
                             </Card>
                         </div>
                     ))}
+
+
+                    {
+                        device?.deviceType === "climate" && (
+                            <section className="flex-1">
+                                <ClimateControl device={device as Device & { status: DeviceStatus }} />
+                            </section>
+                        )}
                 </div>
+
             </div>
         </main>
-    )
+    );
 }

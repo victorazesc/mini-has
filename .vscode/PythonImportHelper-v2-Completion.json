@@ -731,6 +731,14 @@
         "documentation": {}
     },
     {
+        "label": "get_smartthings_device_status",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
         "label": "send_smartthings_device_commands",
         "importPath": "src.app.modules.integrations.providers",
         "description": "src.app.modules.integrations.providers",
@@ -2701,7 +2709,7 @@
         "kind": 2,
         "importPath": "server.src.app.modules.devices.store",
         "description": "server.src.app.modules.devices.store",
-        "peekOfCode": "def update_device_runtime_state(device_id: int, command_result: CommandResult) -> Device | None:\n    if not command_result.ok:\n        return get_device(device_id)\n    dps = command_result.result.get(\"dps\")\n    if not isinstance(dps, dict) or not dps:\n        return get_device(device_id)\n    current = get_device(device_id)\n    if not current:\n        return None\n    now = utc_now()",
+        "peekOfCode": "def update_device_runtime_state(device_id: int, command_result: CommandResult) -> Device | None:\n    if not command_result.ok:\n        return get_device(device_id)\n    if _is_smartthings_query_result(command_result.result):\n        return _update_smartthings_query_state(device_id, command_result.result)\n    dps = command_result.result.get(\"dps\")\n    if not isinstance(dps, dict) or not dps:\n        return get_device(device_id)\n    current = get_device(device_id)\n    if not current:",
         "detail": "server.src.app.modules.devices.store",
         "documentation": {}
     },
@@ -3556,7 +3564,16 @@
         "kind": 2,
         "importPath": "server.src.app.modules.integrations.providers",
         "description": "server.src.app.modules.integrations.providers",
-        "peekOfCode": "def send_smartthings_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:\n    response = _smartthings_request(\n        integration,\n        f\"/v1/devices/{device_id}/commands\",\n        method=\"POST\",\n        body={\"commands\": commands},\n    )\n    return {\"response\": response}\ndef _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:\n    token, region = _tuya_get_token_for_integration(integration)",
+        "peekOfCode": "def send_smartthings_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:\n    response = _smartthings_request(\n        integration,\n        f\"/v1/devices/{device_id}/commands\",\n        method=\"POST\",\n        body={\"commands\": commands},\n    )\n    return {\"response\": response}\ndef get_smartthings_device_status(integration: StoredIntegration, device_id: str) -> dict[str, Any]:\n    status = _smartthings_request(integration, f\"/v1/devices/{device_id}/status\")",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "get_smartthings_device_status",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def get_smartthings_device_status(integration: StoredIntegration, device_id: str) -> dict[str, Any]:\n    status = _smartthings_request(integration, f\"/v1/devices/{device_id}/status\")\n    return {\"rawStatus\": status, \"statusSummary\": _smartthings_status_summary(status)}\ndef _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:\n    token, region = _tuya_get_token_for_integration(integration)\n    devices: list[dict[str, Any]] = []\n    has_more = True\n    last_row_key = \"\"\n    total = 0\n    while has_more:",
         "detail": "server.src.app.modules.integrations.providers",
         "documentation": {}
     },
