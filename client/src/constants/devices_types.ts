@@ -37,3 +37,11 @@ export const DEVICE_ICON_BY_TYPE = {
     CURTAIN: Blinds,
     climate: Snowflake,
 }
+
+export const DEVICE_TYPES_NAME_BY_TYPE = {
+    LAMP: "Lampada",
+    CAM: "Camera",
+    FEEDER: "Alimentador de Gatos",
+    CURTAIN: "Persiana",
+    climate: "Climatizacao",
+}

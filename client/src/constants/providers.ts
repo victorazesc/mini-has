@@ -1,3 +1,5 @@
+import path from "path"
+
 export const PROVIDERS = [
     {
         label: "Tuya Cloud",
@@ -19,13 +21,19 @@ export const PROVIDERS = [
         value: "generic_iot",
         icon: "./providers/diy.png",
     },
+    {
+        label: "MQTT",
+        value: "mqtt",
+        icon: "./providers/diy.png",
+    },
 ]
 
 export const PROVIDERS_ICON_BY_TYPE = {
-    tuya_cloud: "./providers/tuya.svg",
+    tuya_cloud: path.join(process.cwd(), "./providers/tuya.svg"),
     intelbras_izy: "./providers/intelbras.svg",
-    smartthings_cloud: "./providers/smartthings.svg",
-    generic_iot: "./providers/diy.svg",
+    smartthings_cloud: path.join(process.cwd(), "./providers/smartthings.svg"),
+    generic_iot: path.join(process.cwd(), "./providers/diy.svg"),
+    mqtt: path.join(process.cwd(), "./providers/diy.svg"),
 }
 
 export const PROVIDERS_NAME_BY_TYPE = {
@@ -33,4 +41,5 @@ export const PROVIDERS_NAME_BY_TYPE = {
     intelbras_izy: "Intelbras",
     smartthings_cloud: "SmartThings",
     generic_iot: "DIY",
+    mqtt: "MQTT",
 }

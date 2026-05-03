@@ -2,12 +2,18 @@
 import { Button } from "@/components/ui/button";
 import { useDevice, useSendCommand } from "@/hooks/use-devices";
 import { cn } from "@/lib/utils";
-import { Circle, Settings2 } from "lucide-react";
+import { Building, Circle, Home, Power, Settings2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Device } from "@/src/services/devices.service";
+import Image from "next/image";
+import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers";
+import { Badge } from "@/components/ui/badge";
+import { DEVICE_TYPES_NAME_BY_TYPE } from "@/src/constants/devices_types";
+import path from "path";
+import { Separator } from "@/components/ui/separator";
 
 type SwitchChannel = {
     dpsId: string;
@@ -97,6 +103,14 @@ export default function DevicePage() {
             </Button>
         );
 
+        sendCommand({
+            deviceId: device?.id ?? 0,
+            command: {
+                command: "query",
+                params: {},
+            },
+        });
+        
         return () => {
             setTitle(null);
             setRightAction(null);
@@ -109,10 +123,78 @@ export default function DevicePage() {
 
     const switchChannels = getSwitchChannels(device);
 
+    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
+    const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
+    const DeviceTypeName = DEVICE_TYPES_NAME_BY_TYPE[device.deviceType as keyof typeof DEVICE_TYPES_NAME_BY_TYPE] ?? "Device"
+    const isOn = device.status.state === "on";
+    const lastSeenAt = device.status.lastSeenAt
+        ? new Date(device.status.lastSeenAt).toLocaleString("pt-BR")
+        : "Sem registro";
+
+
     return (
         <main className="flex flex-1 flex-col px-4 lg:px-6">
-            <div className="@container/main flex flex-1 flex-col gap-2 space-y-4 items-center justify-center w-full min-h-[calc(100vh-120px)]">
-                <div className="flex flex-row gap-6 justify-center">
+            <div className="@container/main flex flex-1 flex-col gap-2 space-y-4  ">
+                <div className="flex flex-row gap-2 items-center px-6 bg-transparent border-none outline-none shadow-none ">
+                    <div className="flex flex-row gap-2 items-center flex-2">
+                        <div className="flex items-center justify-center rounded-full bg-secondary p-1">
+                            <Image src={cn(path.join(process.cwd(), `../devices/${device.deviceType}.png`))} alt={DeviceTypeName} width={130} height={130} />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <h1 className="text-2xl font-semibold">{device.name}</h1>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" >
+                                    {device.status.online ?
+                                        <span className="flex items-center gap-2 text-green-500">
+                                            <Circle size={10} fill="green" /> Online
+                                        </span> : <span className="flex items-center gap-2 text-red-500">
+                                            <Circle size={10} fill="red" /> Offline
+                                        </span>}
+
+                                </Badge>
+                                <Badge variant="outline"><div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-center rounded-sm bg-secondary p-1">
+                                        <Image src={ProviderIcon} alt={ProviderName} width={20} height={20} />
+                                    </div>
+                                    <span>{ProviderName}</span>
+                                </div></Badge>
+                                <Badge variant="outline">{DeviceTypeName} </Badge>
+                            </div>
+                            <p className="text-muted-foreground flex items-center gap-2"><Home className="size-4" /> {device.roomName}</p>
+                            <p className="text-muted-foreground flex items-center gap-2"><Building className="size-4" /> {device.payload.manufacturer} • {device.payload.model}</p>
+                        </div>
+                    </div>
+                    <Card className="flex-1 rounded-3xl px-6 py-5">
+                        <div className="flex items-center justify-between gap-6">
+                            <div className="flex flex-col gap-2">
+                                <span className="text-sm font-medium text-muted-foreground">Estado</span>
+                                <strong className={cn("text-2xl font-semibold", isOn ? "text-green-500" : "text-muted-foreground")}>
+                                    {isOn ? "Ligado" : "Desligado"}
+                                </strong>
+                                <span className={cn("flex items-center gap-2 text-sm", device.status.online ? "text-muted-foreground" : "text-red-500")}>
+                                    <Circle
+                                        size={10}
+                                        className={cn(device.status.online ? "fill-green-500 text-green-500" : "fill-red-500 text-red-500")}
+                                    />
+                                    {device.status.online ? "Online" : "Offline"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    Último visto: {lastSeenAt}
+                                </span>
+                            </div>
+                            <div className={cn(
+                                "flex size-12 shrink-0 items-center justify-center rounded-full",
+                                isOn ? "bg-green-500/20 text-green-500" : "bg-secondary text-muted-foreground"
+                            )}>
+                                <Power className="size-6" />
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-row gap-6 w-full min-h-[calc(100vh-120px)] items-center justify-center">
                     {switchChannels.map((channel) => (
                         <div key={channel.dpsId} className="flex flex-col gap-2 items-center">
                             <p className="text-lg font-medium text-center text-muted-foreground">{channel.label}</p>

@@ -11,16 +11,19 @@ export type Device = {
     roomId: number;
     roomName: string;
     payload: {
+        manufacturer: string;
+        model: string;
         entities: Record<string, unknown>;
     };
     status: {
         online: boolean;
         state: string;
         dps: Record<string, unknown>;
+        lastSeenAt: string;
     };
     capabilities: Record<string, unknown>;
-    created_at: string;
-    updated_at: string;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export async function getDevices(filters: { name?: string; type?: string } | undefined): Promise<Device[]> {

@@ -167,7 +167,7 @@ export default function Devices() {
         <Separator className="my-4" />
 
         {isLoading && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {Array.from({ length: 9 }).map((_, index) => (
               <DeviceCardSkeleton key={index} />
             ))}
@@ -187,7 +187,7 @@ export default function Devices() {
         )}
 
         {/* Devices list */}
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
           {devices.map((device) => {
             return (
               <Link href={`/devices/${device.id}`} key={device.id}>

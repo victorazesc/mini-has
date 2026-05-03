@@ -40,6 +40,12 @@ const integrationProviders = [
         icon: "./providers/diy.svg",
         localOnly: true,
     },
+    {
+        value: "mqtt",
+        name: "MQTT",
+        icon: "./providers/diy.svg",
+        localOnly: true,
+    },
 ]
 
 export function NewIntegrationDialog({ children }: { children: React.ReactElement }) {
