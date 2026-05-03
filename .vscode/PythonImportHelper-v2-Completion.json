@@ -731,6 +731,14 @@
         "documentation": {}
     },
     {
+        "label": "send_smartthings_device_commands",
+        "importPath": "src.app.modules.integrations.providers",
+        "description": "src.app.modules.integrations.providers",
+        "isExtraImport": true,
+        "detail": "src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
         "label": "send_tuya_device_commands",
         "importPath": "src.app.modules.integrations.providers",
         "description": "src.app.modules.integrations.providers",
@@ -2486,7 +2494,7 @@
         "kind": 2,
         "importPath": "server.src.app.modules.devices.commands",
         "description": "server.src.app.modules.devices.commands",
-        "peekOfCode": "def execute_device_command(device: Device, secrets: dict[str, Any], request: CommandRequest) -> CommandResult:\n    try:\n        if device.provider in {\"tuya_cloud\", \"tuya_local\", \"intelbras_izy_tuya\"}:\n            return _execute_tuya_command(device, secrets, request)\n        if device.provider in {\"generic_iot\", \"persiana_custom\"}:\n            return _execute_http_command(device, request)\n        return CommandResult(ok=False, status=\"unsupported\", message=f\"Provider {device.provider} ainda nao tem executor.\", result={})\n    except Exception as exc:\n        return CommandResult(ok=False, status=\"error\", message=str(exc), result={\"deviceId\": device.id, \"command\": request.command})\ndef _execute_tuya_command(device: Device, secrets: dict[str, Any], request: CommandRequest) -> CommandResult:",
+        "peekOfCode": "def execute_device_command(device: Device, secrets: dict[str, Any], request: CommandRequest) -> CommandResult:\n    try:\n        if device.provider in {\"tuya_cloud\", \"tuya_local\", \"intelbras_izy_tuya\"}:\n            return _execute_tuya_command(device, secrets, request)\n        if device.provider == \"smartthings_cloud\":\n            return _execute_smartthings_command(device, request)\n        if device.provider in {\"generic_iot\", \"persiana_custom\"}:\n            return _execute_http_command(device, request)\n        return CommandResult(ok=False, status=\"unsupported\", message=f\"Provider {device.provider} ainda nao tem executor.\", result={})\n    except Exception as exc:",
         "detail": "server.src.app.modules.devices.commands",
         "documentation": {}
     },
@@ -3540,6 +3548,15 @@
         "importPath": "server.src.app.modules.integrations.providers",
         "description": "server.src.app.modules.integrations.providers",
         "peekOfCode": "def send_tuya_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:\n    token, region = _tuya_get_token_for_integration(integration)\n    response = _tuya_request(\n        integration,\n        region,\n        \"POST\",\n        f\"/v1.0/iot-03/devices/{device_id}/commands\",\n        body={\"commands\": commands},\n        access_token=token,\n    )",
+        "detail": "server.src.app.modules.integrations.providers",
+        "documentation": {}
+    },
+    {
+        "label": "send_smartthings_device_commands",
+        "kind": 2,
+        "importPath": "server.src.app.modules.integrations.providers",
+        "description": "server.src.app.modules.integrations.providers",
+        "peekOfCode": "def send_smartthings_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:\n    response = _smartthings_request(\n        integration,\n        f\"/v1/devices/{device_id}/commands\",\n        method=\"POST\",\n        body={\"commands\": commands},\n    )\n    return {\"response\": response}\ndef _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:\n    token, region = _tuya_get_token_for_integration(integration)",
         "detail": "server.src.app.modules.integrations.providers",
         "documentation": {}
     },

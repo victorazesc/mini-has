@@ -13,7 +13,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "./ui/input-group"
 import { ChevronRight, Globe, Search } from "lucide-react"
 import { useState } from "react"
 import Image from "next/image"
-import { TuyaIntegrationDialog } from "./integration-providers/tuya-integration-dialog"
 import { IntegrationProviderHandler } from "./integration-providers/integration-provider-handler"
 
 const integrationProviders = [

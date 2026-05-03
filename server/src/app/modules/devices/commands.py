@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 from src.app.modules.devices.schema import Device
 from src.app.modules.devices.tuya_lan import DEFAULT_PORT, DEFAULT_TIMEOUT_MS, TuyaLanClient
 from src.app.modules.entities.schemas import CommandRequest, CommandResult
-from src.app.modules.integrations.providers import _http_json, send_tuya_device_commands
+from src.app.modules.integrations.providers import _http_json, send_smartthings_device_commands, send_tuya_device_commands
 from src.app.modules.integrations.store import get_integration
 
 
@@ -15,6 +15,8 @@ def execute_device_command(device: Device, secrets: dict[str, Any], request: Com
     try:
         if device.provider in {"tuya_cloud", "tuya_local", "intelbras_izy_tuya"}:
             return _execute_tuya_command(device, secrets, request)
+        if device.provider == "smartthings_cloud":
+            return _execute_smartthings_command(device, request)
         if device.provider in {"generic_iot", "persiana_custom"}:
             return _execute_http_command(device, request)
         return CommandResult(ok=False, status="unsupported", message=f"Provider {device.provider} ainda nao tem executor.", result={})
@@ -41,6 +43,24 @@ def _execute_tuya_command(device: Device, secrets: dict[str, Any], request: Comm
             "localError": str(local_error),
         }
         return cloud_result
+
+
+def _execute_smartthings_command(device: Device, request: CommandRequest) -> CommandResult:
+    if not device.integration_id:
+        raise ValueError("Device SmartThings sem integrationId.")
+    integration = get_integration(device.integration_id)
+    if not integration:
+        raise ValueError("Integracao SmartThings nao encontrada.")
+
+    commands = _smartthings_commands_from_request(device, request)
+    result = send_smartthings_device_commands(integration, device.external_id, commands)
+
+    return CommandResult(
+        ok=True,
+        status="sent",
+        message="Comando enviado para SmartThings.",
+        result={"deviceId": device.id, "provider": device.provider, "transport": "cloud", "commands": commands, **result},
+    )
 
 
 def _execute_tuya_cloud_command(device: Device, request: CommandRequest) -> CommandResult:
@@ -217,6 +237,61 @@ def _dps_from_tuya_commands(commands: list[dict[str, Any]]) -> dict[str, Any]:
             continue
         dps[_dps_id_from_code(code)] = command["value"]
     return dps
+
+
+def _smartthings_commands_from_request(device: Device, request: CommandRequest) -> list[dict[str, Any]]:
+    raw_commands = request.params.get("commands")
+    if isinstance(raw_commands, list) and raw_commands:
+        return raw_commands
+
+    component = str(request.params.get("component") or request.params.get("componentId") or "main")
+    capability = str(request.params.get("capability") or request.params.get("capabilityId") or _smartthings_primary_capability(device))
+
+    if request.command == "turn_on":
+        return [_smartthings_command(component, capability, "on")]
+    if request.command == "turn_off":
+        return [_smartthings_command(component, capability, "off")]
+    if request.command == "set":
+        value = request.params.get("value")
+        if capability == "switch" and isinstance(value, bool):
+            return [_smartthings_command(component, capability, "on" if value else "off")]
+        if isinstance(value, str):
+            return [_smartthings_command(component, capability, value)]
+        raise ValueError("Parametro value invalido para comando SmartThings.")
+    if request.command == "toggle":
+        current = _current_smartthings_switch_value(device)
+        return [_smartthings_command(component, capability, "off" if current else "on")]
+
+    if request.command:
+        return [_smartthings_command(component, capability, request.command)]
+
+    raise ValueError("Comando SmartThings invalido.")
+
+
+def _smartthings_command(component: str, capability: str, command: str) -> dict[str, Any]:
+    return {
+        "component": component,
+        "capability": capability,
+        "command": command,
+    }
+
+
+def _smartthings_primary_capability(device: Device) -> str:
+    capabilities = device.capabilities.get("capabilities") or []
+    if isinstance(capabilities, list) and "switch" in capabilities:
+        return "switch"
+    if isinstance(capabilities, list) and capabilities:
+        return str(capabilities[0])
+    return "switch"
+
+
+def _current_smartthings_switch_value(device: Device) -> bool:
+    state = str(device.status.get("state") or "").lower()
+    if state == "on":
+        return True
+    if state == "off":
+        return False
+    raise ValueError("Nao consegui inferir o estado atual para toggle SmartThings.")
 
 
 def _required_code(code: str) -> str:

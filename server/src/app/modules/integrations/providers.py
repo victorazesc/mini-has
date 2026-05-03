@@ -142,6 +142,16 @@ def send_tuya_device_commands(integration: StoredIntegration, device_id: str, co
     return {"region": region["key"], "response": response}
 
 
+def send_smartthings_device_commands(integration: StoredIntegration, device_id: str, commands: list[dict[str, Any]]) -> dict[str, Any]:
+    response = _smartthings_request(
+        integration,
+        f"/v1/devices/{device_id}/commands",
+        method="POST",
+        body={"commands": commands},
+    )
+    return {"response": response}
+
+
 def _sync_tuya_cloud(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:
     token, region = _tuya_get_token_for_integration(integration)
     devices: list[dict[str, Any]] = []
@@ -274,28 +284,46 @@ def _normalize_tuya_device(device: dict[str, Any], region: dict[str, str]) -> Pr
 def _sync_smartthings(integration: StoredIntegration) -> tuple[list[ProviderDevice], dict[str, Any]]:
     response = _smartthings_request(integration, "/v1/devices")
     devices = response.get("items") or []
-    return [_normalize_smartthings_device(device) for device in devices], {"total": len(devices)}
+    normalized_devices = []
+
+    for device in devices:
+        device_id = str(device.get("deviceId") or "").strip()
+        status = {}
+        if device_id:
+            try:
+                status = _smartthings_request(integration, f"/v1/devices/{device_id}/status")
+            except Exception as exc:
+                status = {"error": str(exc)}
+        normalized_devices.append(_normalize_smartthings_device(device, status))
+
+    return normalized_devices, {"total": len(devices)}
 
 
-def _smartthings_request(integration: StoredIntegration, path: str) -> dict[str, Any]:
+def _smartthings_request(
+    integration: StoredIntegration,
+    path: str,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     token = str(integration.secrets.get("token") or "").strip()
     if not token:
         raise ValueError("Token SmartThings obrigatorio.")
-    return _http_json("GET", f"https://api.smartthings.com{path}", headers={"Authorization": f"Bearer {token}"})
+    headers = {"Authorization": f"Bearer {token}"}
+    body_string = None
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+        body_string = json.dumps(body, separators=(",", ":"))
+    return _http_json(method, f"https://api.smartthings.com{path}", headers=headers, body=body_string)
 
 
-def _normalize_smartthings_device(device: dict[str, Any]) -> ProviderDevice:
+def _normalize_smartthings_device(device: dict[str, Any], status: dict[str, Any] | None = None) -> ProviderDevice:
     external_id = str(device.get("deviceId") or "").strip()
     label = device.get("label") or device.get("name") or "Dispositivo SmartThings"
     components = device.get("components") or []
     capabilities = [capability.get("id") for component in components for capability in component.get("capabilities", [])]
-    kind = "sensor"
-    if "switch" in capabilities:
-        kind = "switch"
-    elif "switchLevel" in capabilities or "colorControl" in capabilities:
-        kind = "light"
-    elif "thermostat" in capabilities or "airConditionerMode" in capabilities:
-        kind = "climate"
+    status = status or {}
+    status_summary = _smartthings_status_summary(status)
+    kind = _infer_smartthings_kind(device, capabilities)
 
     entities = [
         ProviderEntity(
@@ -303,7 +331,8 @@ def _normalize_smartthings_device(device: dict[str, Any]) -> ProviderDevice:
             type=kind,
             name=label,
             commandSchema={"capabilities": capabilities},
-            capabilities={"components": components},
+            state=status_summary,
+            capabilities={"components": components, "status": status},
         )
     ]
     return ProviderDevice(
@@ -313,10 +342,65 @@ def _normalize_smartthings_device(device: dict[str, Any]) -> ProviderDevice:
         deviceType=kind,
         manufacturer=device.get("manufacturerName"),
         model=device.get("deviceManufacturerCode") or device.get("mnmn"),
-        capabilities={"capabilities": capabilities, "components": components},
-        payload={"raw": device},
+        capabilities={"capabilities": capabilities, "components": components, "status": status},
+        status=status_summary,
+        payload={"raw": device, "status": status},
         entities=entities,
     )
+
+
+def _infer_smartthings_kind(device: dict[str, Any], capabilities: list[Any]) -> str:
+    text = " ".join(
+        str(device.get(key) or "")
+        for key in ["deviceTypeName", "presentationId", "label", "name", "manufacturerName"]
+    ).lower()
+    categories = {
+        str(category.get("name") or "").lower()
+        for component in device.get("components") or []
+        for category in component.get("categories") or []
+        if isinstance(category, dict)
+    }
+    capability_set = {str(capability) for capability in capabilities}
+
+    if "airconditioner" in categories or "air conditioner" in text or "airconditioner" in text or "airconditionermode" in capability_set:
+        return "climate"
+    if "thermostat" in capability_set or "thermostatCoolingSetpoint" in capability_set or "thermostatHeatingSetpoint" in capability_set:
+        return "climate"
+    if "light" in categories or "switchLevel" in capability_set or "colorControl" in capability_set:
+        return "light"
+    if "switch" in capability_set:
+        return "switch"
+    return "sensor"
+
+
+def _smartthings_status_summary(status: dict[str, Any]) -> dict[str, Any]:
+    components = status.get("components") if isinstance(status, dict) else {}
+    main = components.get("main") if isinstance(components, dict) else {}
+    switch = _nested(main, "switch", "switch", "value")
+    health = _nested(main, "healthCheck", "healthStatus", "value") or _nested(main, "healthCheck", "DeviceWatch-DeviceStatus", "value")
+    online = None
+    if isinstance(health, str):
+        online = health.lower() in {"online", "healthy"}
+    state = "unknown"
+    if isinstance(switch, str):
+        state = switch.lower()
+    elif online is False:
+        state = "off"
+
+    return {
+        "online": online if online is not None else True,
+        "state": state,
+        "raw": status,
+    }
+
+
+def _nested(value: dict[str, Any], *keys: str) -> Any:
+    current: Any = value
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
 
 
 def _test_http_like_provider(integration: StoredIntegration) -> IntegrationTestResult:
@@ -408,6 +492,8 @@ def _switch_codes(status: list[dict[str, Any]]) -> list[str]:
 def _infer_tuya_kind(device: dict[str, Any], switch_code: str | None) -> str:
     text = " ".join(str(device.get(key) or "") for key in ["category", "product_name", "model", "name"]).lower()
     codes = {str(entry.get("code") or "").lower() for entry in device.get("status") or []}
+    if any(term in text for term in ["feeder", "alimentador", "pet feeder"]) or "manual_feed" in codes or "feed_state" in codes:
+        return "FEEDER"
     if any(term in text for term in ["camera", "cam", "ipc"]):
         return "camera"
     if any(term in text for term in ["curtain", "cover", "persiana", "cortina"]):

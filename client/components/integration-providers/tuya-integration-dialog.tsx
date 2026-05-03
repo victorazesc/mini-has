@@ -143,9 +143,7 @@ export function TuyaIntegrationDialog({ open }: { open: boolean }) {
                     </form>
                 </DialogContent>
             </Dialog>
-            <ScanDevicesDialog open={showScanDialog} onOpenChange={setShowScanDialog} provider="tuya_cloud" integrationId={integrationId ?? undefined}>
-                <Button variant="outline" disabled={isPending}>Cancelar</Button>
-            </ScanDevicesDialog>
+            <ScanDevicesDialog open={showScanDialog} onOpenChange={setShowScanDialog} provider="tuya_cloud" integrationId={integrationId ?? undefined} />
         </>
     )
 }       

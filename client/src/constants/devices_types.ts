@@ -1,5 +1,5 @@
 import { IconName } from "lucide-react/dynamic"
-import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds } from "lucide-react"
+import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake } from "lucide-react"
 export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
     {
         label: "Lampada",
@@ -13,13 +13,18 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
     },
     {
         label: "Alimentador de Gatos",
-        value: "FEEDER",
+        value: "feeder",
         icon: 'paw-print',
     },
     {
         label: "Persiana",
         value: "CURTAIN",
         icon: 'blinds',
+    },
+    {
+        label: "Climatizacao",
+        value: "climate",
+        icon: 'snowflake',
     }
 ]
 
@@ -30,4 +35,5 @@ export const DEVICE_ICON_BY_TYPE = {
     CAM: Camera,
     FEEDER: PawPrint,
     CURTAIN: Blinds,
+    climate: Snowflake,
 }

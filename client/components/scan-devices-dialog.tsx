@@ -9,16 +9,19 @@ import { DiscoveredDeviceCard } from "./discovered-device-card";
 import { useRooms } from "@/hooks/use-rooms";
 import { useAddInboxDevice, useIgnoreInboxDevice } from "@/hooks/use-inbox-devices";
 import { DiscoveredDevice } from "@/src/services/inbox-devices.service";
+import { useEffect, useRef } from "react";
 
 export function ScanDevicesDialog({
     children,
+    open,
+    onOpenChange,
     provider,
     integrationId,
 }: {
-    children: React.ReactElement;
+    children?: React.ReactElement;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
-    provider: string;
+    provider?: string;
     integrationId?: number;
 }) {
     const { mutateAsync: addInboxDevice, isPending: addDeviceLoading } = useAddInboxDevice();
@@ -36,12 +39,14 @@ export function ScanDevicesDialog({
         data: inboxDevices,
         isLoading: isLoadingInboxDevices,
         error: errorInboxDevices,
+        refetch: refetchInboxDevices,
     } = useInboxDevices({
         status: "pending",
         provider,
     });
 
     const { data: rooms } = useRooms();
+    const autoSyncedIntegrationIdRef = useRef<number | null>(null);
 
     const handleSyncIntegration = async () => {
         try {
@@ -50,7 +55,7 @@ export function ScanDevicesDialog({
                 return;
             }
             await syncIntegration(integrationId);
-            toast.success("Integração sincronizada com sucesso");
+            await refetchInboxDevices();
         } catch (error) {
             toast.error(
                 error instanceof Error
@@ -59,6 +64,15 @@ export function ScanDevicesDialog({
             );
         }
     };
+
+    useEffect(() => {
+        if (!open || !integrationId || autoSyncedIntegrationIdRef.current === integrationId) {
+            return;
+        }
+
+        autoSyncedIntegrationIdRef.current = integrationId;
+        void handleSyncIntegration();
+    }, [open, integrationId]);
 
     const handleAddInboxDevice = async (device: DiscoveredDevice, roomId?: number) => {
         await addInboxDevice({ device, roomId });
@@ -71,10 +85,11 @@ export function ScanDevicesDialog({
     };
 
     const devices = inboxDevices ?? [];
+    const isControlled = open !== undefined;
 
     return (
-        <Dialog>
-            <DialogTrigger render={children as React.ReactElement} nativeButton={false} />
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            {!isControlled && children ? <DialogTrigger render={children} nativeButton={false} /> : null}
 
             <DialogContent className="max-w-screen min-w-full h-screen content-start">
                 <Button
@@ -107,7 +122,7 @@ export function ScanDevicesDialog({
                     </div>
                 )}
 
-                {!isLoadingInboxDevices && devices.length === 0 && (
+                {!isLoadingInboxDevices && !isPendingSyncIntegration && devices.length === 0 && (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <p className="text-sm font-medium">
                             Nenhum dispositivo pendente encontrado

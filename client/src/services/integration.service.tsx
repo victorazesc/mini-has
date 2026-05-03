@@ -34,7 +34,7 @@ export async function createIntegration(data: { name?: string; type?: string, co
     return response.json() as Promise<Integration>;
 }
 
-export async function syncIntegration(integration_id: number) {
+export async function syncIntegration(integration_id: number): Promise<SyncIntegrationResult> {
     const response = await fetch(`/api/integrations/${integration_id}/sync`, {
         method: "POST",
     });
@@ -43,5 +43,11 @@ export async function syncIntegration(integration_id: number) {
         throw new Error(await response.json().then(data => data.message));
     }
 
-    return response.json() as Promise<SyncIntegrationResult>;
+    const result = await response.json() as SyncIntegrationResult;
+
+    if (!result.ok) {
+        throw new Error(result.message ?? "Erro ao sincronizar integração");
+    }
+
+    return result;
 }

@@ -97,7 +97,7 @@ export default function Devices() {
         </section>
         {/* Total devices and active devices */}
         <section className="flex flex-row gap-4">
-          <ScanDevicesDialog provider={"tuya_cloud"} integrationId={0}>
+          <ScanDevicesDialog integrationId={0}>
             <Card className="w-full">
               <CardHeader>
                 <CardDescription>Total de dispositivos</CardDescription>

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createIntegration, syncIntegration } from "../src/services/integration.service";
 import { toast } from "sonner";
 
@@ -20,9 +20,12 @@ export function useIntegrations() {
 }
 
 export function useSyncIntegration() {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: (integration_id: number) => syncIntegration(integration_id),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["inbox-devices"] });
             toast.success("Integração sincronizada com sucesso");
         },
         onError: (error) => {
