@@ -1,5 +1,12 @@
 # Mini-HAS Server API
 
+## Como rodar
+
+```bash
+npm install
+npm run start:dev
+```
+
 Esta API separa a casa inteligente em quatro camadas:
 
 1. **Discovery**: acha coisas na LAN.

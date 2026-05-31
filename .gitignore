@@ -3,6 +3,10 @@
 # dependencies
 node_modules/
 **/node_modules/
+node_modules
+**/node_modules
+*.nodevalt-backup-*
+**/*.nodevalt-backup-*
 .pnp/
 .pnp.*
 .yarn/

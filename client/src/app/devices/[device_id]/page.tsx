@@ -4,7 +4,7 @@ import { useDevice, useSendCommand } from "@/hooks/use-devices";
 import { cn } from "@/lib/utils";
 import { Building, Circle, Home, Power, SettingsIcon } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Device } from "@/src/services/devices.service";
@@ -59,6 +59,7 @@ export default function DevicePage() {
     const { data: device } = useDevice(parseInt(device_id as string));
     const { mutate: sendCommand } = useSendCommand();
     const { setTitle, setRightAction } = useHeaderTitle();
+    const queriedDeviceIdRef = useRef<number | null>(null);
     const deviceName = device?.name ?? "";
     const deviceRoomName = device?.roomName ?? "";
     const deviceOnline = device?.status?.online ?? false;
@@ -102,20 +103,27 @@ export default function DevicePage() {
                 <SettingsIcon className="size-5" />
             </Button>
         );
-
-        sendCommand({
-            deviceId: device?.id ?? 0,
-            command: {
-                command: "query",
-                params: {},
-            },
-        });
-
+        
         return () => {
             setTitle(null);
             setRightAction(null);
         };
     }, [deviceName, deviceRoomName, deviceOnline, setRightAction, setTitle]);
+
+    useEffect(() => {
+        if (!device?.id || queriedDeviceIdRef.current === device.id) {
+            return;
+        }
+
+        queriedDeviceIdRef.current = device.id;
+        sendCommand({
+            deviceId: device.id,
+            command: {
+                command: "query",
+                params: {},
+            },
+        });
+    }, [device?.id, sendCommand]);
 
     if (!device) {
         return <div>Device not found</div>;
@@ -216,7 +224,7 @@ export default function DevicePage() {
                     {
                         device?.deviceType === "climate" && (
                             <section className="flex-1">
-                                <ClimateControl device={device as Device & { status: DeviceStatus }} />
+                                <ClimateControl key={device.id} device={device as Device & { status: DeviceStatus }} />
                             </section>
                         )}
                 </div>

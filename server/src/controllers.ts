@@ -1,0 +1,328 @@
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post, Query, Res } from '@nestjs/common';
+import { CommandsService } from './commands';
+import { DiscoveryService } from './discovery';
+import { ProvidersService } from './providers';
+import { HomeService } from './services';
+import { CommandRequest, CreateDiscoveryJobRequest, InboxStatus, IntegrationStatus, IntegrationType, JsonObject, StoredIntegration } from './types';
+
+@Controller()
+export class AppController {
+  @Get('health')
+  health() {
+    return { status: 'ok' };
+  }
+}
+
+@Controller('rooms')
+export class RoomsController {
+  constructor(private readonly home: HomeService) {}
+
+  @Get()
+  listRooms() {
+    return this.home.listRooms();
+  }
+
+  @Get(':room_id')
+  getRoom(@Param('room_id') roomId: string) {
+    const room = this.home.getRoom(Number(roomId));
+    if (!room) throw notFound('Room not found');
+    return room;
+  }
+
+  @Post()
+  createRoom(@Body() body: JsonObject) {
+    return this.home.createRoom(body);
+  }
+
+  @Patch(':room_id')
+  updateRoom(@Param('room_id') roomId: string, @Body() body: JsonObject) {
+    const room = this.home.updateRoom(Number(roomId), body);
+    if (!room) throw notFound('Room not found');
+    return room;
+  }
+
+  @Delete(':room_id')
+  deleteRoom(@Param('room_id') roomId: string) {
+    if (!this.home.deleteRoom(Number(roomId))) throw notFound('Room not found');
+    return { deleted: true };
+  }
+}
+
+@Controller('devices')
+export class DevicesController {
+  constructor(
+    private readonly home: HomeService,
+    private readonly commands: CommandsService,
+  ) {}
+
+  @Get()
+  listDevices() {
+    return this.home.listDevices();
+  }
+
+  @Post('auto-link-local')
+  autoLinkLocalDevices() {
+    return this.home.autoLinkLocalDevices();
+  }
+
+  @Post()
+  createDevice(@Body() body: JsonObject) {
+    return this.home.createDevice(body);
+  }
+
+  @Get(':device_id')
+  getDevice(@Param('device_id') deviceId: string) {
+    const device = this.home.getDevice(Number(deviceId));
+    if (!device) throw notFound('Device not found');
+    return device;
+  }
+
+  @Patch(':device_id')
+  updateDevice(@Param('device_id') deviceId: string, @Body() body: JsonObject) {
+    const device = this.home.updateDevice(Number(deviceId), body);
+    if (!device) throw notFound('Device not found');
+    return device;
+  }
+
+  @Post(':device_id/link-local')
+  linkLocalDevice(@Param('device_id') deviceId: string, @Body() body: JsonObject) {
+    const device = this.home.linkLocalDevice(Number(deviceId), body.localDeviceKey, body.payload || {});
+    if (!device) throw notFound('Device not found');
+    return device;
+  }
+
+  @Post(':device_id/auto-link-local')
+  autoLinkLocalDevice(@Param('device_id') deviceId: string) {
+    const device = this.home.autoLinkLocalDevice(Number(deviceId));
+    if (!device) throw notFound('Device not found');
+    return device;
+  }
+
+  @Post(':device_id/command')
+  async commandDevice(@Param('device_id') deviceId: string, @Body() body: CommandRequest) {
+    const item = this.home.getDeviceWithSecrets(Number(deviceId));
+    if (!item) throw notFound('Device not found');
+    const result = await this.commands.executeDeviceCommand(item.device, item.secrets, { command: body.command, params: body.params || {} });
+    this.home.updateDeviceRuntimeState(Number(deviceId), result);
+    this.home.logDeviceCommand(Number(deviceId), { command: body.command, params: body.params || {} }, result);
+    return result;
+  }
+
+  @Delete(':device_id')
+  deleteDevice(@Param('device_id') deviceId: string) {
+    if (!this.home.deleteDevice(Number(deviceId))) throw notFound('Device not found');
+    return { deleted: true };
+  }
+}
+
+@Controller('entities')
+export class EntitiesController {
+  constructor(private readonly home: HomeService) {}
+
+  @Get()
+  listEntities() {
+    return this.home.listEntities();
+  }
+
+  @Get(':entity_id')
+  getEntity(@Param('entity_id') entityId: string) {
+    const entity = this.home.getEntity(Number(entityId));
+    if (!entity) throw notFound('Entity not found');
+    return entity;
+  }
+
+  @Post(':entity_id/command')
+  commandEntity(@Param('entity_id') entityId: string, @Body() body: CommandRequest) {
+    const result = this.home.logEntityCommand(Number(entityId), { command: body.command, params: body.params || {} });
+    if (!result) throw notFound('Entity not found');
+    return result;
+  }
+}
+
+@Controller('inbox')
+export class InboxController {
+  constructor(private readonly home: HomeService) {}
+
+  @Get('devices')
+  listInboxDevices(@Query('status') status?: InboxStatus, @Query('provider') provider?: string) {
+    return this.home.listInboxDevices(status || undefined, provider || undefined);
+  }
+
+  @Post('devices/:inbox_id/accept')
+  acceptInboxDevice(@Param('inbox_id') inboxId: string, @Body() body: JsonObject) {
+    const item = this.home.getInboxPayloadWithSecrets(Number(inboxId));
+    if (!item) throw notFound('Inbox device not found');
+    const device = this.home.acceptInboxDevice(item.inbox, item.secrets, body.name, body.roomId);
+    if (body.createEntities ?? true) {
+      this.home.createEntitiesForDevice(device.id, device.provider, device.externalId, item.inbox.payload.entities || []);
+    }
+    this.home.markInboxStatus(Number(inboxId), 'accepted');
+    return device;
+  }
+
+  @Post('devices/:inbox_id/ignore')
+  ignoreInboxDevice(@Param('inbox_id') inboxId: string) {
+    const inbox = this.home.markInboxStatus(Number(inboxId), 'ignored');
+    if (!inbox) throw notFound('Inbox device not found');
+    return inbox;
+  }
+}
+
+@Controller('integration-providers')
+export class IntegrationProvidersController {
+  constructor(private readonly providers: ProvidersService) {}
+
+  @Get()
+  listProviderDefinitions() {
+    return this.providers.listProviderDefinitions();
+  }
+}
+
+@Controller('integrations')
+export class IntegrationsController {
+  constructor(
+    private readonly home: HomeService,
+    private readonly providers: ProvidersService,
+  ) {}
+
+  @Get()
+  listIntegrations() {
+    return this.home.listIntegrations().map((integration) => this.home.publicIntegration(integration));
+  }
+
+  @Get(':integration_id')
+  getIntegration(@Param('integration_id') integrationId: string) {
+    const integration = this.home.getIntegration(Number(integrationId));
+    if (!integration) throw notFound('Integration not found');
+    return this.home.publicIntegration(integration);
+  }
+
+  @Post()
+  async createIntegration(@Body() body: JsonObject) {
+    const type = body.type as IntegrationType;
+    const [config, secrets] = this.providers.splitProviderConfig(type, body.config || {});
+    if (type === 'tuya_cloud') {
+      const accessId = String(config.accessId || '').trim();
+      if (accessId) config.accessId = accessId;
+      if (this.home.findIntegrationByConfigValue(type, 'accessId', accessId)) {
+        throw new HttpException({ detail: 'Ja existe uma integracao Tuya Cloud com este Access ID.' }, HttpStatus.CONFLICT);
+      }
+    }
+
+    let status: IntegrationStatus = 'created';
+    if (body.testOnCreate ?? body.test_on_create ?? true) {
+      const now = new Date().toISOString();
+      const pending: StoredIntegration = { id: 0, type, name: body.name, status: 'created', config, secrets, createdAt: now, updatedAt: now };
+      const result = await this.providers.testProvider(pending);
+      if (!result.ok) throw new HttpException({ detail: result.message }, HttpStatus.BAD_REQUEST);
+      status = result.status;
+    }
+
+    return this.home.publicIntegration(this.home.createIntegration(body, config, secrets, status));
+  }
+
+  @Post(':integration_id/test')
+  async testIntegration(@Param('integration_id') integrationId: string) {
+    const integration = this.home.getIntegration(Number(integrationId));
+    if (!integration) throw notFound('Integration not found');
+    const result = await this.providers.testProvider(integration);
+    this.home.updateIntegrationStatus(Number(integrationId), result.status, result.ok ? null : result.message);
+    return { ...result, details: result.details || {} };
+  }
+
+  @Post(':integration_id/sync')
+  async syncIntegration(@Param('integration_id') integrationId: string) {
+    const id = Number(integrationId);
+    const integration = this.home.getIntegration(id);
+    if (!integration) throw notFound('Integration not found');
+    this.home.updateIntegrationStatus(id, 'syncing');
+    try {
+      const [devices, details] = await this.providers.syncProvider(integration);
+      const inboxIds: number[] = [];
+      const inboxDevices = [];
+      for (const device of devices) {
+        const { secrets, ...payload } = device;
+        const inboxId = this.home.upsertInboxItem('integration', id, device.externalId, payload, secrets || {}, device.ip ? 0.75 : 0.5);
+        inboxIds.push(inboxId);
+        const inboxDevice = this.home.getInboxDevice(inboxId);
+        if (inboxDevice) inboxDevices.push(inboxDevice);
+      }
+      this.home.updateIntegrationStatus(id, 'connected', null, new Date().toISOString());
+      return {
+        ok: true,
+        integrationId: id,
+        imported: inboxIds.length,
+        inboxIds,
+        inboxDevices,
+        message: 'Sync concluido.',
+        details,
+      };
+    } catch (error) {
+      const message = messageFrom(error);
+      this.home.updateIntegrationStatus(id, 'error', message);
+      return { ok: false, integrationId: id, imported: 0, inboxIds: [], message };
+    }
+  }
+
+  @Delete(':integration_id')
+  deleteIntegration(@Param('integration_id') integrationId: string) {
+    if (!this.home.deleteIntegration(Number(integrationId))) throw notFound('Integration not found');
+    return { deleted: true };
+  }
+}
+
+@Controller('discovery')
+export class DiscoveryController {
+  constructor(private readonly discovery: DiscoveryService) {}
+
+  @Post('jobs')
+  createJob(@Body() body: CreateDiscoveryJobRequest) {
+    const job = this.discovery.createDiscoveryJob(body);
+    void this.discovery.runDiscoveryJob(job.id, body);
+    return { job_id: job.id, status: job.status };
+  }
+
+  @Get('jobs')
+  listJobs() {
+    return this.discovery.listJobs();
+  }
+
+  @Get('jobs/:job_id')
+  getJob(@Param('job_id') jobId: string) {
+    const job = this.discovery.getJob(jobId);
+    if (!job) throw notFound('Discovery job not found');
+    return job;
+  }
+
+  @Post('scan')
+  async scanNow(@Body() body: CreateDiscoveryJobRequest, @Res({ passthrough: true }) response: any) {
+    const { scanId, result } = await this.discovery.scanNow(body);
+    response.setHeader('X-Discovery-Scan-Id', String(scanId));
+    return result;
+  }
+
+  @Get('scans')
+  listScans() {
+    return this.discovery.listSavedScans();
+  }
+
+  @Get('scans/:scan_id')
+  getScan(@Param('scan_id') scanId: string) {
+    const scan = this.discovery.getSavedScan(Number(scanId));
+    if (!scan) throw notFound('Discovery scan not found');
+    return scan;
+  }
+
+  @Get('devices')
+  listDevices() {
+    return this.discovery.listSavedDevices();
+  }
+}
+
+function notFound(detail: string): HttpException {
+  return new HttpException({ detail }, HttpStatus.NOT_FOUND);
+}
+
+function messageFrom(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

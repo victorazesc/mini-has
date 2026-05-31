@@ -1,8 +1,9 @@
 import { useRef } from "react";
-import { ArrowRightLeft, ArrowUpDown, Bed, Circle, CircleGauge, CircleSlash, DropletOff, Fan, Gauge, Minus, Move, Plus, Power, RepeatOff, Rocket, Snowflake, VolumeOff, Wind } from "lucide-react";
+import { ArrowRightLeft, ArrowUpDown, Bed, Circle, CircleGauge, CircleSlash, DropletOff, Fan, Minus, Move, Plus, Power, Rocket, Snowflake, VolumeOff, Wind } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const climateModes = {
     auto: {
@@ -20,14 +21,14 @@ const climateModes = {
         label: "Seco",
         value: "dry",
     },
-    fan: {
+    wind: {
         icon: <Fan className="size-6" />,
         label: "Ventilador",
-        value: "fan",
+        value: "wind",
     },
     off: {
         icon: <Power className="size-6" />,
-        label: "Desligar",
+        label: "Desligado",
         value: "off",
     },
 } as const;
@@ -79,10 +80,10 @@ const climateFanDirections = {
 } as const;
 
 const climatePredefinedModes = {
-    none: {
+    off: {
         icon: <Circle className="size-6" />,
         label: "Nenhum",
-        value: "none",
+        value: "off",
     },
     sleep: {
         icon: <Bed className="size-6" />,
@@ -118,7 +119,9 @@ export type ClimateFanDirection = keyof typeof climateFanDirections;
 export type ClimatePredefinedMode = keyof typeof climatePredefinedModes;
 
 type ClimateDialProps = {
+    isLoading?: boolean;
     value: number;
+    currentTemperature?: number | null;
     min?: number;
     max?: number;
     unit?: string;
@@ -128,16 +131,17 @@ type ClimateDialProps = {
     fanDirection?: ClimateFanDirection;
     predefinedMode?: ClimatePredefinedMode;
     onChangeMode?: (mode: ClimateMode) => void;
-    onChangeFanMode?: () => void;
-    onChangeFanDirection?: () => void;
-    onChangePredefinedMode?: () => void;
-    onIncrease?: () => void;
-    onDecrease?: () => void;
+    onChangeFanMode?: (mode: ClimateFanMode) => void;
+    onChangeFanDirection?: (direction: ClimateFanDirection) => void;
+    onChangePredefinedMode?: (mode: ClimatePredefinedMode) => void;
     onChange?: (value: number) => void;
+    onCommit?: (value: number) => void;
 };
 
 export function ClimateDial({
+    isLoading = false,
     value,
+    currentTemperature,
     min = 16,
     max = 30,
     unit = "°C",
@@ -145,18 +149,19 @@ export function ClimateDial({
     mode = "auto",
     fanMode = "auto",
     fanDirection = "fixed",
-    predefinedMode = "none",
+    predefinedMode = "off",
     onChangeMode,
     onChangeFanMode,
     onChangeFanDirection,
     onChangePredefinedMode,
-    onIncrease,
-    onDecrease,
     onChange,
+    onCommit,
 }: ClimateDialProps) {
     const svgRef = useRef<SVGSVGElement | null>(null);
+    const controlsDisabled = status === "off";
     const safeRange = Math.max(max - min, 1);
     const percentage = Math.min(Math.max((value - min) / safeRange, 0), 1);
+    const pendingValueRef = useRef<number | null>(null);
 
     /**
      * Sistema de ângulos:
@@ -201,7 +206,25 @@ export function ClimateDial({
         ].join(" ");
     };
 
+    const applyTemperatureChange = (nextValue: number, commit = false) => {
+        if (controlsDisabled) return value;
+
+        const clampedValue = Math.min(Math.max(nextValue, min), max);
+
+        pendingValueRef.current = clampedValue;
+        onChange?.(clampedValue);
+
+        if (commit) {
+            onCommit?.(clampedValue);
+            pendingValueRef.current = null;
+        }
+
+        return clampedValue;
+    };
+
     const getAngleFromPointer = (event: React.PointerEvent<SVGElement>) => {
+        if (controlsDisabled) return null;
+
         const svg = svgRef.current;
         if (!svg) return null;
 
@@ -224,27 +247,27 @@ export function ClimateDial({
     };
 
     const updateValueFromPointer = (event: React.PointerEvent<SVGElement>) => {
-        if (!onChange) return;
+        if (!onChange) return null;
 
         const angle = getAngleFromPointer(event);
-        if (angle === null) return;
+        if (angle === null) return null;
 
         const nextPercentage = (angle - startAngle) / (endAngle - startAngle);
         const rawValue = min + nextPercentage * safeRange;
         const nextValue = Math.round(rawValue);
-
-        onChange(Math.min(Math.max(nextValue, min), max));
+        return applyTemperatureChange(nextValue);
     };
 
     const handlePointerDown = (event: React.PointerEvent<SVGElement>) => {
-        if (!onChange) return;
+        if (!onChange || controlsDisabled) return;
 
+        pendingValueRef.current = value;
         event.currentTarget.setPointerCapture(event.pointerId);
         updateValueFromPointer(event);
     };
 
     const handlePointerMove = (event: React.PointerEvent<SVGElement>) => {
-        if (!onChange || !event.currentTarget.hasPointerCapture(event.pointerId)) {
+        if (!onChange || controlsDisabled || !event.currentTarget.hasPointerCapture(event.pointerId)) {
             return;
         }
 
@@ -255,9 +278,57 @@ export function ClimateDial({
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
         }
+
+        if (pendingValueRef.current !== null) {
+            onCommit?.(pendingValueRef.current);
+            pendingValueRef.current = null;
+        }
+    };
+
+    const handleDecrease = () => {
+        applyTemperatureChange(value - 1, true);
+    };
+
+    const handleIncrease = () => {
+        applyTemperatureChange(value + 1, true);
     };
 
     const thumb = polarToCartesian(currentAngle);
+    const formattedCurrentTemperature = typeof currentTemperature === "number" && Number.isFinite(currentTemperature)
+        ? `${Math.round(currentTemperature)}${unit}`
+        : "--";
+
+    if (isLoading) {
+        return (
+            <Card className="w-fit border-zinc-800 bg-[#1f1f1f] shadow-none overflow-hidden">
+                <CardHeader className="w-full items-center text-center mb-0 pb-0">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-8 w-20" />
+                </CardHeader>
+                <CardContent className="relative flex min-h-[320px] flex-col items-center justify-center mt-0 pt-0">
+                    <div className="relative flex h-[320px] w-[340px] -translate-y-3 items-center justify-center">
+                        <Skeleton className="size-64 rounded-full" />
+                        <div className="absolute flex flex-col items-center gap-4">
+                            <Skeleton className="h-6 w-20" />
+                            <Skeleton className="h-24 w-32" />
+                        </div>
+                    </div>
+                    <div className="absolute bottom-0 flex items-center gap-10">
+                        <Skeleton className="size-14 rounded-full" />
+                        <Skeleton className="size-14 rounded-full" />
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <div className="flex items-center gap-4 justify-between w-full">
+                        <Skeleton className="h-14 w-44 rounded-md" />
+                        <Skeleton className="h-14 w-44 rounded-md" />
+                        <Skeleton className="h-14 w-44 rounded-md" />
+                        <Skeleton className="h-14 w-44 rounded-md" />
+                    </div>
+                </CardFooter>
+            </Card>
+        );
+    }
 
     return (
         <Card className="w-fit border-zinc-800 bg-[#1f1f1f] shadow-none overflow-hidden">
@@ -265,7 +336,7 @@ export function ClimateDial({
                 <CardDescription >
                     <h3 className="text-sm font-medium">Temperatura Atual</h3>
                 </CardDescription>
-                <CardTitle>20°C</CardTitle>
+                <CardTitle>{formattedCurrentTemperature}</CardTitle>
             </CardHeader>
             <CardContent className="relative flex min-h-[320px] flex-col items-center justify-center mt-0 pt-0">
                 <div className="relative h-[320px] w-[340px] -translate-y-3">
@@ -304,8 +375,8 @@ export function ClimateDial({
                             fill="#f4f4f5"
                             stroke="rgba(255,255,255,0.45)"
                             strokeWidth="4"
-                            className="cursor-grab touch-none active:cursor-grabbing"
-                            pointerEvents="all"
+                            className={controlsDisabled ? "touch-none opacity-60" : "cursor-grab touch-none active:cursor-grabbing"}
+                            pointerEvents={controlsDisabled ? "none" : "all"}
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
@@ -316,8 +387,8 @@ export function ClimateDial({
                             cy={thumb.y}
                             r="34"
                             fill="transparent"
-                            className="cursor-grab touch-none active:cursor-grabbing"
-                            pointerEvents="all"
+                            className={controlsDisabled ? "touch-none" : "cursor-grab touch-none active:cursor-grabbing"}
+                            pointerEvents={controlsDisabled ? "none" : "all"}
                             onPointerDown={handlePointerDown}
                             onPointerMove={handlePointerMove}
                             onPointerUp={handlePointerUp}
@@ -358,7 +429,8 @@ export function ClimateDial({
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={onDecrease}
+                        onClick={handleDecrease}
+                        disabled={controlsDisabled}
                         className="h-14 w-14 rounded-full border-zinc-500 bg-transparent text-zinc-200 hover:bg-zinc-800"
                     >
                         <Minus className="h-6 w-6" />
@@ -367,7 +439,8 @@ export function ClimateDial({
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={onIncrease}
+                        onClick={handleIncrease}
+                        disabled={controlsDisabled}
                         className="h-14 w-14 rounded-full border-zinc-500 bg-transparent text-zinc-200 hover:bg-zinc-800"
                     >
                         <Plus className="h-6 w-6" />
@@ -406,7 +479,7 @@ export function ClimateDial({
                         </Select>
                     </div>
                     <div className="flex flex-col items-center gap-2">
-                        <Select value={fanMode} onValueChange={onChangeFanMode}>
+                        <Select disabled={controlsDisabled} value={fanMode} onValueChange={(value) => onChangeFanMode?.(value as ClimateFanMode)}>
                             <SelectTrigger className="rounded-md h-14!">
                                 <SelectValue>
                                     {(value) => {
@@ -435,7 +508,7 @@ export function ClimateDial({
                         </Select>
                     </div>
                     <div className="flex flex-col items-center gap-2">
-                        <Select value={fanDirection} onValueChange={onChangeFanDirection}>
+                        <Select disabled={controlsDisabled} value={fanDirection} onValueChange={(value) => onChangeFanDirection?.(value as ClimateFanDirection)}>
                             <SelectTrigger className="rounded-md h-14!">
                                 <SelectValue>
                                     {(value) => {
@@ -464,7 +537,7 @@ export function ClimateDial({
                         </Select>
                     </div>
                     <div className="flex flex-col items-center gap-2">
-                        <Select value={predefinedMode} onValueChange={onChangePredefinedMode}>
+                        <Select disabled={controlsDisabled} value={predefinedMode} onValueChange={(value) => onChangePredefinedMode?.(value as ClimatePredefinedMode)}>
                             <SelectTrigger className="rounded-md h-14!">
                                 <SelectValue>
                                     {(value) => {
