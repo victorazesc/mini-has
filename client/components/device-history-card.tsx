@@ -261,10 +261,17 @@ function commandStatusLabel(status: string) {
 function historyMeta(item: DeviceHistoryEntry) {
     const parts: string[] = []
     const payload = isRecord(item.payload) ? item.payload : null
+    const scene = historySceneSource(item)
 
     if (item.kind === "command") {
         const resultPayload = isRecord(item.result) && isRecord(item.result.result) ? item.result.result : null
         const params = isRecord(item.command) && isRecord(item.command.params) ? item.command.params : null
+
+        if (scene?.sceneName) {
+            parts.push(`Cena ${String(scene.sceneName)}`)
+        } else if (scene?.sceneId) {
+            parts.push(`Cena #${String(scene.sceneId)}`)
+        }
 
         if (payload?.scope === "entity" && payload.entityName) {
             parts.push(String(payload.entityName))
@@ -313,10 +320,32 @@ function historyMeta(item: DeviceHistoryEntry) {
 }
 
 function sourceBadge(item: DeviceHistoryEntry) {
+    if (historySceneSource(item)) return "Cena"
     const payload = isRecord(item.payload) ? item.payload : null
     if (payload?.scope === "entity") return "Entidade"
     if (payload?.scope === "device") return "Principal"
     if (item.kind === "command") return "Principal"
+    return null
+}
+
+function historySceneSource(item: DeviceHistoryEntry) {
+    const payload = isRecord(item.payload) ? item.payload : null
+    if (payload?.sourceType === "scene" || payload?.sceneName || payload?.sceneId) return payload
+
+    const command = isRecord(item.command) ? item.command : null
+    if (isRecord(command?.source) && (command.source.type === "scene" || command.source.sceneName || command.source.sceneId)) {
+        return command.source
+    }
+
+    const resultPayload = isRecord(item.result) && isRecord(item.result.result) ? item.result.result : null
+    if (isRecord(resultPayload?.source) && (resultPayload.source.type === "scene" || resultPayload.source.sceneName || resultPayload.source.sceneId)) {
+        return resultPayload.source
+    }
+
+    if (isRecord(resultPayload?.scene)) {
+        return resultPayload.scene
+    }
+
     return null
 }
 

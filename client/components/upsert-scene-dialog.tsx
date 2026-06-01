@@ -89,6 +89,8 @@ function buildInitialValues(scene?: Scene): SceneFormValues {
 export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
     const [open, setOpen] = useState(false)
     const [values, setValues] = useState<SceneFormValues>(() => buildInitialValues(scene))
+    const [deviceQuery, setDeviceQuery] = useState("")
+    const [roomFilter, setRoomFilter] = useState("")
     const [formError, setFormError] = useState<string | null>(null)
     const [errors, setErrors] = useState<Record<string, string>>({})
     const { data: devices = [] } = useDevices()
@@ -103,10 +105,22 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
         () => [...devices].sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
         [devices],
     )
+    const filteredDeviceOptions = useMemo(() => {
+        const search = deviceQuery.trim().toLowerCase()
+
+        return deviceOptions.filter((device) => {
+            const matchesRoom = !roomFilter || String(device.roomId ?? "") === roomFilter
+            const haystack = `${device.name} ${device.roomName ?? ""} ${device.deviceType ?? ""}`.toLowerCase()
+            const matchesSearch = !search || haystack.includes(search)
+            return matchesRoom && matchesSearch
+        })
+    }, [deviceOptions, deviceQuery, roomFilter])
 
     const handleOpenChange = (nextOpen: boolean) => {
         if (nextOpen) {
             setValues(buildInitialValues(scene))
+            setDeviceQuery("")
+            setRoomFilter("")
             setErrors({})
             setFormError(null)
         }
@@ -129,6 +143,16 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
         }))
     }
 
+    const duplicateAction = (index: number) => {
+        setValues((current) => {
+            const nextActions = [...current.actions]
+            const target = current.actions[index]
+            nextActions.splice(index + 1, 0, { ...target, key: `duplicate-${Date.now()}-${index}` })
+            return { ...current, actions: nextActions }
+        })
+        setFormError(null)
+    }
+
     const removeAction = (index: number) => {
         setValues((current) => ({
             ...current,
@@ -145,6 +169,13 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
             nextActions.splice(nextIndex, 0, item)
             return { ...current, actions: nextActions }
         })
+    }
+
+    const availableDevicesForAction = (deviceId?: number) => {
+        const selectedDevice = deviceOptions.find((device) => device.id === deviceId)
+        if (!selectedDevice) return filteredDeviceOptions
+        if (filteredDeviceOptions.some((device) => device.id === selectedDevice.id)) return filteredDeviceOptions
+        return [selectedDevice, ...filteredDeviceOptions]
     }
 
     const toPayload = (): UpsertScenePayload => {
@@ -167,6 +198,26 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
             }
             setErrors(nextErrors)
             throw new Error("Corrija os campos obrigatorios da cena.")
+        }
+
+        const nextErrors: Record<string, string> = {}
+
+        parsed.data.actions.forEach((action, index) => {
+            if (!deviceOptions.some((device) => device.id === action.deviceId)) {
+                nextErrors[`actions.${index}.deviceId`] = "Selecione um dispositivo válido"
+            }
+
+            if (action.command === "set_position") {
+                const position = Number(action.params.position)
+                if (!Number.isFinite(position) || position < 0 || position > 100) {
+                    nextErrors[`actions.${index}.params.position`] = "Informe uma posição entre 0 e 100"
+                }
+            }
+        })
+
+        if (Object.keys(nextErrors).length) {
+            setErrors(nextErrors)
+            throw new Error("Corrija os campos obrigatórios da cena.")
         }
 
         setErrors({})
@@ -267,9 +318,50 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                                 </Button>
                             </div>
 
+                            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                                <Field>
+                                    <Label htmlFor="scene-device-search">Buscar dispositivo</Label>
+                                    <Input
+                                        id="scene-device-search"
+                                        placeholder="Nome, cômodo ou tipo"
+                                        value={deviceQuery}
+                                        disabled={isBusy}
+                                        onChange={(event) => setDeviceQuery(event.target.value)}
+                                    />
+                                </Field>
+                                <Field>
+                                    <Label htmlFor="scene-room-filter">Filtrar por cômodo</Label>
+                                    <select
+                                        id="scene-room-filter"
+                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                                        value={roomFilter}
+                                        disabled={isBusy}
+                                        onChange={(event) => setRoomFilter(event.target.value)}
+                                    >
+                                        <option value="">Todos os cômodos</option>
+                                        {rooms.map((room) => (
+                                            <option key={room.id} value={String(room.id)}>{room.name}</option>
+                                        ))}
+                                    </select>
+                                </Field>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                                {filteredDeviceOptions.length} dispositivo(s) visíveis para seleção.
+                            </p>
+
+                            <FieldError>{errors.actions}</FieldError>
+
+                            {filteredDeviceOptions.length === 0 ? (
+                                <div className="rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
+                                    Nenhum dispositivo encontrado com os filtros atuais.
+                                </div>
+                            ) : null}
+
                             {values.actions.map((action, index) => {
                                 const selectedDevice = deviceOptions.find((device) => device.id === action.deviceId)
                                 const commands = commandOptions[deviceGroup(selectedDevice?.deviceType)]
+                                const availableDevices = availableDevicesForAction(action.deviceId)
 
                                 return (
                                     <div key={action.key} className="rounded-2xl border p-4">
@@ -279,6 +371,9 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                                                 <p className="text-xs text-muted-foreground">{selectedDevice?.name ?? "Selecione um dispositivo"}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                <Button type="button" size="sm" variant="outline" disabled={isBusy} onClick={() => duplicateAction(index)}>
+                                                    Duplicar
+                                                </Button>
                                                 <Button type="button" size="icon" variant="outline" disabled={isBusy || index === 0} onClick={() => moveAction(index, -1)}>
                                                     <ArrowUpIcon className="size-4" />
                                                 </Button>
@@ -297,15 +392,20 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                                                 <select
                                                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
                                                     value={action.deviceId ? String(action.deviceId) : ""}
-                                                    disabled={isBusy}
+                                                    disabled={isBusy || availableDevices.length === 0}
                                                     onChange={(event) => {
+                                                        if (!event.target.value) {
+                                                            updateAction(index, { deviceId: undefined, command: "turn_on" })
+                                                            return
+                                                        }
+
                                                         const deviceId = Number(event.target.value)
                                                         const device = deviceOptions.find((item) => item.id === deviceId)
                                                         updateAction(index, { deviceId, command: defaultCommand(device?.deviceType) })
                                                     }}
                                                 >
                                                     <option value="">Selecione</option>
-                                                    {deviceOptions.map((device) => (
+                                                    {availableDevices.map((device) => (
                                                         <option key={device.id} value={String(device.id)}>
                                                             {device.name} {device.roomName ? `• ${device.roomName}` : ""}
                                                         </option>
@@ -319,7 +419,7 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                                                 <select
                                                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
                                                     value={action.command}
-                                                    disabled={isBusy}
+                                                    disabled={isBusy || !action.deviceId}
                                                     onChange={(event) => updateAction(index, { command: event.target.value })}
                                                 >
                                                     {commands.map((command) => (

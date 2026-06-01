@@ -203,7 +203,12 @@ export class HomeService {
       const result = await executeCommand(deviceItem.device, deviceItem.secrets, request);
       const enrichedResult = this.enrichSceneCommandResult(result, scene, action);
       this.updateDeviceRuntimeState(action.deviceId, enrichedResult);
-      this.logDeviceCommand(action.deviceId, request, enrichedResult);
+      this.logDeviceCommand(action.deviceId, request, enrichedResult, {
+        sceneId: scene.id,
+        sceneName: scene.name,
+        actionId: action.id,
+        orderIndex: action.orderIndex,
+      });
 
       if (enrichedResult.ok) {
         successCount += 1;
@@ -1184,6 +1189,7 @@ export class HomeService {
   private fromDeviceHistoryCommandRow(row: JsonObject): DeviceHistoryEntry {
     const command = this.storage.jsonLoad<JsonObject>(row.command_json, {});
     const result = this.storage.jsonLoad<JsonObject>(row.result_json, {});
+    const sceneSource = sceneSourceFromCommandResult(command, result);
     return {
       id: `command:${row.id}`,
       kind: 'command',
@@ -1195,7 +1201,7 @@ export class HomeService {
       level: commandLevelFromStatus(String(row.status || result.status || '')),
       command,
       result,
-      payload: { scope: 'device' },
+      payload: sceneSource ? { scope: 'device', ...sceneSource } : { scope: 'device' },
       createdAt: row.created_at,
     };
   }
@@ -1449,6 +1455,27 @@ function fromSceneRunRow(row: JsonObject): SceneRun {
     status: row.status,
     summary: safeJsonObject(row.summary_json),
     createdAt: row.created_at,
+  };
+}
+
+function sceneSourceFromCommandResult(command: JsonObject, result: JsonObject): JsonObject | null {
+  const resultPayload = isObject(result.result) ? result.result : null;
+  const source = isObject(command.source)
+    ? command.source
+    : resultPayload && isObject(resultPayload.source)
+      ? resultPayload.source
+      : resultPayload && isObject(resultPayload.scene)
+        ? resultPayload.scene
+        : null;
+
+  if (!source || String(source.type || 'scene') !== 'scene') return null;
+
+  return {
+    sourceType: 'scene',
+    sceneId: Number.isInteger(Number(source.sceneId)) ? Number(source.sceneId) : null,
+    sceneName: source.sceneName ? String(source.sceneName) : null,
+    actionId: Number.isInteger(Number(source.actionId)) ? Number(source.actionId) : null,
+    orderIndex: Number.isInteger(Number(source.orderIndex)) ? Number(source.orderIndex) : null,
   };
 }
 

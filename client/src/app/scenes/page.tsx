@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRunScene, useSceneRuns, useScenes } from "@/hooks/use-scenes"
 import { Scene, SceneRun } from "@/src/services/scenes.service"
 import { CircleAlertIcon, CircleCheckIcon, Loader2Icon, PlusCircleIcon, PlayIcon } from "lucide-react"
-import { useMemo } from "react"
 
 export default function ScenesPage() {
     const { data: scenes = [], isLoading, isError } = useScenes()
@@ -63,12 +62,11 @@ export default function ScenesPage() {
 }
 
 function SceneCard({ scene }: { scene: Scene }) {
-    const { data: runs = [] } = useSceneRuns(scene.id, 1)
+    const { data: runs = [] } = useSceneRuns(scene.id, 5)
     const { mutateAsync: runScene, isPending } = useRunScene()
 
     const latestRun = runs[0]
-    const summary = useMemo(() => latestRun ? latestRun.summary : null, [latestRun])
-    const steps = Array.isArray(summary?.steps) ? summary.steps : []
+    const latestSummary = runSummary(latestRun)
 
     return (
         <Card>
@@ -102,33 +100,28 @@ function SceneCard({ scene }: { scene: Scene }) {
                 <div className="rounded-2xl border bg-secondary/20 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
-                            <p className="text-sm font-medium">Última execução</p>
+                            <p className="text-sm font-medium">Execuções recentes</p>
                             <p className="text-xs text-muted-foreground">
-                                {latestRun ? new Date(latestRun.createdAt).toLocaleString("pt-BR") : "Ainda não executada"}
+                                {latestRun ? `Última em ${new Date(latestRun.createdAt).toLocaleString("pt-BR")}` : "Ainda não executada"}
                             </p>
                         </div>
-                        {latestRun ? <RunStatusBadge status={latestRun.status} /> : <Badge variant="outline">Sem runs</Badge>}
+                        <Badge variant="outline">{runs.length} run(s)</Badge>
                     </div>
 
                     {latestRun ? (
                         <div className="space-y-2 text-sm">
                             <p className="text-muted-foreground">
-                                {(summary?.successCount as number | undefined) ?? 0} sucesso(s) • {(summary?.errorCount as number | undefined) ?? 0} erro(s)
+                                {numberFromSummary(latestSummary, "successCount")} sucesso(s) • {numberFromSummary(latestSummary, "errorCount")} erro(s)
                             </p>
-                            {steps.slice(0, 3).map((step, index) => {
-                                const stepRecord = typeof step === "object" && step !== null ? step as Record<string, unknown> : {}
-                                return (
-                                    <div key={`${scene.id}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-2 text-xs">
-                                        <div>
-                                            <p className="font-medium">{String(stepRecord.deviceName || stepRecord.deviceId || `Ação ${index + 1}`)}</p>
-                                            <p className="text-muted-foreground">{String(stepRecord.message || stepRecord.command || "Execução registrada")}</p>
-                                        </div>
-                                        <RunStatusBadge status={String(stepRecord.status || "pending") as SceneRun["status"]} />
-                                    </div>
-                                )
-                            })}
+                            <div className="space-y-2">
+                                {runs.map((run) => (
+                                    <SceneRunRow key={run.id} run={run} />
+                                ))}
+                            </div>
                         </div>
-                    ) : null}
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Execute a cena para começar a registrar runs e seus resultados por etapa.</p>
+                    )}
                 </div>
 
                 <div className="flex gap-2">
@@ -143,6 +136,52 @@ function SceneCard({ scene }: { scene: Scene }) {
             </CardContent>
         </Card>
     )
+}
+
+function SceneRunRow({ run }: { run: SceneRun }) {
+    const summary = runSummary(run)
+    const steps = stepsFromSummary(summary)
+
+    return (
+        <article className="rounded-xl border bg-background px-3 py-3 text-xs">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="font-medium">{new Date(run.createdAt).toLocaleString("pt-BR")}</p>
+                    <p className="text-muted-foreground">
+                        {numberFromSummary(summary, "successCount")} sucesso(s) • {numberFromSummary(summary, "errorCount")} erro(s)
+                    </p>
+                </div>
+                <RunStatusBadge status={run.status} />
+            </div>
+
+            {steps.length ? (
+                <div className="mt-3 space-y-2">
+                    {steps.slice(0, 3).map((step, index) => (
+                        <div key={`${run.id}-${index}`} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                            <div>
+                                <p className="font-medium">{String(step.deviceName || step.deviceId || `Ação ${index + 1}`)}</p>
+                                <p className="text-muted-foreground">{String(step.message || step.command || "Execução registrada")}</p>
+                            </div>
+                            <RunStatusBadge status={String(step.status || "pending") as SceneRun["status"]} />
+                        </div>
+                    ))}
+                </div>
+            ) : null}
+        </article>
+    )
+}
+
+function runSummary(run?: SceneRun | null) {
+    return run?.summary && typeof run.summary === "object" ? run.summary : null
+}
+
+function stepsFromSummary(summary: Record<string, unknown> | null) {
+    if (!summary?.steps || !Array.isArray(summary.steps)) return [] as Record<string, unknown>[]
+    return summary.steps.filter((step): step is Record<string, unknown> => typeof step === "object" && step !== null)
+}
+
+function numberFromSummary(summary: Record<string, unknown> | null, key: string) {
+    return typeof summary?.[key] === "number" ? Number(summary[key]) : 0
 }
 
 function RunStatusBadge({ status }: { status: SceneRun["status"] }) {
