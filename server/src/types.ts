@@ -28,6 +28,34 @@ export interface CommandResult {
   result: JsonObject;
 }
 
+export type DeviceEventLevel = 'info' | 'success' | 'warning' | 'error';
+
+export interface DeviceEvent {
+  id: number;
+  deviceId: number;
+  eventType: string;
+  title: string;
+  message?: string | null;
+  level: DeviceEventLevel;
+  payload: JsonObject;
+  createdAt: string;
+}
+
+export interface DeviceHistoryEntry {
+  id: string;
+  kind: 'event' | 'command';
+  deviceId: number;
+  eventType?: string | null;
+  title: string;
+  message?: string | null;
+  status?: string | null;
+  level: DeviceEventLevel;
+  command?: JsonObject | null;
+  result?: JsonObject | null;
+  payload?: JsonObject | null;
+  createdAt: string;
+}
+
 export interface Room {
   id: number;
   name: string;

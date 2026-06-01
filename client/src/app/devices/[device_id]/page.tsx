@@ -1,6 +1,6 @@
 "use client"
 import { Button } from "@/components/ui/button";
-import { useDevice, useSendCommand } from "@/hooks/use-devices";
+import { useDevice, useDeviceHistory, useSendCommand } from "@/hooks/use-devices";
 import { cn } from "@/lib/utils";
 import { Building, Circle, Home, Power, SettingsIcon } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -15,6 +15,7 @@ import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus } from "@/src/constants/devices
 import { Separator } from "@/components/ui/separator";
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
+import { DeviceHistoryCard } from "@/components/device-history-card";
 import { UpsertDeviceDialog } from "@/components/upsert-device-dialog";
 
 type SwitchChannel = {
@@ -57,7 +58,14 @@ function getSwitchChannels(device: Device): SwitchChannel[] {
 
 export default function DevicePage() {
     const { device_id } = useParams();
-    const { data: device } = useDevice(parseInt(device_id as string));
+    const deviceId = Number(device_id);
+    const { data: device } = useDevice(deviceId);
+    const {
+        data: history = [],
+        isLoading: isLoadingHistory,
+        isError: isHistoryError,
+        refetch: refetchHistory,
+    } = useDeviceHistory(deviceId, 40);
     const { mutate: sendCommand } = useSendCommand();
     const { setTitle, setRightAction } = useHeaderTitle();
     const queriedDeviceIdRef = useRef<number | null>(null);
@@ -231,7 +239,7 @@ export default function DevicePage() {
                             <p className="text-lg font-medium text-center text-muted-foreground">{channel.label}</p>
                             <Card
                                 key={channel.dpsId}
-                                className="h-[360px] w-[460px] shrink-0 cursor-pointer py-0 shadow-2xl transition-transform duration-200 ease-out transform-[scale(1)] hover:transform-[scale(1.02)] active:transform-[scale(0.985)]"
+                                className="h-90 w-115 shrink-0 cursor-pointer py-0 shadow-2xl transition-transform duration-200 ease-out transform-[scale(1)] hover:transform-[scale(1.02)] active:transform-[scale(0.985)]"
                                 onClick={() => handleToggle(device.id, channel.dpsId, channel.value)}
                             >
                                 <CardContent className="flex flex-col h-full justify-center gap-2 px-6">
@@ -258,6 +266,15 @@ export default function DevicePage() {
                             </section>
                         )}
                 </div>
+
+                <DeviceHistoryCard
+                    items={history}
+                    isLoading={isLoadingHistory}
+                    isError={isHistoryError}
+                    onRetry={() => {
+                        void refetchHistory()
+                    }}
+                />
 
             </div>
         </main>

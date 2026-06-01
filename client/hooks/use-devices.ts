@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CommandResult, getDevice, getDevices, sendCommand, updateDevice, UpdateDevicePayload } from "../src/services/devices.service";
+import { CommandResult, DeviceHistoryEntry, getDevice, getDeviceHistory, getDevices, sendCommand, updateDevice, UpdateDevicePayload } from "../src/services/devices.service";
 import { toast } from "sonner";
 
 export type CommandRequest = {
@@ -23,6 +23,15 @@ export function useDevice(deviceId: number) {
     return useQuery({
         queryKey: ["device", deviceId],
         queryFn: () => getDevice(deviceId),
+        enabled: Number.isFinite(deviceId) && deviceId > 0,
+    });
+}
+
+export function useDeviceHistory(deviceId: number, limit = 40) {
+    return useQuery<DeviceHistoryEntry[]>({
+        queryKey: ["device-history", deviceId, limit],
+        queryFn: () => getDeviceHistory(deviceId, limit),
+        enabled: Number.isFinite(deviceId) && deviceId > 0,
     });
 }
 
@@ -39,6 +48,9 @@ export function useSendCommand() {
             queryClient.invalidateQueries({ queryKey: ["devices"] });
             queryClient.invalidateQueries({
                 queryKey: ["device", variables.deviceId],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["device-history", variables.deviceId],
             });
         },
 
@@ -57,6 +69,7 @@ export function useUpdateDevice() {
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["devices"] });
             queryClient.invalidateQueries({ queryKey: ["device", variables.deviceId] });
+            queryClient.invalidateQueries({ queryKey: ["device-history", variables.deviceId] });
             toast.success("Dispositivo atualizado com sucesso");
         },
         onError: (error) => {

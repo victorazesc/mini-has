@@ -3,6 +3,9 @@ import {
   CommandRequest,
   CommandResult,
   Device,
+  DeviceEvent,
+  DeviceEventLevel,
+  DeviceHistoryEntry,
   Entity,
   InboxDevice,
   InboxStatus,
@@ -18,7 +21,7 @@ import { StorageService } from './storage';
 
 @Injectable()
 export class HomeService {
-  constructor(private readonly storage: StorageService) {}
+  constructor(private readonly storage: StorageService) { }
 
   listRooms(): Room[] {
     const rows = this.storage.all<JsonObject>('SELECT * FROM rooms ORDER BY COALESCE(floor, \'\'), name');
@@ -102,6 +105,25 @@ export class HomeService {
     return { device: this.fromDeviceRow(row), secrets: this.storage.jsonLoad(row.secrets_json, {}) };
   }
 
+  listDeviceHistory(deviceId: number, limit = 40): DeviceHistoryEntry[] {
+    const safeLimit = Math.min(100, Math.max(1, Number.isFinite(limit) ? Math.trunc(limit) : 40));
+    const events = this.storage
+      .all<JsonObject>('SELECT * FROM device_events WHERE device_id = ? ORDER BY created_at DESC, id DESC LIMIT ?', [deviceId, safeLimit])
+      .map((row) => this.fromDeviceEventRow(row));
+    const commands = this.storage
+      .all<JsonObject>('SELECT * FROM device_command_logs WHERE device_id = ? ORDER BY created_at DESC, id DESC LIMIT ?', [deviceId, safeLimit])
+      .map((row) => this.fromDeviceHistoryCommandRow(row))
+      .filter((entry) => !shouldHideHistoryCommand(entry.command));
+
+    return [...events, ...commands]
+      .sort((left, right) => {
+        const dateCompare = String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+        if (dateCompare !== 0) return dateCompare;
+        return String(right.id).localeCompare(String(left.id));
+      })
+      .slice(0, safeLimit);
+  }
+
   createDevice(request: JsonObject): Device {
     const now = this.storage.utcNow();
     const result = this.storage.run(
@@ -128,7 +150,13 @@ export class HomeService {
         now,
       ],
     );
-    return this.getDevice(Number(result.lastInsertRowid)) as Device;
+    const device = this.getDevice(Number(result.lastInsertRowid)) as Device;
+    this.recordDeviceEvent(device.id, 'created', 'Dispositivo criado', 'Cadastro manual concluido.', 'success', {
+      provider: device.provider,
+      deviceType: device.deviceType,
+      roomId: device.roomId,
+    });
+    return device;
   }
 
   updateDevice(deviceId: number, request: JsonObject): Device | null {
@@ -162,7 +190,14 @@ export class HomeService {
     assignments.push('updated_at = ?');
     values.push(this.storage.utcNow(), deviceId);
     this.storage.run(`UPDATE devices SET ${assignments.join(', ')} WHERE id = ?`, values);
-    return this.getDevice(deviceId);
+    const updated = this.getDevice(deviceId);
+    if (updated) {
+      const changedFields = Object.keys(request).filter((key) => has(request, key));
+      this.recordDeviceEvent(deviceId, 'updated', 'Dispositivo atualizado', `Campos alterados: ${changedFields.map(deviceFieldLabel).join(', ') || 'dados do dispositivo'}.`, 'info', {
+        changedFields,
+      });
+    }
+    return updated;
   }
 
   deleteDevice(deviceId: number): boolean {
@@ -174,6 +209,7 @@ export class HomeService {
   linkLocalDevice(deviceId: number, localDeviceKey: string, payload: JsonObject = {}): Device | null {
     const device = this.getDevice(deviceId);
     if (!device) return null;
+    const previousLocalDeviceKey = device.localDeviceKey;
     const nextPayload = { ...device.payload, local: payload, localDeviceKey };
     this.storage.run('UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?', [
       localDeviceKey,
@@ -181,7 +217,17 @@ export class HomeService {
       this.storage.utcNow(),
       deviceId,
     ]);
-    return this.getDevice(deviceId);
+    const updated = this.getDevice(deviceId);
+    if (updated && previousLocalDeviceKey !== localDeviceKey) {
+      this.recordDeviceEvent(deviceId, 'linked_local', 'Vinculo local atualizado', firstNonEmpty(payload.ip, payload.host)
+        ? `Dispositivo associado ao endpoint local ${firstNonEmpty(payload.ip, payload.host)}.`
+        : 'Dispositivo associado a um endpoint local.', 'success', {
+        localDeviceKey,
+        ip: firstNonEmpty(payload.ip, payload.host),
+        matchBy: payload.matchBy,
+      });
+    }
+    return updated;
   }
 
   autoLinkLocalDevice(deviceId: number): Device | null {
@@ -190,6 +236,7 @@ export class HomeService {
     const local = this.findLocalMatch(item.device, item.secrets);
     if (!local) return item.device;
     const localDeviceKey = `local:${local.ip}:${item.device.externalId}`;
+    const previousLocalDeviceKey = item.device.localDeviceKey;
     const nextPayload = { ...item.device.payload, local, localDeviceKey };
     this.storage.run('UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?', [
       localDeviceKey,
@@ -197,7 +244,15 @@ export class HomeService {
       this.storage.utcNow(),
       deviceId,
     ]);
-    return this.getDevice(deviceId);
+    const updated = this.getDevice(deviceId);
+    if (updated && previousLocalDeviceKey !== localDeviceKey) {
+      this.recordDeviceEvent(deviceId, 'auto_linked_local', 'Vinculo local encontrado', local.ip ? `Associado automaticamente ao IP ${local.ip}.` : 'Associado automaticamente a um endpoint local.', 'success', {
+        localDeviceKey,
+        ip: local.ip,
+        matchBy: local.matchBy,
+      });
+    }
+    return updated;
   }
 
   autoLinkLocalDevices(): Device[] {
@@ -247,6 +302,7 @@ export class HomeService {
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
     this.updateEntitiesRuntimeState(deviceId, mergedDps, now);
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { dps });
     return this.getDevice(deviceId);
   }
 
@@ -257,6 +313,23 @@ export class HomeService {
       VALUES (?, ?, ?, ?, ?)
       `,
       [deviceId, this.storage.jsonDump(redactSecrets(request)), this.storage.jsonDump(result), result.status, this.storage.utcNow()],
+    );
+  }
+
+  private recordDeviceEvent(
+    deviceId: number,
+    eventType: string,
+    title: string,
+    message: string | null,
+    level: DeviceEventLevel = 'info',
+    payload: JsonObject = {},
+  ): void {
+    this.storage.run(
+      `
+      INSERT INTO device_events (device_id, event_type, title, message, level, payload_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [deviceId, eventType, title, message, level, this.storage.jsonDump(redactSecrets(payload)), this.storage.utcNow()],
     );
   }
 
@@ -331,14 +404,14 @@ export class HomeService {
     const existingByProvider =
       provider && externalId
         ? this.storage.get<JsonObject>(
-            `
+          `
             SELECT id, status FROM device_inbox
             WHERE external_id = ? AND json_extract(payload_json, '$.provider') = ?
             ORDER BY updated_at DESC, id DESC
             LIMIT 1
             `,
-            [externalId, provider],
-          )
+          [externalId, provider],
+        )
         : null;
     const existing = existingByProvider || this.storage.get<JsonObject>(
       `
@@ -421,8 +494,10 @@ export class HomeService {
     const now = this.storage.utcNow();
     const provider = String(payload.provider || inbox.sourceType);
     const externalId = String(payload.externalId || inbox.externalId);
+    let existed = false;
     const deviceId = this.storage.transaction(() => {
       const existing = this.storage.get<JsonObject>('SELECT id FROM devices WHERE provider = ? AND external_id = ?', [provider, externalId]);
+      existed = Boolean(existing);
       const values = [
         inbox.sourceType === 'integration' ? inbox.sourceId : null,
         inbox.id,
@@ -462,7 +537,24 @@ export class HomeService {
       );
       return Number(result.lastInsertRowid);
     });
-    return this.autoLinkLocalDevice(deviceId) || (this.getDevice(deviceId) as Device);
+    const device = this.autoLinkLocalDevice(deviceId) || (this.getDevice(deviceId) as Device);
+    this.recordDeviceEvent(
+      deviceId,
+      existed ? 'synced_from_inbox' : 'imported_from_inbox',
+      existed ? 'Dispositivo sincronizado' : 'Dispositivo importado',
+      existed
+        ? 'Os dados do dispositivo foram atualizados a partir da caixa de entrada.'
+        : 'Dispositivo adicionado ao Mini HAS a partir da caixa de entrada.',
+      'success',
+      {
+        inboxId: inbox.id,
+        sourceType: inbox.sourceType,
+        sourceId: inbox.sourceId,
+        provider,
+        roomId: roomId ?? null,
+      },
+    );
+    return device;
   }
 
   createIntegration(request: JsonObject, config: JsonObject, secrets: JsonObject, status: IntegrationStatus = 'created'): StoredIntegration {
@@ -588,6 +680,7 @@ export class HomeService {
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
     this.updateSmartthingsEntitiesRuntimeState(deviceId, status, rawStatus, now);
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'smartthings_cloud' });
     return this.getDevice(deviceId);
   }
 
@@ -627,7 +720,51 @@ export class HomeService {
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
     this.updateEntitiesRuntimeState(deviceId, mergedDps, now);
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'mqtt' });
     return this.getDevice(deviceId);
+  }
+
+  private logRuntimeStatusEvent(deviceId: number, previousStatus: JsonObject, nextStatus: JsonObject, payload: JsonObject = {}): void {
+    const previousState = String(previousStatus.state || '').trim();
+    const nextState = String(nextStatus.state || '').trim();
+    const previousOnline = previousStatus.online === undefined ? null : Boolean(previousStatus.online);
+    const nextOnline = nextStatus.online === undefined ? null : Boolean(nextStatus.online);
+    const hadPreviousSnapshot = Boolean(previousStatus.lastSeenAt) || (isObject(previousStatus.dps) && Object.keys(previousStatus.dps).length > 0);
+
+    if (!hadPreviousSnapshot && (nextState || nextOnline !== null)) {
+      this.recordDeviceEvent(
+        deviceId,
+        'status_initialized',
+        'Primeiro status recebido',
+        runtimeStatusMessage(nextOnline, nextState),
+        nextOnline === false ? 'warning' : 'success',
+        payload,
+      );
+      return;
+    }
+
+    if (previousOnline !== null && nextOnline !== null && previousOnline !== nextOnline) {
+      this.recordDeviceEvent(
+        deviceId,
+        nextOnline ? 'became_online' : 'became_offline',
+        nextOnline ? 'Dispositivo ficou online' : 'Dispositivo ficou offline',
+        runtimeStatusMessage(nextOnline, nextState),
+        nextOnline ? 'success' : 'warning',
+        payload,
+      );
+      return;
+    }
+
+    if (nextState && previousState !== nextState) {
+      this.recordDeviceEvent(
+        deviceId,
+        'state_changed',
+        'Estado alterado',
+        `${deviceStateLabel(previousState) || 'Sem estado'} -> ${deviceStateLabel(nextState)}`,
+        nextOnline === false ? 'warning' : 'info',
+        { ...payload, previousState, nextState },
+      );
+    }
   }
 
   private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string): void {
@@ -705,6 +842,7 @@ export class HomeService {
     }
 
     this.storage.run('DELETE FROM device_command_logs WHERE device_id = ?', [deviceId]);
+    this.storage.run('DELETE FROM device_events WHERE device_id = ?', [deviceId]);
     return this.storage.run('DELETE FROM devices WHERE id = ?', [deviceId]).changes > 0;
   }
 
@@ -745,6 +883,52 @@ export class HomeService {
       status: this.storage.jsonLoad(row.status_json, {}),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+    };
+  }
+
+  private fromDeviceEventRow(row: JsonObject): DeviceHistoryEntry {
+    const event = this.storage.jsonLoad<JsonObject>(row.payload_json, {});
+    return {
+      id: `event:${row.id}`,
+      kind: 'event',
+      deviceId: row.device_id,
+      eventType: row.event_type,
+      title: row.title,
+      message: row.message,
+      level: row.level || 'info',
+      payload: event,
+      createdAt: row.created_at,
+    };
+  }
+
+  private fromDeviceHistoryCommandRow(row: JsonObject): DeviceHistoryEntry {
+    const command = this.storage.jsonLoad<JsonObject>(row.command_json, {});
+    const result = this.storage.jsonLoad<JsonObject>(row.result_json, {});
+    return {
+      id: `command:${row.id}`,
+      kind: 'command',
+      deviceId: row.device_id,
+      eventType: 'device_command',
+      title: deviceCommandTitle(command),
+      message: String(result.message || summarizeCommandParams(command.params) || ''),
+      status: row.status,
+      level: commandLevelFromStatus(String(row.status || result.status || '')),
+      command,
+      result,
+      createdAt: row.created_at,
+    };
+  }
+
+  private fromDeviceEventLogRow(row: JsonObject): DeviceEvent {
+    return {
+      id: row.id,
+      deviceId: row.device_id,
+      eventType: row.event_type,
+      title: row.title,
+      message: row.message,
+      level: row.level || 'info',
+      payload: this.storage.jsonLoad(row.payload_json, {}),
+      createdAt: row.created_at,
     };
   }
 
@@ -871,6 +1055,73 @@ function stateFromValue(value: unknown, deviceType: string): string {
   if (['stop', 'stopped', 'idle'].includes(String(value))) return 'idle';
   if (value === null || value === undefined) return ['sensor', 'camera'].includes(deviceType) ? 'idle' : 'unknown';
   return 'unknown';
+}
+
+function deviceFieldLabel(field: string): string {
+  if (field === 'name') return 'nome';
+  if (field === 'deviceType') return 'tipo';
+  if (field === 'roomId') return 'cômodo';
+  if (field === 'localDeviceKey') return 'vínculo local';
+  if (field === 'payload') return 'payload';
+  if (field === 'capabilities') return 'capacidades';
+  if (field === 'status') return 'status';
+  return field;
+}
+
+function deviceStateLabel(state: string): string {
+  const normalized = String(state || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized === 'on') return 'ligado';
+  if (normalized === 'off') return 'desligado';
+  if (normalized === 'open') return 'aberto';
+  if (normalized === 'closed') return 'fechado';
+  if (normalized === 'opening') return 'abrindo';
+  if (normalized === 'closing') return 'fechando';
+  if (normalized === 'idle') return 'parado';
+  return normalized;
+}
+
+function runtimeStatusMessage(isOnline: boolean | null, state: string): string | null {
+  const parts = [
+    isOnline === null ? '' : isOnline ? 'online' : 'offline',
+    deviceStateLabel(state),
+  ].filter(Boolean);
+  return parts.length ? `Status atual: ${parts.join(' • ')}.` : null;
+}
+
+function deviceCommandTitle(command: JsonObject): string {
+  const name = String(command.command || '').trim().toLowerCase();
+  if (!name) return 'Comando executado';
+  if (name === 'turn_on') return 'Comando para ligar';
+  if (name === 'turn_off') return 'Comando para desligar';
+  if (name === 'toggle') return 'Comando de alternância';
+  if (name === 'query') return 'Consulta de status';
+  if (name === 'set') return 'Comando de ajuste';
+  if (name === 'open') return 'Comando para abrir';
+  if (name === 'close') return 'Comando para fechar';
+  if (name === 'stop') return 'Comando para parar';
+  return `Comando ${name}`;
+}
+
+function shouldHideHistoryCommand(command: JsonObject | null | undefined): boolean {
+  return String(command?.command || '').trim().toLowerCase() === 'query';
+}
+
+function summarizeCommandParams(params: unknown): string | null {
+  if (!isObject(params)) return null;
+  const entries = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .slice(0, 3)
+    .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(redactSecrets(value)) : String(value)}`);
+  return entries.length ? entries.join(' • ') : null;
+}
+
+function commandLevelFromStatus(status: string): DeviceEventLevel {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (['error', 'failed', 'failure', 'unsupported'].includes(normalized)) return 'error';
+  if (['warning', 'timeout'].includes(normalized)) return 'warning';
+  if (['sent', 'ok', 'accepted'].includes(normalized)) return 'success';
+  return 'info';
 }
 
 function redactSecrets(value: any): any {

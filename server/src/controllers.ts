@@ -77,6 +77,14 @@ export class DevicesController {
     return device;
   }
 
+  @Get(':device_id/history')
+  getDeviceHistory(@Param('device_id') deviceId: string, @Query('limit') limit?: string) {
+    const id = Number(deviceId);
+    const device = this.home.getDevice(id);
+    if (!device) throw notFound('Device not found');
+    return this.home.listDeviceHistory(id, Number(limit || 40));
+  }
+
   @Patch(':device_id')
   updateDevice(@Param('device_id') deviceId: string, @Body() body: JsonObject) {
     const device = this.home.updateDevice(Number(deviceId), body);

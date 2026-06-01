@@ -137,6 +137,17 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         FOREIGN KEY(device_id) REFERENCES devices(id)
       );
+      CREATE TABLE IF NOT EXISTS device_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT,
+        level TEXT NOT NULL DEFAULT 'info',
+        payload_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(device_id) REFERENCES devices(id)
+      );
       CREATE TABLE IF NOT EXISTS discovery_scans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         status TEXT NOT NULL,
@@ -159,6 +170,7 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_device_inbox_status ON device_inbox(status);
       CREATE INDEX IF NOT EXISTS idx_devices_room_id ON devices(room_id);
       CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id);
+      CREATE INDEX IF NOT EXISTS idx_device_events_device_id ON device_events(device_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_discovery_scans_created_at ON discovery_scans(created_at);
       CREATE INDEX IF NOT EXISTS idx_discovery_devices_last_seen_at ON discovery_devices(last_seen_at);
     `);

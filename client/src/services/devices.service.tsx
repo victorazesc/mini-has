@@ -27,6 +27,23 @@ export type Device = {
     updatedAt: string;
 };
 
+export type DeviceHistoryLevel = "info" | "success" | "warning" | "error";
+
+export type DeviceHistoryEntry = {
+    id: string;
+    kind: "event" | "command";
+    deviceId: number;
+    eventType?: string | null;
+    title: string;
+    message?: string | null;
+    status?: string | null;
+    level: DeviceHistoryLevel;
+    command?: Record<string, unknown> | null;
+    result?: Record<string, unknown> | null;
+    payload?: Record<string, unknown> | null;
+    createdAt: string;
+};
+
 export async function getDevices(filters: { name?: string; type?: string } | undefined): Promise<Device[]> {
     // await new Promise(resolve => setTimeout(resolve, 10000));
     const response = await fetch(`/api/devices?name=${filters?.name ?? ""}&type=${filters?.type ?? ""}`);
@@ -42,7 +59,17 @@ export async function getDevice(deviceId: number): Promise<Device> {
     const response = await fetch(`/api/devices/${deviceId}`);
 
     if (!response.ok) {
-        throw new Error("Erro ao buscar dispositivo");
+        throw new Error(await errorMessageFrom(response, "Erro ao buscar dispositivo"));
+    }
+
+    return response.json();
+}
+
+export async function getDeviceHistory(deviceId: number, limit = 40): Promise<DeviceHistoryEntry[]> {
+    const response = await fetch(`/api/devices/${deviceId}/history?limit=${limit}`);
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao buscar histórico do dispositivo"));
     }
 
     return response.json();
@@ -64,7 +91,7 @@ export async function updateDevice(deviceId: number, data: UpdateDevicePayload):
     });
 
     if (!response.ok) {
-        throw new Error("Erro ao atualizar dispositivo");
+        throw new Error(await errorMessageFrom(response, "Erro ao atualizar dispositivo"));
     }
 
     return response.json();
@@ -87,7 +114,7 @@ export async function sendCommand(deviceId: number, command: string | Record<str
     });
 
     if (!response.ok) {
-        throw new Error("Erro ao enviar comando");
+        throw new Error(await errorMessageFrom(response, "Erro ao enviar comando"));
     }
 
     const result = await response.json() as CommandResult;
@@ -97,4 +124,13 @@ export async function sendCommand(deviceId: number, command: string | Record<str
     }
 
     return result;
+}
+
+async function errorMessageFrom(response: Response, fallback: string): Promise<string> {
+    try {
+        const data = await response.json() as { message?: string; detail?: string; error?: string };
+        return data.message ?? data.detail ?? data.error ?? fallback;
+    } catch {
+        return fallback;
+    }
 }
