@@ -15,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { LayoutDashboardIcon, ListIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, HomeIcon, CloudIcon } from "lucide-react"
+import { LayoutDashboardIcon, ListIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon, HomeIcon, CloudIcon, PlaySquareIcon } from "lucide-react"
 
 export const data = {
   user: {
@@ -53,6 +53,14 @@ export const data = {
       url: "/integrations",
       icon: (
         <CloudIcon
+        />
+      ),
+    },
+    {
+      title: "Scenes",
+      url: "/scenes",
+      icon: (
+        <PlaySquareIcon
         />
       ),
     },

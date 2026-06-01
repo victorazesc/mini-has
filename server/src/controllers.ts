@@ -48,6 +48,71 @@ export class RoomsController {
   }
 }
 
+@Controller('scenes')
+export class ScenesController {
+  constructor(
+    private readonly home: HomeService,
+    private readonly commands: CommandsService,
+  ) { }
+
+  @Get()
+  listScenes() {
+    return this.home.listScenes();
+  }
+
+  @Get(':scene_id')
+  getScene(@Param('scene_id') sceneId: string) {
+    const scene = this.home.getScene(Number(sceneId));
+    if (!scene) throw notFound('Scene not found');
+    return scene;
+  }
+
+  @Get(':scene_id/runs')
+  listSceneRuns(@Param('scene_id') sceneId: string, @Query('limit') limit?: string) {
+    const id = Number(sceneId);
+    const scene = this.home.getScene(id);
+    if (!scene) throw notFound('Scene not found');
+    return this.home.listSceneRuns(id, Number(limit || 10));
+  }
+
+  @Post()
+  createScene(@Body() body: JsonObject) {
+    try {
+      return this.home.createScene(body);
+    } catch (error) {
+      throw badRequest(messageFrom(error));
+    }
+  }
+
+  @Patch(':scene_id')
+  updateScene(@Param('scene_id') sceneId: string, @Body() body: JsonObject) {
+    try {
+      const scene = this.home.updateScene(Number(sceneId), body);
+      if (!scene) throw notFound('Scene not found');
+      return scene;
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === HttpStatus.NOT_FOUND) throw error;
+      throw badRequest(messageFrom(error));
+    }
+  }
+
+  @Delete(':scene_id')
+  deleteScene(@Param('scene_id') sceneId: string) {
+    if (!this.home.deleteScene(Number(sceneId))) throw notFound('Scene not found');
+    return { deleted: true };
+  }
+
+  @Post(':scene_id/run')
+  async runScene(@Param('scene_id') sceneId: string) {
+    const run = await this.home.runScene(
+      Number(sceneId),
+      (device, secrets, request) => this.commands.executeDeviceCommand(device, secrets, request),
+    );
+    if (!run) throw notFound('Scene not found');
+    return run;
+  }
+}
+
 @Controller('devices')
 export class DevicesController {
   constructor(
@@ -365,6 +430,10 @@ export class DiscoveryController {
 
 function notFound(detail: string): HttpException {
   return new HttpException({ detail }, HttpStatus.NOT_FOUND);
+}
+
+function badRequest(detail: string): HttpException {
+  return new HttpException({ detail }, HttpStatus.BAD_REQUEST);
 }
 
 function messageFrom(error: unknown): string {

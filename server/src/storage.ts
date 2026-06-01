@@ -75,6 +75,36 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS scenes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        room_id INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE SET NULL
+      );
+      CREATE TABLE IF NOT EXISTS scene_actions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scene_id INTEGER NOT NULL,
+        device_id INTEGER NOT NULL,
+        order_index INTEGER NOT NULL,
+        command TEXT NOT NULL,
+        params_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE,
+        FOREIGN KEY(device_id) REFERENCES devices(id),
+        UNIQUE(scene_id, order_index)
+      );
+      CREATE TABLE IF NOT EXISTS scene_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        scene_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        summary_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE
+      );
       CREATE TABLE IF NOT EXISTS device_inbox (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_type TEXT NOT NULL,
@@ -169,6 +199,10 @@ export class StorageService implements OnModuleDestroy {
       );
       CREATE INDEX IF NOT EXISTS idx_device_inbox_status ON device_inbox(status);
       CREATE INDEX IF NOT EXISTS idx_devices_room_id ON devices(room_id);
+      CREATE INDEX IF NOT EXISTS idx_scenes_room_id ON scenes(room_id);
+      CREATE INDEX IF NOT EXISTS idx_scene_actions_scene_id ON scene_actions(scene_id, order_index ASC);
+      CREATE INDEX IF NOT EXISTS idx_scene_actions_device_id ON scene_actions(device_id);
+      CREATE INDEX IF NOT EXISTS idx_scene_runs_scene_id ON scene_runs(scene_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id);
       CREATE INDEX IF NOT EXISTS idx_device_events_device_id ON device_events(device_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_discovery_scans_created_at ON discovery_scans(created_at);

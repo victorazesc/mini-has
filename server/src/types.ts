@@ -66,6 +66,40 @@ export interface Room {
   updatedAt: string;
 }
 
+export type SceneRunStatus = 'pending' | 'success' | 'partial' | 'error';
+
+export interface SceneAction {
+  id: number;
+  sceneId: number;
+  deviceId: number;
+  deviceName?: string | null;
+  deviceType?: string | null;
+  orderIndex: number;
+  command: string;
+  params: JsonObject;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SceneRun {
+  id: number;
+  sceneId: number;
+  status: SceneRunStatus;
+  summary: JsonObject;
+  createdAt: string;
+}
+
+export interface Scene {
+  id: number;
+  name: string;
+  description?: string | null;
+  roomId?: number | null;
+  roomName?: string | null;
+  actions: SceneAction[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Device {
   id: number;
   integrationId?: number | null;
