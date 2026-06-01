@@ -91,7 +91,7 @@ export function ScanDevicesDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             {!isControlled && children ? <DialogTrigger render={children} nativeButton={false} /> : null}
 
-            <DialogContent className="max-w-screen min-w-full h-screen content-start">
+            <DialogContent className="max-w-screen min-w-full h-screen content-start overflow-auto">
                 <Button
                     onClick={handleSyncIntegration}
                     disabled={isPendingSyncIntegration}

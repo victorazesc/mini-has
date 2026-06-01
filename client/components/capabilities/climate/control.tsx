@@ -217,16 +217,33 @@ export function ClimateControl({ device }: { device: Device & { status: DeviceSt
         }
 
         setTemperatureOverride(optimisticTemperature);
-        sendClimateCommand(
-            "airConditionerMode",
-            "setAirConditionerMode",
-            [nextMode],
-            () => {
+        sendCommand({
+            deviceId: device.id,
+            command: {
+                command: "custom",
+                params: {
+                    commands: [
+                        {
+                            component: "main",
+                            capability: "switch",
+                            command: "on",
+                        },
+                        {
+                            component: "main",
+                            capability: "airConditionerMode",
+                            command: "setAirConditionerMode",
+                            arguments: [nextMode],
+                        },
+                    ],
+                },
+            },
+        }, {
+            onError: () => {
                 setModeOverride(previousMode);
                 setTemperatureOverride(previousTemperature);
             },
-            { mode: nextMode }
-        );
+            onSuccess: () => scheduleStatusRefresh({ mode: nextMode }),
+        });
     }
 
     const handleChangeFanMode = (nextFanMode: ClimateFanMode) => {

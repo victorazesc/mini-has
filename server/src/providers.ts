@@ -9,8 +9,14 @@ import {
   ProviderEntity,
   StoredIntegration,
 } from './types';
+import { StorageService } from './storage';
+import { MqttConnectionOptions, MqttMessage, MqttService } from './mqtt';
 
 const EMPTY_BODY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+const SMARTTHINGS_API_BASE_URL = 'https://api.smartthings.com';
+const SMARTTHINGS_TOKEN_URL = `${SMARTTHINGS_API_BASE_URL}/oauth/token`;
+const SMARTTHINGS_REFRESH_SKEW_MS = 5 * 60 * 1000;
+const MQTT_DEFAULT_DISCOVERY_PREFIX = 'homeassistant';
 const TUYA_BOOLEAN_PRIORITY = ['switch_led', 'switch_1', 'switch', 'switch_2', 'switch_3', 'switch_4', 'switch_usb1', 'switch_usb2'];
 const TUYA_REGIONS = [
   { key: 'eastern-america', label: 'Eastern America', baseUrl: 'https://openapi-ueaz.tuyaus.com' },
@@ -22,12 +28,18 @@ const TUYA_REGIONS = [
 ];
 const SECRET_FIELDS: Partial<Record<IntegrationType, Set<string>>> = {
   tuya_cloud: new Set(['accessSecret']),
-  smartthings_cloud: new Set(['token']),
+  smartthings_cloud: new Set(['token', 'accessToken', 'refreshToken', 'clientId', 'clientSecret', 'tokenType', 'expiresAt', 'expiresIn', 'scope']),
+  mqtt: new Set(['username', 'password']),
   tuya_local: new Set(['localKey']),
 };
 
 @Injectable()
 export class ProvidersService {
+  constructor(
+    private readonly storage: StorageService,
+    private readonly mqtt: MqttService,
+  ) {}
+
   listProviderDefinitions(): ProviderDefinition[] {
     return [
       {
@@ -48,8 +60,8 @@ export class ProvidersService {
       {
         type: 'smartthings_cloud',
         name: 'SmartThings',
-        description: 'Importa devices e capabilities pela API cloud da SmartThings.',
-        fields: [{ key: 'token', label: 'Personal Access Token', required: true, secret: true }],
+        description: 'Importa devices e capabilities pela API cloud da SmartThings via OAuth 2.0.',
+        fields: [],
       },
       {
         type: 'intelbras_izy_tuya',
@@ -78,7 +90,17 @@ export class ProvidersService {
       },
       { type: 'esphome', name: 'ESPHome', description: 'Provider reservado para ESPHome local.', status: 'planned' },
       { type: 'onvif_camera', name: 'ONVIF Camera', description: 'Provider reservado para cameras ONVIF/RTSP.', status: 'planned' },
-      { type: 'mqtt', name: 'MQTT', description: 'Provider reservado para entidades via broker MQTT.', status: 'planned' },
+      {
+        type: 'mqtt',
+        name: 'MQTT',
+        description: 'Importa dispositivos via MQTT Discovery e envia comandos pelo broker.',
+        fields: [
+          { key: 'brokerUrl', label: 'Broker URL', default: process.env.MQTT_URL || 'mqtt://localhost:1883', help: 'Ex: mqtt://localhost:1883' },
+          { key: 'username', label: 'Usuario', secret: true },
+          { key: 'password', label: 'Senha', secret: true },
+          { key: 'discoveryPrefix', label: 'Discovery prefix', default: MQTT_DEFAULT_DISCOVERY_PREFIX },
+        ],
+      },
     ];
   }
 
@@ -103,6 +125,10 @@ export class ProvidersService {
         const devices = await this.smartthingsRequest(integration, '/v1/devices');
         return { ok: true, status: 'connected', message: 'SmartThings conectado.', details: { count: (devices.items || []).length } };
       }
+      if (integration.type === 'mqtt') {
+        await this.mqtt.testConnection(this.mqttConnectionOptions(integration));
+        return { ok: true, status: 'connected', message: 'Broker MQTT conectado.' };
+      }
       if (integration.type === 'persiana_custom' || integration.type === 'generic_iot') {
         return this.testHttpLikeProvider(integration);
       }
@@ -118,6 +144,7 @@ export class ProvidersService {
   async syncProvider(integration: StoredIntegration): Promise<[ProviderDevice[], JsonObject]> {
     if (integration.type === 'tuya_cloud') return this.syncTuyaCloud(integration);
     if (integration.type === 'smartthings_cloud') return this.syncSmartthings(integration);
+    if (integration.type === 'mqtt') return this.syncMqtt(integration);
     if (integration.type === 'persiana_custom' || integration.type === 'generic_iot') return [[this.deviceFromHttpLikeProvider(integration)], {}];
     if (integration.type === 'intelbras_izy_tuya') {
       return [[], { note: 'Use discovery LAN para achar Tuya 6667/6668 e Tuya Cloud para obter nomes/localKey.' }];
@@ -140,6 +167,15 @@ export class ProvidersService {
   async getSmartthingsDeviceStatus(integration: StoredIntegration, deviceId: string) {
     const rawStatus = await this.smartthingsRequest(integration, `/v1/devices/${deviceId}/status`);
     return { rawStatus, statusSummary: smartthingsStatusSummary(rawStatus) };
+  }
+
+  async publishMqttCommand(integration: StoredIntegration, topic: string, payload: unknown, retain = false) {
+    await this.mqtt.publish(this.mqttConnectionOptions(integration), topic, payload, retain);
+    return { topic, payload, retain };
+  }
+
+  async collectMqttMessages(integration: StoredIntegration, topic: string, waitMs = 800): Promise<MqttMessage[]> {
+    return this.mqtt.collectMessages(this.mqttConnectionOptions(integration), topic, waitMs);
   }
 
   async httpJson(method: string, url: string, headers: Record<string, string> = {}, body?: string): Promise<JsonObject> {
@@ -258,13 +294,124 @@ export class ProvidersService {
     return [normalized, { total: devices.length }];
   }
 
+  private async syncMqtt(integration: StoredIntegration): Promise<[ProviderDevice[], JsonObject]> {
+    const discoveryPrefix = String(integration.config.discoveryPrefix || MQTT_DEFAULT_DISCOVERY_PREFIX).replace(/^\/+|\/+$/g, '');
+    const scanMs = Math.min(15_000, Math.max(1_000, Number(integration.config.scanMs || integration.config.scanSeconds || 4) * 1000));
+    const messages = await this.mqtt.collectMessages(this.mqttConnectionOptions(integration), `${discoveryPrefix}/#`, scanMs);
+    const devices = normalizeMqttDevices(messages, this.mqttBrokerUrl(integration), discoveryPrefix);
+    return [devices, { total: devices.length, messages: messages.length, discoveryPrefix, scanMs }];
+  }
+
+  private mqttConnectionOptions(integration: StoredIntegration): MqttConnectionOptions {
+    return {
+      brokerUrl: this.mqttBrokerUrl(integration),
+      username: String(integration.secrets.username || '').trim() || null,
+      password: String(integration.secrets.password || '').trim() || null,
+      clientId: String(integration.config.clientId || `mini-has-${integration.id || 'setup'}`).trim(),
+      connectTimeoutMs: Number(integration.config.connectTimeoutMs || 5_000),
+      keepAliveSeconds: Number(integration.config.keepAliveSeconds || 30),
+    };
+  }
+
+  private mqttBrokerUrl(integration: StoredIntegration): string {
+    const brokerUrl = String(integration.config.brokerUrl || process.env.MQTT_URL || 'mqtt://localhost:1883').trim();
+    if (!brokerUrl) throw new Error('Broker URL MQTT obrigatoria.');
+    return brokerUrl;
+  }
+
   private async smartthingsRequest(integration: StoredIntegration, path: string, method = 'GET', body?: JsonObject): Promise<JsonObject> {
-    const token = String(integration.secrets.token || '').trim();
-    if (!token) throw new Error('Token SmartThings obrigatorio.');
-    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-    const bodyString = body ? JSON.stringify(body) : undefined;
-    if (bodyString) headers['Content-Type'] = 'application/json';
-    return this.httpJson(method, `https://api.smartthings.com${path}`, headers, bodyString);
+    let token = await this.smartthingsAccessToken(integration);
+    let response = await this.smartthingsFetch(token, path, method, body);
+    if (response.status === 401 && String(integration.secrets.refreshToken || '').trim()) {
+      token = await this.refreshSmartthingsAccessToken(integration);
+      response = await this.smartthingsFetch(token, path, method, body);
+    }
+    if (!response.ok) throw new Error(smartthingsErrorMessage(response.body, response.status));
+    return response.body;
+  }
+
+  private async smartthingsAccessToken(integration: StoredIntegration): Promise<string> {
+    const token = String(integration.secrets.accessToken || integration.secrets.token || '').trim();
+    const expiresAt = Date.parse(String(integration.secrets.expiresAt || ''));
+    const shouldRefresh = Number.isFinite(expiresAt) && expiresAt <= Date.now() + SMARTTHINGS_REFRESH_SKEW_MS;
+    if (token && !shouldRefresh) return token;
+    if (!String(integration.secrets.refreshToken || '').trim()) {
+      if (token) return token;
+      throw new Error('Autenticacao OAuth da SmartThings obrigatoria.');
+    }
+    return this.refreshSmartthingsAccessToken(integration);
+  }
+
+  private async refreshSmartthingsAccessToken(integration: StoredIntegration): Promise<string> {
+    const refreshToken = String(integration.secrets.refreshToken || '').trim();
+    const clientId = String(integration.secrets.clientId || process.env.SMARTTHINGS_CLIENT_ID || '').trim();
+    const clientSecret = String(integration.secrets.clientSecret || process.env.SMARTTHINGS_CLIENT_SECRET || '').trim();
+    if (!refreshToken) throw new Error('Refresh token SmartThings obrigatorio.');
+    if (!clientId || !clientSecret) throw new Error('SMARTTHINGS_CLIENT_ID e SMARTTHINGS_CLIENT_SECRET obrigatorios para renovar OAuth.');
+
+    const response = await fetch(SMARTTHINGS_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }),
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok || !data.access_token) {
+      throw new Error(smartthingsErrorMessage(data, response.status, 'Falha ao renovar token SmartThings.'));
+    }
+
+    const nextSecrets: JsonObject = {
+      ...integration.secrets,
+      clientId,
+      clientSecret,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || refreshToken,
+      tokenType: data.token_type || integration.secrets.tokenType || 'bearer',
+      expiresIn: data.expires_in || integration.secrets.expiresIn,
+      expiresAt: smartthingsExpiresAt(data.expires_in) || integration.secrets.expiresAt,
+      scope: data.scope || integration.secrets.scope,
+    };
+    Object.assign(integration.secrets, nextSecrets);
+    if (integration.id > 0) {
+      this.storage.run('UPDATE integrations SET secrets_json = ?, updated_at = ? WHERE id = ?', [
+        this.storage.jsonDump(nextSecrets),
+        this.storage.utcNow(),
+        integration.id,
+      ]);
+    }
+    return String(nextSecrets.accessToken);
+  }
+
+  private async smartthingsFetch(
+    token: string,
+    path: string,
+    method = 'GET',
+    body?: JsonObject,
+  ): Promise<{ ok: boolean; status: number; body: JsonObject }> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      const bodyString = body ? JSON.stringify(body) : undefined;
+      if (bodyString) headers['Content-Type'] = 'application/json';
+      const response = await fetch(`${SMARTTHINGS_API_BASE_URL}${path}`, {
+        method,
+        headers,
+        body: bodyString,
+        signal: controller.signal,
+      });
+      return { ok: response.ok, status: response.status, body: await readJsonResponse(response) };
+    } catch (error) {
+      throw new Error(messageFrom(error));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private async testHttpLikeProvider(integration: StoredIntegration) {
@@ -295,6 +442,165 @@ export class ProvidersService {
       entities: [{ key: 'main', type: deviceType, name: integration.name, commandSchema, capabilities: { baseUrl } }],
     };
   }
+}
+
+function normalizeMqttDevices(messages: MqttMessage[], brokerUrl: string, discoveryPrefix: string): ProviderDevice[] {
+  const devices = new Map<string, ProviderDevice & { entities: ProviderEntity[] }>();
+  for (const message of messages) {
+    const parsed = parseMqttDiscoveryMessage(message, discoveryPrefix);
+    if (!parsed) continue;
+    const deviceId = mqttDeviceId(parsed.config, parsed.topic);
+    const deviceName = mqttDeviceName(parsed.config, parsed.objectId);
+    const entityType = mqttDeviceType(parsed.component, parsed.config);
+    const existing =
+      devices.get(deviceId) ||
+      ({
+        externalId: deviceId,
+        name: deviceName,
+        provider: 'mqtt',
+        deviceType: entityType,
+        manufacturer: mqttDeviceField(parsed.config, 'manufacturer', 'mf') || null,
+        model: mqttDeviceField(parsed.config, 'model', 'mdl') || null,
+        localDeviceKey: `mqtt:${brokerUrl}:${deviceId}`,
+        capabilities: {
+          brokerUrl,
+          discoveryPrefix,
+          entities: [],
+          status: [],
+        },
+        status: { online: true, state: 'unknown' },
+        payload: {
+          brokerUrl,
+          discoveryPrefix,
+          manufacturer: mqttDeviceField(parsed.config, 'manufacturer', 'mf') || null,
+          model: mqttDeviceField(parsed.config, 'model', 'mdl') || null,
+          discoveryTopics: [],
+        },
+        entities: [],
+      } as ProviderDevice & { entities: ProviderEntity[] });
+
+    const entity = mqttEntityFromConfig(parsed, existing.entities.length + 1);
+    existing.entities.push(entity);
+    existing.name = existing.name || deviceName;
+    existing.deviceType = existing.deviceType === 'sensor' && entityType !== 'sensor' ? entityType : existing.deviceType;
+    existing.capabilities.entities = existing.entities;
+    existing.capabilities.status = mqttStatusEntries(existing.entities);
+    existing.payload.entities = existing.entities;
+    existing.payload.discoveryTopics = [...(existing.payload.discoveryTopics || []), message.topic];
+    devices.set(deviceId, existing);
+  }
+  return [...devices.values()].map((device) => ({
+    ...device,
+    capabilities: {
+      ...device.capabilities,
+      primarySwitchCode: device.entities.some((entity) => ['switch', 'light', 'fan'].includes(entity.type) && entity.commandSchema?.commandTopic) ? 'switch_1' : null,
+    },
+  }));
+}
+
+function parseMqttDiscoveryMessage(message: MqttMessage, discoveryPrefix: string): { topic: string; component: string; objectId: string; config: JsonObject } | null {
+  const parts = message.topic.split('/').filter(Boolean);
+  if (parts[0] !== discoveryPrefix || parts.at(-1) !== 'config' || parts.length < 4) return null;
+  if (!message.payload.trim()) return null;
+  let config: JsonObject;
+  try {
+    config = JSON.parse(message.payload) as JsonObject;
+  } catch {
+    return null;
+  }
+  const component = parts[1] || 'sensor';
+  const objectId = parts.length >= 5 ? parts.slice(3, -1).join('_') : parts[2];
+  return { topic: message.topic, component, objectId, config };
+}
+
+function mqttEntityFromConfig(parsed: { topic: string; component: string; objectId: string; config: JsonObject }, index: number): ProviderEntity {
+  const config = parsed.config;
+  const commandTopic = mqttConfigString(config, 'command_topic', 'cmd_t');
+  const stateTopic = mqttConfigString(config, 'state_topic', 'stat_t');
+  const entityType = mqttDeviceType(parsed.component, config);
+  const key = mqttConfigString(config, 'unique_id', 'uniq_id') || parsed.objectId || `entity_${index}`;
+  const payloadOn = mqttConfigString(config, 'payload_on', 'pl_on') || 'ON';
+  const payloadOff = mqttConfigString(config, 'payload_off', 'pl_off') || 'OFF';
+  const commands = mqttCommandsForEntity(entityType, commandTopic);
+  const commandSchema: JsonObject = {
+    commands,
+    switchCode: `switch_${index}`,
+    component: parsed.component,
+    commandTopic,
+    jsonCommandTopic: mqttJsonCommandTopic(commandTopic),
+    stateTopic,
+    payloadOn,
+    payloadOff,
+    payloadOpen: mqttConfigString(config, 'payload_open', 'pl_open') || 'OPEN',
+    payloadClose: mqttConfigString(config, 'payload_close', 'pl_close') || 'CLOSE',
+    payloadStop: mqttConfigString(config, 'payload_stop', 'pl_stop') || 'STOP',
+    positionTopic: mqttConfigString(config, 'position_topic', 'pos_t'),
+    setPositionTopic: mqttConfigString(config, 'set_position_topic', 'set_pos_t'),
+  };
+  return {
+    key,
+    type: entityType,
+    name: mqttConfigString(config, 'name', 'name') || parsed.objectId || key,
+    commandSchema,
+    state: { online: true, state: 'unknown', dps: { [String(index)]: false } },
+    capabilities: { discoveryTopic: parsed.topic, config },
+  };
+}
+
+function mqttStatusEntries(entities: ProviderEntity[]): JsonObject[] {
+  return entities
+    .filter((entity) => ['switch', 'light', 'fan'].includes(entity.type) && entity.commandSchema?.commandTopic)
+    .map((entity, index) => ({ code: `switch_${index + 1}`, value: false, entityKey: entity.key }));
+}
+
+function mqttCommandsForEntity(entityType: string, commandTopic: string): string[] {
+  if (!commandTopic) return ['query'];
+  if (entityType === 'cover') return ['open', 'close', 'stop', 'set_position', 'jog_open', 'jog_close', 'jog_stop', 'calibrate_open', 'calibrate_closed', 'calibrate_zero', 'calibrate_max_steps', 'publish'];
+  return ['turn_on', 'turn_off', 'toggle', 'set', 'publish'];
+}
+
+function mqttJsonCommandTopic(commandTopic: string): string {
+  return commandTopic.replace(/\/cover\/set$/, '/command');
+}
+
+function mqttDeviceId(config: JsonObject, topic: string): string {
+  const device = mqttDeviceObject(config);
+  const identifiers = device.identifiers || device.ids;
+  if (Array.isArray(identifiers) && identifiers.length) return String(identifiers[0]);
+  if (typeof identifiers === 'string' && identifiers.trim()) return identifiers.trim();
+  const connections = device.connections || device.cns;
+  if (Array.isArray(connections) && Array.isArray(connections[0]) && connections[0][1]) return String(connections[0][1]);
+  return mqttConfigString(config, 'unique_id', 'uniq_id') || topic.replace(/\/config$/, '').replaceAll('/', ':');
+}
+
+function mqttDeviceName(config: JsonObject, fallback: string): string {
+  return mqttDeviceField(config, 'name', 'name') || mqttConfigString(config, 'name', 'name') || fallback || 'Dispositivo MQTT';
+}
+
+function mqttDeviceField(config: JsonObject, key: string, shortKey: string): string {
+  const device = mqttDeviceObject(config);
+  return mqttConfigString(device, key, shortKey);
+}
+
+function mqttDeviceObject(config: JsonObject): JsonObject {
+  const device = config.device || config.dev;
+  return device && typeof device === 'object' && !Array.isArray(device) ? device : {};
+}
+
+function mqttDeviceType(component: string, config: JsonObject): string {
+  const override = mqttConfigString(config, 'mini_has_device_type', 'mini_has_device_type') || mqttConfigString(config, 'device_type', 'deviceType') || mqttConfigString(config, 'platform', 'platform');
+  if (['switch', 'light', 'fan', 'cover', 'climate', 'lock', 'sensor', 'iot'].includes(override)) return override;
+  const normalized = component.replace(/^binary_/, '');
+  if (['switch', 'light', 'fan', 'cover', 'climate', 'lock'].includes(normalized)) return normalized;
+  const deviceClass = mqttConfigString(config, 'device_class', 'dev_cla').toLowerCase();
+  if (['outlet', 'switch', 'plug'].includes(deviceClass)) return 'switch';
+  if (['temperature', 'humidity', 'power', 'energy', 'voltage', 'current', 'illuminance'].includes(deviceClass)) return 'sensor';
+  return normalized === 'sensor' ? 'sensor' : 'iot';
+}
+
+function mqttConfigString(config: JsonObject, key: string, shortKey: string): string {
+  const value = config[key] ?? config[shortKey];
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function normalizeTuyaDevice(device: JsonObject, region: (typeof TUYA_REGIONS)[number]): ProviderDevice {
@@ -449,6 +755,28 @@ function nested(value: JsonObject, ...keys: string[]) {
     current = current[key];
   }
   return current;
+}
+
+async function readJsonResponse(response: Response): Promise<JsonObject> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as JsonObject;
+  } catch {
+    return { raw: text };
+  }
+}
+
+function smartthingsExpiresAt(expiresIn: unknown): string | undefined {
+  const seconds = Number(expiresIn);
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return new Date(Date.now() + seconds * 1000).toISOString();
+}
+
+function smartthingsErrorMessage(body: JsonObject, status: number, fallback = 'Falha na API SmartThings.'): string {
+  const detail = body.message || body.error_description || body.error || body.detail || body.raw;
+  if (typeof detail === 'string' && detail.trim()) return `SmartThings HTTP ${status}: ${detail}`;
+  return `${fallback} HTTP ${status}.`;
 }
 
 function messageFrom(error: unknown): string {

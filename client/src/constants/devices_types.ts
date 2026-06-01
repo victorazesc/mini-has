@@ -85,7 +85,7 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
     },
     {
         label: "Persiana",
-        value: "CURTAIN",
+        value: "cover",
         icon: 'blinds',
     },
     {
@@ -102,6 +102,7 @@ export const DEVICE_ICON_BY_TYPE = {
     CAM: Camera,
     FEEDER: PawPrint,
     CURTAIN: Blinds,
+    cover: Blinds,
     climate: Snowflake,
 }
 
@@ -110,5 +111,6 @@ export const DEVICE_TYPES_NAME_BY_TYPE = {
     CAM: "Camera",
     FEEDER: "Alimentador de Gatos",
     CURTAIN: "Persiana",
+    cover: "Persiana",
     climate: "Climatizacao",
 }

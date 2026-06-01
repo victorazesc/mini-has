@@ -15,7 +15,7 @@ export class AppController {
 
 @Controller('rooms')
 export class RoomsController {
-  constructor(private readonly home: HomeService) {}
+  constructor(private readonly home: HomeService) { }
 
   @Get()
   listRooms() {
@@ -53,7 +53,7 @@ export class DevicesController {
   constructor(
     private readonly home: HomeService,
     private readonly commands: CommandsService,
-  ) {}
+  ) { }
 
   @Get()
   listDevices() {
@@ -117,7 +117,7 @@ export class DevicesController {
 
 @Controller('entities')
 export class EntitiesController {
-  constructor(private readonly home: HomeService) {}
+  constructor(private readonly home: HomeService) { }
 
   @Get()
   listEntities() {
@@ -141,7 +141,7 @@ export class EntitiesController {
 
 @Controller('inbox')
 export class InboxController {
-  constructor(private readonly home: HomeService) {}
+  constructor(private readonly home: HomeService) { }
 
   @Get('devices')
   listInboxDevices(@Query('status') status?: InboxStatus, @Query('provider') provider?: string) {
@@ -157,6 +157,7 @@ export class InboxController {
       this.home.createEntitiesForDevice(device.id, device.provider, device.externalId, item.inbox.payload.entities || []);
     }
     this.home.markInboxStatus(Number(inboxId), 'accepted');
+    this.home.markInboxDuplicatesStatus(device.provider, device.externalId, 'accepted');
     return device;
   }
 
@@ -170,7 +171,7 @@ export class InboxController {
 
 @Controller('integration-providers')
 export class IntegrationProvidersController {
-  constructor(private readonly providers: ProvidersService) {}
+  constructor(private readonly providers: ProvidersService) { }
 
   @Get()
   listProviderDefinitions() {
@@ -183,7 +184,7 @@ export class IntegrationsController {
   constructor(
     private readonly home: HomeService,
     private readonly providers: ProvidersService,
-  ) {}
+  ) { }
 
   @Get()
   listIntegrations() {
@@ -216,6 +217,14 @@ export class IntegrationsController {
       const result = await this.providers.testProvider(pending);
       if (!result.ok) throw new HttpException({ detail: result.message }, HttpStatus.BAD_REQUEST);
       status = result.status;
+    }
+
+    if (type === 'smartthings_cloud') {
+      const existing = this.home.findLatestIntegrationByType(type);
+      if (existing) {
+        const updated = this.home.updateIntegrationConfigAndSecrets(existing.id, { ...existing.config, ...config }, { ...existing.secrets, ...secrets }, status);
+        if (updated) return this.home.publicIntegration(updated);
+      }
     }
 
     return this.home.publicIntegration(this.home.createIntegration(body, config, secrets, status));
@@ -273,7 +282,7 @@ export class IntegrationsController {
 
 @Controller('discovery')
 export class DiscoveryController {
-  constructor(private readonly discovery: DiscoveryService) {}
+  constructor(private readonly discovery: DiscoveryService) { }
 
   @Post('jobs')
   createJob(@Body() body: CreateDiscoveryJobRequest) {

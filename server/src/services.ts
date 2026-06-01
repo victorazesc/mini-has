@@ -210,6 +210,9 @@ export class HomeService {
     if (commandResult.result.provider === 'smartthings_cloud' && commandResult.result.action === 'query' && isObject(commandResult.result.statusSummary)) {
       return this.updateSmartthingsQueryState(deviceId, commandResult.result);
     }
+    if (commandResult.result.provider === 'mqtt' && isObject(commandResult.result.statusSummary)) {
+      return this.updateMqttRuntimeState(deviceId, commandResult.result);
+    }
     const dps = commandResult.result.dps;
     if (!isObject(dps) || !Object.keys(dps).length) return this.getDevice(deviceId);
     const current = this.getDevice(deviceId);
@@ -325,7 +328,20 @@ export class HomeService {
 
   upsertInboxItem(sourceType: string, sourceId: number, externalId: string, payload: JsonObject, secrets: JsonObject = {}, matchScore = 0): number {
     const now = this.storage.utcNow();
-    const existing = this.storage.get<JsonObject>(
+    const provider = String(payload.provider || '').trim();
+    const existingByProvider =
+      provider && externalId
+        ? this.storage.get<JsonObject>(
+            `
+            SELECT id, status FROM device_inbox
+            WHERE external_id = ? AND json_extract(payload_json, '$.provider') = ?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT 1
+            `,
+            [externalId, provider],
+          )
+        : null;
+    const existing = existingByProvider || this.storage.get<JsonObject>(
       `
       SELECT id, status FROM device_inbox
       WHERE source_type = ? AND source_id = ? AND external_id = ?
@@ -367,7 +383,10 @@ export class HomeService {
       const normalizedProvider = provider.trim();
       devices = devices.filter((device) => String(device.payload.provider || '').trim() === normalizedProvider);
     }
-    return devices;
+    if (status === 'pending') {
+      devices = devices.filter((device) => !this.hasAcceptedOrAddedInboxDevice(device));
+    }
+    return dedupeInboxDevices(devices);
   }
 
   getInboxDevice(inboxId: number): InboxDevice | null {
@@ -384,6 +403,18 @@ export class HomeService {
   markInboxStatus(inboxId: number, status: InboxStatus): InboxDevice | null {
     this.storage.run('UPDATE device_inbox SET status = ?, updated_at = ? WHERE id = ?', [status, this.storage.utcNow(), inboxId]);
     return this.getInboxDevice(inboxId);
+  }
+
+  markInboxDuplicatesStatus(provider: string, externalId: string, status: InboxStatus): void {
+    if (!provider || !externalId) return;
+    this.storage.run(
+      `
+      UPDATE device_inbox
+      SET status = ?, updated_at = ?
+      WHERE external_id = ? AND json_extract(payload_json, '$.provider') = ?
+      `,
+      [status, this.storage.utcNow(), externalId, provider],
+    );
   }
 
   acceptInboxDevice(inbox: InboxDevice, secrets: JsonObject, name?: string | null, roomId?: number | null): Device {
@@ -457,6 +488,23 @@ export class HomeService {
     return null;
   }
 
+  findLatestIntegrationByType(providerType: IntegrationType): StoredIntegration | null {
+    const row = this.storage.get<JsonObject>('SELECT * FROM integrations WHERE type = ? ORDER BY id DESC LIMIT 1', [providerType]);
+    return row ? this.fromIntegrationRow(row) : null;
+  }
+
+  updateIntegrationConfigAndSecrets(integrationId: number, config: JsonObject, secrets: JsonObject, status: IntegrationStatus = 'created'): StoredIntegration | null {
+    this.storage.run(
+      `
+      UPDATE integrations
+      SET status = ?, config_json = ?, secrets_json = ?, error = NULL, updated_at = ?
+      WHERE id = ?
+      `,
+      [status, this.storage.jsonDump(config), this.storage.jsonDump(secrets), this.storage.utcNow(), integrationId],
+    );
+    return this.getIntegration(integrationId);
+  }
+
   listIntegrations(): StoredIntegration[] {
     return this.storage.all<JsonObject>('SELECT * FROM integrations ORDER BY id').map((row) => this.fromIntegrationRow(row));
   }
@@ -507,6 +555,45 @@ export class HomeService {
     return this.getDevice(deviceId);
   }
 
+  private updateMqttRuntimeState(deviceId: number, result: JsonObject): Device | null {
+    const current = this.getDevice(deviceId);
+    if (!current) return null;
+    const now = this.storage.utcNow();
+    const dps = isObject(result.dps) ? result.dps : {};
+    const currentDps = isObject(current.status.dps) ? current.status.dps : {};
+    const mergedDps = { ...stringifyKeys(currentDps), ...stringifyKeys(dps) };
+    const rawStatus = isObject(result.rawStatus) ? result.rawStatus : {};
+    const summary = isObject(result.statusSummary) ? result.statusSummary : {};
+    const status = {
+      ...current.status,
+      ...summary,
+      raw: rawStatus,
+      online: summary.online ?? true,
+      lastSeenAt: now,
+      dps: mergedDps,
+    };
+    const capabilities = {
+      ...current.capabilities,
+      status: mergeStatusEntries(current.capabilities.status || [], dps),
+    };
+    const payload = {
+      ...current.payload,
+      status: rawStatus,
+      lastStatus: mergedDps,
+      lastSeenAt: now,
+    };
+    this.storage.run(
+      `
+      UPDATE devices
+      SET status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ?
+      WHERE id = ?
+      `,
+      [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
+    );
+    this.updateEntitiesRuntimeState(deviceId, mergedDps, now);
+    return this.getDevice(deviceId);
+  }
+
   private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string): void {
     const rows = this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId]);
     for (const row of rows) {
@@ -551,6 +638,23 @@ export class HomeService {
         row.id,
       ]);
     }
+  }
+
+  private hasAcceptedOrAddedInboxDevice(device: InboxDevice): boolean {
+    const provider = String(device.payload.provider || device.sourceType || '').trim();
+    const externalId = String(device.payload.externalId || device.externalId || '').trim();
+    if (!provider || !externalId) return false;
+    const savedDevice = this.storage.get<JsonObject>('SELECT id FROM devices WHERE provider = ? AND external_id = ? LIMIT 1', [provider, externalId]);
+    if (savedDevice) return true;
+    const acceptedInbox = this.storage.get<JsonObject>(
+      `
+      SELECT id FROM device_inbox
+      WHERE status = 'accepted' AND external_id = ? AND json_extract(payload_json, '$.provider') = ?
+      LIMIT 1
+      `,
+      [externalId, provider],
+    );
+    return Boolean(acceptedInbox);
   }
 
   private findLocalMatch(device: Device, _secrets: JsonObject): JsonObject | null {
@@ -655,6 +759,20 @@ function stringifyKeys(value: JsonObject): JsonObject {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [String(key), item]));
 }
 
+function dedupeInboxDevices(devices: InboxDevice[]): InboxDevice[] {
+  const seen = new Set<string>();
+  const result: InboxDevice[] = [];
+  for (const device of devices) {
+    const provider = String(device.payload.provider || device.sourceType || '').trim();
+    const externalId = String(device.payload.externalId || device.externalId || '').trim();
+    const key = provider && externalId ? `${provider}:${externalId}` : `${device.sourceType}:${device.sourceId}:${device.externalId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(device);
+  }
+  return result;
+}
+
 function mergeStatusEntries(current: unknown, dps: JsonObject): JsonObject[] {
   const merged: JsonObject = {};
   if (Array.isArray(current)) {
@@ -684,6 +802,13 @@ function codeFromDpsId(dpsId: string): string {
 
 function stateFromValue(value: unknown, deviceType: string): string {
   if (typeof value === 'boolean') return value ? 'on' : 'off';
+  if (deviceType === 'cover' && typeof value === 'number') {
+    if (value <= 2) return 'open';
+    if (value >= 98) return 'closed';
+    return 'stopped';
+  }
+  if (deviceType === 'cover' && ['open', 'opened'].includes(String(value).toLowerCase())) return 'open';
+  if (deviceType === 'cover' && ['close', 'closed'].includes(String(value).toLowerCase())) return 'closed';
   if (['opening', 'closing', 'moving'].includes(String(value))) return 'on';
   if (['stop', 'stopped', 'idle'].includes(String(value))) return 'idle';
   if (value === null || value === undefined) return ['sensor', 'camera'].includes(deviceType) ? 'idle' : 'unknown';

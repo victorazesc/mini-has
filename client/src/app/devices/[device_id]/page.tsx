@@ -12,9 +12,9 @@ import Image from "next/image";
 import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers";
 import { Badge } from "@/components/ui/badge";
 import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus } from "@/src/constants/devices_types";
-import path from "path";
 import { Separator } from "@/components/ui/separator";
 import { ClimateControl } from "@/components/capabilities/climate/control";
+import { CoverControl } from "@/components/capabilities/cover/control";
 
 type SwitchChannel = {
     dpsId: string;
@@ -82,6 +82,20 @@ export default function DevicePage() {
             },
         });
     };
+    const handlePowerToggle = () => {
+        if (!device?.id) {
+            return;
+        }
+
+        const nextCommand = device.status?.state === "on" ? "turn_off" : "turn_on";
+        sendCommand({
+            deviceId: device.id,
+            command: {
+                command: nextCommand,
+                params: {},
+            },
+        });
+    };
     useEffect(() => {
         setTitle(
             <span className="flex items-center gap-2">
@@ -134,7 +148,10 @@ export default function DevicePage() {
     const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const DeviceTypeName = DEVICE_TYPES_NAME_BY_TYPE[device.deviceType as keyof typeof DEVICE_TYPES_NAME_BY_TYPE] ?? "Device"
-    const isOn = device.status.state === "on";
+    const isCover = device.deviceType === "cover";
+    const isOn = isCover ? device.status.state === "open" : device.status.state === "on";
+    const stateText = isCover ? coverStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
+    const imageSrc = deviceImageSrc(device.deviceType);
     const lastSeenAt = device.status.lastSeenAt
         ? new Date(device.status.lastSeenAt).toLocaleString("pt-BR")
         : "Sem registro";
@@ -146,7 +163,7 @@ export default function DevicePage() {
                 <div className="flex flex-row gap-2 items-center px-6 bg-transparent border-none outline-none shadow-none ">
                     <div className="flex flex-row gap-2 items-center flex-2">
                         <div className="flex items-center justify-center rounded-full bg-secondary p-1">
-                            <Image src={cn(path.join(process.cwd(), `../devices/${device.deviceType}.png`))} alt={DeviceTypeName} width={130} height={130} />
+                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} />
                         </div>
                         <div className="flex flex-col gap-2">
                             <h1 className="text-2xl font-semibold">{device.name}</h1>
@@ -172,12 +189,15 @@ export default function DevicePage() {
                             <p className="text-muted-foreground flex items-center gap-2"><Building className="size-4" /> {device.payload.manufacturer} • {device.payload.model}</p>
                         </div>
                     </div>
-                    <Card className="flex-1 rounded-3xl px-6 py-5">
+                    <Card
+                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && "cursor-pointer")}
+                        onClick={isCover ? undefined : handlePowerToggle}
+                    >
                         <div className="flex items-center justify-between gap-6">
                             <div className="flex flex-col gap-2">
                                 <span className="text-sm font-medium text-muted-foreground">Estado</span>
                                 <strong className={cn("text-2xl font-semibold", isOn ? "text-green-500" : "text-muted-foreground")}>
-                                    {isOn ? "Ligado" : "Desligado"}
+                                    {stateText}
                                 </strong>
                                 <span className={cn("flex items-center gap-2 text-sm", device.status.online ? "text-muted-foreground" : "text-red-500")}>
                                     <Circle
@@ -227,9 +247,32 @@ export default function DevicePage() {
                                 <ClimateControl key={device.id} device={device as Device & { status: DeviceStatus }} />
                             </section>
                         )}
+
+                    {
+                        device?.deviceType === "cover" && (
+                            <section className="flex-1">
+                                <CoverControl key={device.id} device={device} />
+                            </section>
+                        )}
                 </div>
 
             </div>
         </main>
     );
+}
+
+function deviceImageSrc(deviceType: string): string {
+    if (deviceType === "camera") return "/devices/camera.jpg";
+    if (deviceType === "cover") return "/window.svg";
+    if (["climate", "feeder", "switch", "switch2ch"].includes(deviceType)) return `/devices/${deviceType}.png`;
+    return "/devices/switch.png";
+}
+
+function coverStateText(state: string): string {
+    const normalized = String(state || "").toLowerCase();
+    if (normalized === "open") return "Aberta";
+    if (normalized === "closed") return "Fechada";
+    if (normalized === "opening") return "Abrindo";
+    if (normalized === "closing") return "Fechando";
+    return "Parada";
 }

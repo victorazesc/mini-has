@@ -5,6 +5,7 @@ import { DiscoveryService } from './discovery';
 import { ProvidersService } from './providers';
 import { HomeService } from './services';
 import { StorageService } from './storage';
+import { MqttService } from './mqtt';
 
 @Module({
   controllers: [
@@ -17,6 +18,6 @@ import { StorageService } from './storage';
     IntegrationsController,
     RoomsController,
   ],
-  providers: [CommandsService, DiscoveryService, HomeService, ProvidersService, StorageService],
+  providers: [CommandsService, DiscoveryService, HomeService, MqttService, ProvidersService, StorageService],
 })
 export class AppModule {}

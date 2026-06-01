@@ -28,7 +28,7 @@ export async function createIntegration(data: { name?: string; type?: string, co
     });
 
     if (!response.ok) {
-        throw new Error(await response.json().then(data => data.message));
+        throw new Error(await errorMessageFrom(response, "Erro ao criar integracao"));
     }
 
     return response.json() as Promise<Integration>;
@@ -40,7 +40,7 @@ export async function syncIntegration(integration_id: number): Promise<SyncInteg
     });
 
     if (!response.ok) {
-        throw new Error(await response.json().then(data => data.message));
+        throw new Error(await errorMessageFrom(response, "Erro ao sincronizar integração"));
     }
 
     const result = await response.json() as SyncIntegrationResult;
@@ -50,4 +50,13 @@ export async function syncIntegration(integration_id: number): Promise<SyncInteg
     }
 
     return result;
+}
+
+async function errorMessageFrom(response: Response, fallback: string): Promise<string> {
+    try {
+        const data = await response.json();
+        return data.message ?? data.detail ?? data.error ?? fallback;
+    } catch {
+        return fallback;
+    }
 }

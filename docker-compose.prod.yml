@@ -19,6 +19,8 @@ services:
       PORT: 8000
       MINI_HAS_DB: /app/data/mini-has.db
       MQTT_URL: mqtt://mqtt:1883
+      SMARTTHINGS_CLIENT_ID: ${SMARTTHINGS_CLIENT_ID:-}
+      SMARTTHINGS_CLIENT_SECRET: ${SMARTTHINGS_CLIENT_SECRET:-}
     ports:
       - "8000:8000"
     volumes:
@@ -34,6 +36,11 @@ services:
     environment:
       SERVER_URL: http://server:8000
       NEXT_TELEMETRY_DISABLED: "1"
+      SMARTTHINGS_CLIENT_ID: ${SMARTTHINGS_CLIENT_ID:-}
+      SMARTTHINGS_CLIENT_SECRET: ${SMARTTHINGS_CLIENT_SECRET:-}
+      SMARTTHINGS_REDIRECT_URI: ${SMARTTHINGS_REDIRECT_URI:-}
+      SMARTTHINGS_PUBLIC_ORIGIN: ${SMARTTHINGS_PUBLIC_ORIGIN:-}
+      SMARTTHINGS_SCOPES: ${SMARTTHINGS_SCOPES:-r:devices:* x:devices:*}
     ports:
       - "3000:3000"
     depends_on:
