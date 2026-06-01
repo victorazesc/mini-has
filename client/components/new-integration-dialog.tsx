@@ -25,7 +25,7 @@ const integrationProviders = [
     {
         value: "smartthings_cloud",
         name: "SmartThings Cloud",
-        icon: "./providers/smartthings.svg",
+        icon: "./providers/smartThings.svg",
         localOnly: false,
     },
     {

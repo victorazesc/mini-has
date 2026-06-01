@@ -3,6 +3,8 @@ node_modules
 out
 coverage
 .DS_Store
+.env
+.env*
 *.log
 *.tsbuildinfo
 Dockerfile*

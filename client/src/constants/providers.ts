@@ -31,7 +31,7 @@ export const PROVIDERS = [
 export const PROVIDERS_ICON_BY_TYPE = {
     tuya_cloud: path.join(process.cwd(), "./providers/tuya.svg"),
     intelbras_izy: "./providers/intelbras.svg",
-    smartthings_cloud: path.join(process.cwd(), "./providers/smartthings.svg"),
+    smartthings_cloud: path.join(process.cwd(), "./providers/smartThings.svg"),
     generic_iot: path.join(process.cwd(), "./providers/diy.svg"),
     mqtt: path.join(process.cwd(), "./providers/diy.svg"),
 }
