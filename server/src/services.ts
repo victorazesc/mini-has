@@ -114,8 +114,22 @@ export class HomeService {
       .all<JsonObject>('SELECT * FROM device_command_logs WHERE device_id = ? ORDER BY created_at DESC, id DESC LIMIT ?', [deviceId, safeLimit])
       .map((row) => this.fromDeviceHistoryCommandRow(row))
       .filter((entry) => !shouldHideHistoryCommand(entry.command));
+    const entityCommands = this.storage
+      .all<JsonObject>(
+        `
+        SELECT command_logs.*, entities.id AS entity_id, entities.name AS entity_name, entities.type AS entity_type, entities.unique_key AS entity_unique_key
+        FROM command_logs
+        INNER JOIN entities ON entities.id = command_logs.entity_id
+        WHERE entities.device_id = ?
+        ORDER BY command_logs.created_at DESC, command_logs.id DESC
+        LIMIT ?
+        `,
+        [deviceId, safeLimit],
+      )
+      .map((row) => this.fromEntityHistoryCommandRow(row))
+      .filter((entry) => !shouldHideHistoryCommand(entry.command));
 
-    return [...events, ...commands]
+    return [...events, ...commands, ...entityCommands]
       .sort((left, right) => {
         const dateCompare = String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
         if (dateCompare !== 0) return dateCompare;
@@ -386,7 +400,7 @@ export class HomeService {
       ok: true,
       status: 'accepted',
       message: 'Comando registrado. Runtime especifico do provider sera plugado na proxima etapa.',
-      result: { entityId, command: request.command, params: request.params || {} },
+      result: { entityId, entityName: entity.name, entityType: entity.type, deviceId: entity.deviceId, command: request.command, params: request.params || {} },
     };
     this.storage.run(
       `
@@ -796,6 +810,7 @@ export class HomeService {
         now,
         row.id,
       ]);
+      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { dpsId, key });
     }
   }
 
@@ -803,13 +818,68 @@ export class HomeService {
     const rows = this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId]);
     for (const row of rows) {
       const state = this.storage.jsonLoad<JsonObject>(row.state_json, {});
+      const nextState = { ...state, ...status, lastSeenAt: now };
       const capabilities = this.storage.jsonLoad<JsonObject>(row.capabilities_json, {});
       this.storage.run('UPDATE entities SET state_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
-        this.storage.jsonDump({ ...state, ...status, lastSeenAt: now }),
+        this.storage.jsonDump(nextState),
         this.storage.jsonDump({ ...capabilities, status: rawStatus }),
         now,
         row.id,
       ]);
+      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { provider: 'smartthings_cloud' });
+    }
+  }
+
+  private logEntityRuntimeStatusEvent(deviceId: number, row: JsonObject, previousState: JsonObject, nextState: JsonObject, payload: JsonObject = {}): void {
+    const previousStateValue = String(previousState.state || '').trim();
+    const nextStateValue = String(nextState.state || '').trim();
+    const previousValue = has(previousState, 'value') ? previousState.value : undefined;
+    const nextValue = has(nextState, 'value') ? nextState.value : undefined;
+    const previousOnline = previousState.online === undefined ? null : Boolean(previousState.online);
+    const nextOnline = nextState.online === undefined ? null : Boolean(nextState.online);
+    const hadPreviousSnapshot = Boolean(previousState.lastSeenAt) || previousStateValue !== '' || previousValue !== undefined || (isObject(previousState.dps) && Object.keys(previousState.dps).length > 0);
+    const basePayload = {
+      scope: 'entity',
+      entityId: row.id,
+      entityName: row.name,
+      entityType: row.type,
+      uniqueKey: row.unique_key,
+      ...payload,
+    };
+
+    if (!hadPreviousSnapshot && (nextStateValue !== '' || nextValue !== undefined || nextOnline !== null)) {
+      this.recordDeviceEvent(
+        deviceId,
+        'entity_status_initialized',
+        `${row.name} recebeu status`,
+        entityRuntimeStatusMessage(nextOnline, nextStateValue, nextValue),
+        nextOnline === false ? 'warning' : 'success',
+        basePayload,
+      );
+      return;
+    }
+
+    if (previousOnline !== null && nextOnline !== null && previousOnline !== nextOnline) {
+      this.recordDeviceEvent(
+        deviceId,
+        nextOnline ? 'entity_became_online' : 'entity_became_offline',
+        nextOnline ? `${row.name} ficou online` : `${row.name} ficou offline`,
+        entityRuntimeStatusMessage(nextOnline, nextStateValue, nextValue),
+        nextOnline ? 'success' : 'warning',
+        basePayload,
+      );
+      return;
+    }
+
+    if (previousStateValue !== nextStateValue || !historyValuesEqual(previousValue, nextValue)) {
+      this.recordDeviceEvent(
+        deviceId,
+        'entity_state_changed',
+        `${row.name} alterou estado`,
+        entityStateChangeMessage(previousStateValue, nextStateValue, previousValue, nextValue),
+        nextOnline === false ? 'warning' : 'info',
+        { ...basePayload, previousState: previousStateValue || null, nextState: nextStateValue || null, previousValue, nextValue },
+      );
     }
   }
 
@@ -915,6 +985,32 @@ export class HomeService {
       level: commandLevelFromStatus(String(row.status || result.status || '')),
       command,
       result,
+      payload: { scope: 'device' },
+      createdAt: row.created_at,
+    };
+  }
+
+  private fromEntityHistoryCommandRow(row: JsonObject): DeviceHistoryEntry {
+    const command = this.storage.jsonLoad<JsonObject>(row.command_json, {});
+    const result = this.storage.jsonLoad<JsonObject>(row.result_json, {});
+    return {
+      id: `entity-command:${row.id}`,
+      kind: 'command',
+      deviceId: Number(result.result?.deviceId || 0),
+      eventType: 'entity_command',
+      title: `${row.entity_name}: ${deviceCommandTitle(command)}`,
+      message: String(result.message || summarizeCommandParams(command.params) || ''),
+      status: row.status,
+      level: commandLevelFromStatus(String(row.status || result.status || '')),
+      command,
+      result,
+      payload: {
+        scope: 'entity',
+        entityId: row.entity_id,
+        entityName: row.entity_name,
+        entityType: row.entity_type,
+        uniqueKey: row.entity_unique_key,
+      },
       createdAt: row.created_at,
     };
   }
@@ -1087,6 +1183,39 @@ function runtimeStatusMessage(isOnline: boolean | null, state: string): string |
     deviceStateLabel(state),
   ].filter(Boolean);
   return parts.length ? `Status atual: ${parts.join(' • ')}.` : null;
+}
+
+function entityRuntimeStatusMessage(isOnline: boolean | null, state: string, value: unknown): string | null {
+  const parts = [
+    isOnline === null ? '' : isOnline ? 'online' : 'offline',
+    deviceStateLabel(state),
+    historyValueLabel(value),
+  ].filter(Boolean);
+  return parts.length ? `Status atual: ${parts.join(' • ')}.` : null;
+}
+
+function entityStateChangeMessage(previousState: string, nextState: string, previousValue: unknown, nextValue: unknown): string {
+  if (previousState !== nextState) {
+    return `${deviceStateLabel(previousState) || 'Sem estado'} -> ${deviceStateLabel(nextState) || 'Sem estado'}`;
+  }
+
+  return `${historyValueLabel(previousValue) || 'Sem valor'} -> ${historyValueLabel(nextValue) || 'Sem valor'}`;
+}
+
+function historyValuesEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function historyValueLabel(value: unknown): string {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'boolean') return value ? 'ativo' : 'inativo';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function deviceCommandTitle(command: JsonObject): string {
