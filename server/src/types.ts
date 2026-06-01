@@ -60,13 +60,51 @@ export interface Room {
   id: number;
   name: string;
   icon?: string | null;
-  floor?: string | null;
+  floorId?: number | null;
+  floorName?: string | null;
   description?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export type SceneRunStatus = 'pending' | 'success' | 'partial' | 'error';
+
+export type AutomationTriggerType = 'device_state_changed' | 'entity_state_changed';
+
+export type AutomationRunStatus = 'pending' | 'success' | 'partial' | 'error';
+
+export interface AutomationTrigger {
+  id: number;
+  automationId: number;
+  type: AutomationTriggerType;
+  deviceId?: number | null;
+  entityId?: number | null;
+  config: JsonObject;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AutomationRun {
+  id: number;
+  automationId: number;
+  status: AutomationRunStatus;
+  summary: JsonObject;
+  createdAt: string;
+}
+
+export interface Automation {
+  id: number;
+  name: string;
+  description?: string | null;
+  enabled: boolean;
+  roomId?: number | null;
+  roomName?: string | null;
+  sceneId: number;
+  sceneName?: string | null;
+  trigger: AutomationTrigger;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface SceneAction {
   id: number;

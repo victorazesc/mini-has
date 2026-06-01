@@ -66,15 +66,26 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
-      CREATE TABLE IF NOT EXISTS rooms (
+
+      CREATE TABLE IF NOT EXISTS floors (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
-        icon TEXT,
-        floor TEXT,
         description TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        icon TEXT,
+        floor_id INTEGER,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(floor_id) REFERENCES floors(id) ON DELETE SET NULL
+      );
+
       CREATE TABLE IF NOT EXISTS scenes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -178,6 +189,40 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         FOREIGN KEY(device_id) REFERENCES devices(id)
       );
+      CREATE TABLE IF NOT EXISTS automations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        room_id INTEGER,
+        scene_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(room_id) REFERENCES rooms(id) ON DELETE SET NULL,
+        FOREIGN KEY(scene_id) REFERENCES scenes(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS automation_triggers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        automation_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        device_id INTEGER,
+        entity_id INTEGER,
+        config_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(automation_id) REFERENCES automations(id) ON DELETE CASCADE,
+        FOREIGN KEY(device_id) REFERENCES devices(id),
+        FOREIGN KEY(entity_id) REFERENCES entities(id),
+        UNIQUE(automation_id)
+      );
+      CREATE TABLE IF NOT EXISTS automation_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        automation_id INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        summary_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(automation_id) REFERENCES automations(id) ON DELETE CASCADE
+      );
       CREATE TABLE IF NOT EXISTS discovery_scans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         status TEXT NOT NULL,
@@ -203,13 +248,18 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_scene_actions_scene_id ON scene_actions(scene_id, order_index ASC);
       CREATE INDEX IF NOT EXISTS idx_scene_actions_device_id ON scene_actions(device_id);
       CREATE INDEX IF NOT EXISTS idx_scene_runs_scene_id ON scene_runs(scene_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_automations_room_id ON automations(room_id);
+      CREATE INDEX IF NOT EXISTS idx_automations_scene_id ON automations(scene_id);
+      CREATE INDEX IF NOT EXISTS idx_automation_triggers_device_id ON automation_triggers(device_id);
+      CREATE INDEX IF NOT EXISTS idx_automation_triggers_entity_id ON automation_triggers(entity_id);
+      CREATE INDEX IF NOT EXISTS idx_automation_runs_automation_id ON automation_runs(automation_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id);
       CREATE INDEX IF NOT EXISTS idx_device_events_device_id ON device_events(device_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_discovery_scans_created_at ON discovery_scans(created_at);
       CREATE INDEX IF NOT EXISTS idx_discovery_devices_last_seen_at ON discovery_devices(last_seen_at);
     `);
     this.ensureColumn('rooms', 'icon', 'TEXT');
-    this.ensureColumn('rooms', 'floor', 'TEXT');
+    this.ensureColumn('rooms', 'floor_id', 'INTEGER');
   }
 
   private ensureColumn(table: string, column: string, definition: string) {

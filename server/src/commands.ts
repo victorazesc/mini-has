@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { URL } from 'node:url';
 import { DEFAULT_PORT, DEFAULT_TIMEOUT_MS, TuyaLanClient } from './tuya-lan';
 import { CommandRequest, CommandResult, Device, JsonObject, StoredIntegration } from './types';
@@ -8,6 +8,7 @@ import { HomeService, dpsIdFromCode } from './services';
 @Injectable()
 export class CommandsService {
   constructor(
+    @Inject(forwardRef(() => HomeService))
     private readonly home: HomeService,
     private readonly providers: ProvidersService,
   ) {}

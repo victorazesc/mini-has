@@ -1,5 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import {
+  Automation,
+  AutomationRun,
+  AutomationTrigger,
+  AutomationTriggerType,
   CommandRequest,
   CommandResult,
   Device,
@@ -21,49 +25,84 @@ import {
   SceneRunStatus,
   StoredIntegration,
 } from './types';
+import { CommandsService } from './commands';
 import { StorageService } from './storage';
 
 const SCENE_ALLOWED_COMMANDS = new Set(['turn_on', 'turn_off', 'open', 'close', 'stop', 'set_position']);
+const AUTOMATION_ALLOWED_TRIGGER_TYPES = new Set<AutomationTriggerType>(['device_state_changed', 'entity_state_changed']);
 
 @Injectable()
 export class HomeService {
-  constructor(private readonly storage: StorageService) { }
+  constructor(
+    private readonly storage: StorageService,
+    @Inject(forwardRef(() => CommandsService))
+    private readonly commands: CommandsService,
+  ) { }
 
   listRooms(): Room[] {
-    const rows = this.storage.all<JsonObject>('SELECT * FROM rooms ORDER BY COALESCE(floor, \'\'), name');
+    const rows = this.storage.all<JsonObject>(`
+      SELECT rooms.*, floors.name AS floor_name
+      FROM rooms
+      LEFT JOIN floors ON floors.id = rooms.floor_id
+      ORDER BY COALESCE(floors.name, ''), rooms.name
+    `);
     return rows.map(fromRoomRow);
   }
 
   getRoom(roomId: number): Room | null {
-    const row = this.storage.get<JsonObject>('SELECT * FROM rooms WHERE id = ?', [roomId]);
+    const row = this.storage.get<JsonObject>(`
+      SELECT rooms.*, floors.name AS floor_name
+      FROM rooms
+      LEFT JOIN floors ON floors.id = rooms.floor_id
+      WHERE rooms.id = ?
+    `, [roomId]);
     return row ? fromRoomRow(row) : null;
   }
 
   createRoom(request: JsonObject): Room {
     const now = this.storage.utcNow();
     const result = this.storage.run(
-      'INSERT INTO rooms (name, icon, floor, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [request.name, request.icon, request.floor, request.description, now, now],
+      'INSERT INTO rooms (name, icon, floor_id, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [request.name, request.icon, request.floorId, request.description, now, now],
     );
     return this.getRoom(Number(result.lastInsertRowid)) as Room;
   }
 
   updateRoom(roomId: number, request: JsonObject): Room | null {
     const current = this.getRoom(roomId);
+
     if (!current) return null;
-    const fieldMap: Record<string, string> = { name: 'name', icon: 'icon', floor: 'floor', description: 'description' };
+
+    const fieldMap: Record<string, string> = {
+      name: 'name',
+      icon: 'icon',
+      floorId: 'floor_id',
+      floor_id: 'floor_id',
+      description: 'description',
+    };
+
     const assignments: string[] = [];
     const values: unknown[] = [];
+
     for (const [source, target] of Object.entries(fieldMap)) {
       if (has(request, source)) {
         assignments.push(`${target} = ?`);
         values.push(request[source]);
       }
     }
+
     if (!assignments.length) return current;
+
     assignments.push('updated_at = ?');
-    values.push(this.storage.utcNow(), roomId);
-    this.storage.run(`UPDATE rooms SET ${assignments.join(', ')} WHERE id = ?`, values);
+    values.push(this.storage.utcNow());
+
+    values.push(roomId);
+
+    this.storage.run(
+      `UPDATE rooms SET ${assignments.join(', ')} WHERE id = ?`,
+      values,
+    );
+
     return this.getRoom(roomId);
   }
 
@@ -171,6 +210,7 @@ export class HomeService {
   async runScene(
     sceneId: number,
     executeCommand: (device: Device, secrets: JsonObject, request: CommandRequest) => Promise<CommandResult>,
+    sourceMetadata: JsonObject = {},
   ): Promise<SceneRun | null> {
     const scene = this.getScene(sceneId);
     if (!scene) return null;
@@ -201,13 +241,14 @@ export class HomeService {
       }
 
       const result = await executeCommand(deviceItem.device, deviceItem.secrets, request);
-      const enrichedResult = this.enrichSceneCommandResult(result, scene, action);
+      const enrichedResult = this.enrichSceneCommandResult(result, scene, action, sourceMetadata);
       this.updateDeviceRuntimeState(action.deviceId, enrichedResult);
       this.logDeviceCommand(action.deviceId, request, enrichedResult, {
         sceneId: scene.id,
         sceneName: scene.name,
         actionId: action.id,
         orderIndex: action.orderIndex,
+        ...redactSecrets(sourceMetadata),
       });
 
       if (enrichedResult.ok) {
@@ -276,6 +317,137 @@ export class HomeService {
   completeSceneRun(sceneRunId: number, status: SceneRunStatus, summary: JsonObject): SceneRun | null {
     this.storage.run('UPDATE scene_runs SET status = ?, summary_json = ? WHERE id = ?', [status, this.storage.jsonDump(summary), sceneRunId]);
     return this.getSceneRun(sceneRunId);
+  }
+
+  listAutomationRuns(automationId: number, limit = 10): AutomationRun[] {
+    const safeLimit = Math.min(50, Math.max(1, Number.isFinite(limit) ? Math.trunc(limit) : 10));
+    const rows = this.storage.all<JsonObject>(
+      'SELECT * FROM automation_runs WHERE automation_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
+      [automationId, safeLimit],
+    );
+    return rows.map((row) => fromAutomationRunRow(row));
+  }
+
+  startAutomationRun(automationId: number, summary: JsonObject = {}): AutomationRun {
+    const now = this.storage.utcNow();
+    const result = this.storage.run(
+      'INSERT INTO automation_runs (automation_id, status, summary_json, created_at) VALUES (?, ?, ?, ?)',
+      [automationId, 'pending', this.storage.jsonDump(summary), now],
+    );
+    return this.getAutomationRun(Number(result.lastInsertRowid)) as AutomationRun;
+  }
+
+  completeAutomationRun(automationRunId: number, status: SceneRunStatus, summary: JsonObject): AutomationRun | null {
+    this.storage.run('UPDATE automation_runs SET status = ?, summary_json = ? WHERE id = ?', [status, this.storage.jsonDump(summary), automationRunId]);
+    return this.getAutomationRun(automationRunId);
+  }
+
+  listAutomations(): Automation[] {
+    const rows = this.storage.all<JsonObject>(`
+      SELECT automations.*, rooms.name AS room_name, scenes.name AS scene_name
+      FROM automations
+      LEFT JOIN rooms ON rooms.id = automations.room_id
+      INNER JOIN scenes ON scenes.id = automations.scene_id
+      ORDER BY automations.enabled DESC, COALESCE(rooms.name, ''), automations.name, automations.id
+    `);
+    return rows.map((row) => this.fromAutomationRow(row));
+  }
+
+  getAutomation(automationId: number): Automation | null {
+    const row = this.storage.get<JsonObject>(
+      `
+      SELECT automations.*, rooms.name AS room_name, scenes.name AS scene_name
+      FROM automations
+      LEFT JOIN rooms ON rooms.id = automations.room_id
+      INNER JOIN scenes ON scenes.id = automations.scene_id
+      WHERE automations.id = ?
+      `,
+      [automationId],
+    );
+    return row ? this.fromAutomationRow(row) : null;
+  }
+
+  createAutomation(request: JsonObject): Automation {
+    const name = String(request.name || '').trim();
+    if (!name) throw new Error('Nome da automacao e obrigatorio.');
+
+    const roomId = this.normalizeAutomationRoomId(request.roomId);
+    const sceneId = this.normalizeAutomationSceneId(request.sceneId);
+    const enabled = this.normalizeAutomationEnabled(request.enabled, true);
+    const trigger = this.normalizeAutomationTrigger(request.trigger);
+    const now = this.storage.utcNow();
+
+    const automationId = this.storage.transaction(() => {
+      const result = this.storage.run(
+        'INSERT INTO automations (name, description, enabled, room_id, scene_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [name, nullableText(request.description), enabled ? 1 : 0, roomId, sceneId, now, now],
+      );
+      this.replaceAutomationTrigger(Number(result.lastInsertRowid), trigger, now);
+      return Number(result.lastInsertRowid);
+    });
+
+    return this.getAutomation(automationId) as Automation;
+  }
+
+  updateAutomation(automationId: number, request: JsonObject): Automation | null {
+    const current = this.getAutomation(automationId);
+    if (!current) return null;
+
+    const assignments: string[] = [];
+    const values: unknown[] = [];
+
+    if (has(request, 'name')) {
+      const name = String(request.name || '').trim();
+      if (!name) throw new Error('Nome da automacao e obrigatorio.');
+      assignments.push('name = ?');
+      values.push(name);
+    }
+
+    if (has(request, 'description')) {
+      assignments.push('description = ?');
+      values.push(nullableText(request.description));
+    }
+
+    if (has(request, 'enabled')) {
+      assignments.push('enabled = ?');
+      values.push(this.normalizeAutomationEnabled(request.enabled, current.enabled) ? 1 : 0);
+    }
+
+    if (has(request, 'roomId')) {
+      assignments.push('room_id = ?');
+      values.push(this.normalizeAutomationRoomId(request.roomId));
+    }
+
+    if (has(request, 'sceneId')) {
+      assignments.push('scene_id = ?');
+      values.push(this.normalizeAutomationSceneId(request.sceneId));
+    }
+
+    const shouldReplaceTrigger = has(request, 'trigger');
+    const trigger = shouldReplaceTrigger ? this.normalizeAutomationTrigger(request.trigger) : null;
+
+    if (!assignments.length && !shouldReplaceTrigger) return current;
+
+    const now = this.storage.utcNow();
+    this.storage.transaction(() => {
+      if (assignments.length) {
+        assignments.push('updated_at = ?');
+        values.push(now, automationId);
+        this.storage.run(`UPDATE automations SET ${assignments.join(', ')} WHERE id = ?`, values);
+      } else {
+        this.storage.run('UPDATE automations SET updated_at = ? WHERE id = ?', [now, automationId]);
+      }
+
+      if (trigger) {
+        this.replaceAutomationTrigger(automationId, trigger, now);
+      }
+    });
+
+    return this.getAutomation(automationId);
+  }
+
+  deleteAutomation(automationId: number): boolean {
+    return this.storage.transaction(() => this.storage.run('DELETE FROM automations WHERE id = ?', [automationId]).changes > 0);
   }
 
   listDevices(): Device[] {
@@ -486,10 +658,10 @@ export class HomeService {
   updateDeviceRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
     if (!commandResult.ok) return this.getDevice(deviceId);
     if (commandResult.result.provider === 'smartthings_cloud' && commandResult.result.action === 'query' && isObject(commandResult.result.statusSummary)) {
-      return this.updateSmartthingsQueryState(deviceId, commandResult.result);
+      return this.updateSmartthingsQueryState(deviceId, commandResult);
     }
     if (commandResult.result.provider === 'mqtt' && isObject(commandResult.result.statusSummary)) {
-      return this.updateMqttRuntimeState(deviceId, commandResult.result);
+      return this.updateMqttRuntimeState(deviceId, commandResult);
     }
     const dps = commandResult.result.dps;
     if (!isObject(dps) || !Object.keys(dps).length) return this.getDevice(deviceId);
@@ -497,6 +669,7 @@ export class HomeService {
     if (!current) return null;
 
     const now = this.storage.utcNow();
+    const eventSource = eventSourceFromCommandResult(commandResult);
     const currentDps = isObject(current.status.dps) ? current.status.dps : {};
     const mergedDps = { ...stringifyKeys(currentDps), ...stringifyKeys(dps) };
     const activeDpsId = String(commandResult.result.dpsId || primaryDpsId(current));
@@ -525,8 +698,8 @@ export class HomeService {
       `,
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
-    this.updateEntitiesRuntimeState(deviceId, mergedDps, now);
-    this.logRuntimeStatusEvent(deviceId, current.status, status, { dps });
+    this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { dps, ...(eventSource || {}) });
     return this.getDevice(deviceId);
   }
 
@@ -553,13 +726,32 @@ export class HomeService {
     level: DeviceEventLevel = 'info',
     payload: JsonObject = {},
   ): void {
-    this.storage.run(
+    const createdAt = this.storage.utcNow();
+    const safePayload = redactSecrets(payload);
+    const result = this.storage.run(
       `
       INSERT INTO device_events (device_id, event_type, title, message, level, payload_json, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [deviceId, eventType, title, message, level, this.storage.jsonDump(redactSecrets(payload)), this.storage.utcNow()],
+      [deviceId, eventType, title, message, level, this.storage.jsonDump(safePayload), createdAt],
     );
+
+    const event: AutomationSourceEvent = {
+      id: Number(result.lastInsertRowid),
+      deviceId,
+      eventType,
+      title,
+      message,
+      level,
+      payload: safePayload,
+      createdAt,
+    };
+
+    if (event.id > 0) {
+      void this.triggerAutomationsForEvent(event).catch((error) => {
+        console.error('automation-runner-error', error);
+      });
+    }
   }
 
   listEntities(): Entity[] {
@@ -892,10 +1084,12 @@ export class HomeService {
     return publicValue;
   }
 
-  private updateSmartthingsQueryState(deviceId: number, result: JsonObject): Device | null {
+  private updateSmartthingsQueryState(deviceId: number, commandResult: CommandResult): Device | null {
     const current = this.getDevice(deviceId);
     if (!current) return null;
     const now = this.storage.utcNow();
+    const result = isObject(commandResult.result) ? commandResult.result : {};
+    const eventSource = eventSourceFromCommandResult(commandResult);
     const rawStatus = isObject(result.rawStatus) ? result.rawStatus : {};
     const status = { ...current.status, ...result.statusSummary, lastSeenAt: now };
     const capabilities = { ...current.capabilities, status: rawStatus };
@@ -908,15 +1102,17 @@ export class HomeService {
       `,
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
-    this.updateSmartthingsEntitiesRuntimeState(deviceId, status, rawStatus, now);
-    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'smartthings_cloud' });
+    this.updateSmartthingsEntitiesRuntimeState(deviceId, status, rawStatus, now, eventSource || {});
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'smartthings_cloud', ...(eventSource || {}) });
     return this.getDevice(deviceId);
   }
 
-  private updateMqttRuntimeState(deviceId: number, result: JsonObject): Device | null {
+  private updateMqttRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
     const current = this.getDevice(deviceId);
     if (!current) return null;
     const now = this.storage.utcNow();
+    const result = isObject(commandResult.result) ? commandResult.result : {};
+    const eventSource = eventSourceFromCommandResult(commandResult);
     const dps = isObject(result.dps) ? result.dps : {};
     const currentDps = isObject(current.status.dps) ? current.status.dps : {};
     const mergedDps = { ...stringifyKeys(currentDps), ...stringifyKeys(dps) };
@@ -948,8 +1144,8 @@ export class HomeService {
       `,
       [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
     );
-    this.updateEntitiesRuntimeState(deviceId, mergedDps, now);
-    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'mqtt' });
+    this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'mqtt', ...(eventSource || {}) });
     return this.getDevice(deviceId);
   }
 
@@ -996,7 +1192,7 @@ export class HomeService {
     }
   }
 
-  private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string): void {
+  private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string, payload: JsonObject = {}): void {
     const rows = this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId]);
     for (const row of rows) {
       const commandSchema = this.storage.jsonLoad<JsonObject>(row.command_schema_json, {});
@@ -1025,11 +1221,11 @@ export class HomeService {
         now,
         row.id,
       ]);
-      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { dpsId, key });
+      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { dpsId, key, ...payload });
     }
   }
 
-  private updateSmartthingsEntitiesRuntimeState(deviceId: number, status: JsonObject, rawStatus: JsonObject, now: string): void {
+  private updateSmartthingsEntitiesRuntimeState(deviceId: number, status: JsonObject, rawStatus: JsonObject, now: string, payload: JsonObject = {}): void {
     const rows = this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId]);
     for (const row of rows) {
       const state = this.storage.jsonLoad<JsonObject>(row.state_json, {});
@@ -1041,7 +1237,7 @@ export class HomeService {
         now,
         row.id,
       ]);
-      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { provider: 'smartthings_cloud' });
+      this.logEntityRuntimeStatusEvent(deviceId, row, state, nextState, { provider: 'smartthings_cloud', ...payload });
     }
   }
 
@@ -1301,9 +1497,38 @@ export class HomeService {
     };
   }
 
+  private fromAutomationRow(row: JsonObject): Automation {
+    const trigger = this.getAutomationTrigger(row.id);
+    if (!trigger) throw new Error(`Automacao ${row.id} sem trigger configurado.`);
+
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      enabled: Number(row.enabled) !== 0,
+      roomId: row.room_id,
+      roomName: row.room_name,
+      sceneId: row.scene_id,
+      sceneName: row.scene_name,
+      trigger,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private getAutomationRun(automationRunId: number): AutomationRun | null {
+    const row = this.storage.get<JsonObject>('SELECT * FROM automation_runs WHERE id = ?', [automationRunId]);
+    return row ? fromAutomationRunRow(row) : null;
+  }
+
   private getSceneRun(sceneRunId: number): SceneRun | null {
     const row = this.storage.get<JsonObject>('SELECT * FROM scene_runs WHERE id = ?', [sceneRunId]);
     return row ? fromSceneRunRow(row) : null;
+  }
+
+  private getAutomationTrigger(automationId: number): AutomationTrigger | null {
+    const row = this.storage.get<JsonObject>('SELECT * FROM automation_triggers WHERE automation_id = ? LIMIT 1', [automationId]);
+    return row ? fromAutomationTriggerRow(row) : null;
   }
 
   private listSceneActions(sceneId: number): SceneAction[] {
@@ -1333,7 +1558,130 @@ export class HomeService {
     }
   }
 
-  private enrichSceneCommandResult(result: CommandResult, scene: Scene, action: SceneAction): CommandResult {
+  private replaceAutomationTrigger(automationId: number, trigger: NormalizedAutomationTrigger, now: string): void {
+    this.storage.run('DELETE FROM automation_triggers WHERE automation_id = ?', [automationId]);
+    this.storage.run(
+      `
+      INSERT INTO automation_triggers (automation_id, type, device_id, entity_id, config_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [automationId, trigger.type, trigger.deviceId, trigger.entityId, this.storage.jsonDump(trigger.config), now, now],
+    );
+  }
+
+  private async triggerAutomationsForEvent(event: AutomationSourceEvent): Promise<void> {
+    if (event.payload.sourceType === 'scene') return;
+    if (!['state_changed', 'entity_state_changed'].includes(event.eventType)) return;
+
+    const automations = this.listAutomationsForEvent(event);
+    for (const automation of automations) {
+      await this.runAutomationFromEvent(automation, event);
+    }
+  }
+
+  private listAutomationsForEvent(event: AutomationSourceEvent): Automation[] {
+    if (event.eventType === 'state_changed') {
+      const rows = this.storage.all<JsonObject>(
+        `
+        SELECT automations.*, rooms.name AS room_name, scenes.name AS scene_name
+        FROM automations
+        INNER JOIN automation_triggers ON automation_triggers.automation_id = automations.id
+        LEFT JOIN rooms ON rooms.id = automations.room_id
+        INNER JOIN scenes ON scenes.id = automations.scene_id
+        WHERE automations.enabled = 1
+          AND automation_triggers.type = 'device_state_changed'
+          AND automation_triggers.device_id = ?
+        ORDER BY automations.id ASC
+        `,
+        [event.deviceId],
+      );
+
+      return rows.map((row) => this.fromAutomationRow(row));
+    }
+
+    const entityId = Number(event.payload.entityId);
+    if (!Number.isInteger(entityId) || entityId <= 0) return [];
+
+    const rows = this.storage.all<JsonObject>(
+      `
+      SELECT automations.*, rooms.name AS room_name, scenes.name AS scene_name
+      FROM automations
+      INNER JOIN automation_triggers ON automation_triggers.automation_id = automations.id
+      LEFT JOIN rooms ON rooms.id = automations.room_id
+      INNER JOIN scenes ON scenes.id = automations.scene_id
+      WHERE automations.enabled = 1
+        AND automation_triggers.type = 'entity_state_changed'
+        AND automation_triggers.entity_id = ?
+      ORDER BY automations.id ASC
+      `,
+      [entityId],
+    );
+
+    return rows.map((row) => this.fromAutomationRow(row));
+  }
+
+  private async runAutomationFromEvent(automation: Automation, event: AutomationSourceEvent): Promise<void> {
+    const startedAt = this.storage.utcNow();
+    const pendingRun = this.startAutomationRun(automation.id, {
+      automationId: automation.id,
+      automationName: automation.name,
+      sceneId: automation.sceneId,
+      sceneName: automation.sceneName,
+      triggerType: automation.trigger.type,
+      event: automationEventSummary(event),
+      startedAt,
+      status: 'pending',
+    });
+
+    try {
+      const sceneRun = await this.runScene(
+        automation.sceneId,
+        (device, secrets, request) => this.commands.executeDeviceCommand(device, secrets, request),
+        { automationId: automation.id, automationName: automation.name },
+      );
+
+      const sceneSummary = sceneRun?.summary && isObject(sceneRun.summary) ? sceneRun.summary : {};
+      const status: SceneRunStatus = sceneRun?.status || 'error';
+
+      this.completeAutomationRun(pendingRun.id, status, {
+        automationId: automation.id,
+        automationName: automation.name,
+        sceneId: automation.sceneId,
+        sceneName: automation.sceneName,
+        triggerType: automation.trigger.type,
+        event: automationEventSummary(event),
+        sceneRunId: sceneRun?.id || null,
+        sceneRunStatus: sceneRun?.status || 'error',
+        sceneRunSummary: sceneSummary,
+        successCount: typeof sceneSummary.successCount === 'number' ? sceneSummary.successCount : 0,
+        errorCount: typeof sceneSummary.errorCount === 'number' ? sceneSummary.errorCount : sceneRun ? 0 : 1,
+        startedAt,
+        finishedAt: this.storage.utcNow(),
+        status,
+        error: sceneRun ? null : 'Cena da automacao nao encontrada no momento da execucao.',
+      });
+    } catch (error) {
+      this.completeAutomationRun(pendingRun.id, 'error', {
+        automationId: automation.id,
+        automationName: automation.name,
+        sceneId: automation.sceneId,
+        sceneName: automation.sceneName,
+        triggerType: automation.trigger.type,
+        event: automationEventSummary(event),
+        sceneRunId: null,
+        sceneRunStatus: 'error',
+        sceneRunSummary: {},
+        successCount: 0,
+        errorCount: 1,
+        startedAt,
+        finishedAt: this.storage.utcNow(),
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Falha inesperada ao executar automacao.',
+      });
+    }
+  }
+
+  private enrichSceneCommandResult(result: CommandResult, scene: Scene, action: SceneAction, sourceMetadata: JsonObject = {}): CommandResult {
     return {
       ...result,
       result: {
@@ -1343,6 +1691,7 @@ export class HomeService {
           sceneName: scene.name,
           actionId: action.id,
           orderIndex: action.orderIndex,
+          ...redactSecrets(sourceMetadata),
         },
       },
     };
@@ -1354,6 +1703,65 @@ export class HomeService {
     if (!Number.isInteger(roomId) || roomId <= 0) throw new Error('roomId invalido.');
     if (!this.getRoom(roomId)) throw new Error('Room informado nao existe.');
     return roomId;
+  }
+
+  private normalizeAutomationRoomId(value: unknown): number | null {
+    return this.normalizeSceneRoomId(value);
+  }
+
+  private normalizeAutomationSceneId(value: unknown): number {
+    const sceneId = Number(value);
+    if (!Number.isInteger(sceneId) || sceneId <= 0) throw new Error('sceneId invalido.');
+    if (!this.getScene(sceneId)) throw new Error('Cena informada nao existe.');
+    return sceneId;
+  }
+
+  private normalizeAutomationEnabled(value: unknown, defaultValue: boolean): boolean {
+    if (value === undefined) return defaultValue;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number' && (value === 0 || value === 1)) return value === 1;
+
+    const normalized = String(value).trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+
+    throw new Error('enabled invalido.');
+  }
+
+  private normalizeAutomationTrigger(value: unknown): NormalizedAutomationTrigger {
+    if (!isObject(value)) throw new Error('trigger invalido.');
+
+    const type = String(value.type || '').trim().toLowerCase() as AutomationTriggerType;
+    if (!AUTOMATION_ALLOWED_TRIGGER_TYPES.has(type)) {
+      throw new Error(`Trigger ${type || '(vazio)'} nao e suportado no MVP.`);
+    }
+
+    const config = isObject(value.config) ? value.config : {};
+
+    if (type === 'device_state_changed') {
+      const deviceId = Number(value.deviceId);
+      if (!Number.isInteger(deviceId) || deviceId <= 0) throw new Error('trigger.deviceId invalido.');
+      if (!this.getDevice(deviceId)) throw new Error('Dispositivo informado no trigger nao existe.');
+
+      return {
+        type,
+        deviceId,
+        entityId: null,
+        config,
+      };
+    }
+
+    const entityId = Number(value.entityId);
+    if (!Number.isInteger(entityId) || entityId <= 0) throw new Error('trigger.entityId invalido.');
+    const entity = this.getEntity(entityId);
+    if (!entity) throw new Error('Entidade informada no trigger nao existe.');
+
+    return {
+      type,
+      deviceId: entity.deviceId,
+      entityId,
+      config,
+    };
   }
 
   private normalizeSceneActions(value: unknown, options: { requireActions: boolean }): NormalizedSceneAction[] {
@@ -1421,12 +1829,31 @@ type NormalizedSceneAction = {
   params: JsonObject;
 };
 
+type NormalizedAutomationTrigger = {
+  type: AutomationTriggerType;
+  deviceId?: number | null;
+  entityId?: number | null;
+  config: JsonObject;
+};
+
+type AutomationSourceEvent = {
+  id: number;
+  deviceId: number;
+  eventType: string;
+  title: string;
+  message: string | null;
+  level: DeviceEventLevel;
+  payload: JsonObject;
+  createdAt: string;
+};
+
 function fromRoomRow(row: JsonObject): Room {
   return {
     id: row.id,
     name: row.name,
     icon: row.icon,
-    floor: row.floor,
+    floorId: row.floor_id,
+    floorName: row.floor_name,
     description: row.description,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -1445,6 +1872,29 @@ function fromSceneActionRow(row: JsonObject): SceneAction {
     params: safeJsonObject(row.params_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function fromAutomationTriggerRow(row: JsonObject): AutomationTrigger {
+  return {
+    id: row.id,
+    automationId: row.automation_id,
+    type: row.type,
+    deviceId: row.device_id,
+    entityId: row.entity_id,
+    config: safeJsonObject(row.config_json),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function fromAutomationRunRow(row: JsonObject): AutomationRun {
+  return {
+    id: row.id,
+    automationId: row.automation_id,
+    status: row.status,
+    summary: safeJsonObject(row.summary_json),
+    createdAt: row.created_at,
   };
 }
 
@@ -1476,6 +1926,42 @@ function sceneSourceFromCommandResult(command: JsonObject, result: JsonObject): 
     sceneName: source.sceneName ? String(source.sceneName) : null,
     actionId: Number.isInteger(Number(source.actionId)) ? Number(source.actionId) : null,
     orderIndex: Number.isInteger(Number(source.orderIndex)) ? Number(source.orderIndex) : null,
+    automationId: Number.isInteger(Number(source.automationId)) ? Number(source.automationId) : null,
+    automationName: source.automationName ? String(source.automationName) : null,
+  };
+}
+
+function eventSourceFromCommandResult(commandResult: CommandResult): JsonObject | null {
+  const payload = isObject(commandResult.result) ? commandResult.result : null;
+  const source = payload && isObject(payload.source)
+    ? payload.source
+    : payload && isObject(payload.scene)
+      ? payload.scene
+      : null;
+
+  if (!source || String(source.type || 'scene') !== 'scene') return null;
+
+  return {
+    sourceType: 'scene',
+    sceneId: Number.isInteger(Number(source.sceneId)) ? Number(source.sceneId) : null,
+    sceneName: source.sceneName ? String(source.sceneName) : null,
+    actionId: Number.isInteger(Number(source.actionId)) ? Number(source.actionId) : null,
+    orderIndex: Number.isInteger(Number(source.orderIndex)) ? Number(source.orderIndex) : null,
+    automationId: Number.isInteger(Number(source.automationId)) ? Number(source.automationId) : null,
+    automationName: source.automationName ? String(source.automationName) : null,
+  };
+}
+
+function automationEventSummary(event: AutomationSourceEvent): JsonObject {
+  return {
+    id: event.id,
+    deviceId: event.deviceId,
+    eventType: event.eventType,
+    title: event.title,
+    message: event.message,
+    level: event.level,
+    payload: event.payload,
+    createdAt: event.createdAt,
   };
 }
 

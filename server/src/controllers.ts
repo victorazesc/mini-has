@@ -12,7 +12,6 @@ export class AppController {
     return { status: 'ok' };
   }
 }
-
 @Controller('rooms')
 export class RoomsController {
   constructor(private readonly home: HomeService) { }
@@ -110,6 +109,58 @@ export class ScenesController {
     );
     if (!run) throw notFound('Scene not found');
     return run;
+  }
+}
+
+@Controller('automations')
+export class AutomationsController {
+  constructor(private readonly home: HomeService) { }
+
+  @Get()
+  listAutomations() {
+    return this.home.listAutomations();
+  }
+
+  @Get(':automation_id/runs')
+  listAutomationRuns(@Param('automation_id') automationId: string, @Query('limit') limit?: string) {
+    const id = Number(automationId);
+    const automation = this.home.getAutomation(id);
+    if (!automation) throw notFound('Automation not found');
+    return this.home.listAutomationRuns(id, Number(limit || 10));
+  }
+
+  @Get(':automation_id')
+  getAutomation(@Param('automation_id') automationId: string) {
+    const automation = this.home.getAutomation(Number(automationId));
+    if (!automation) throw notFound('Automation not found');
+    return automation;
+  }
+
+  @Post()
+  createAutomation(@Body() body: JsonObject) {
+    try {
+      return this.home.createAutomation(body);
+    } catch (error) {
+      throw badRequest(messageFrom(error));
+    }
+  }
+
+  @Patch(':automation_id')
+  updateAutomation(@Param('automation_id') automationId: string, @Body() body: JsonObject) {
+    try {
+      const automation = this.home.updateAutomation(Number(automationId), body);
+      if (!automation) throw notFound('Automation not found');
+      return automation;
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === HttpStatus.NOT_FOUND) throw error;
+      throw badRequest(messageFrom(error));
+    }
+  }
+
+  @Delete(':automation_id')
+  deleteAutomation(@Param('automation_id') automationId: string) {
+    if (!this.home.deleteAutomation(Number(automationId))) throw notFound('Automation not found');
+    return { deleted: true };
   }
 }
 
