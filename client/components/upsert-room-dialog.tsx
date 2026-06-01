@@ -60,9 +60,11 @@ function getInitialValues(room?: Room): RoomFormValues {
     };
 }
 
-export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
-    const [open, setOpen] = useState(false);
-    const [values, setValues] = useState<z.infer<typeof schema>>(() => getInitialValues(room));
+export function UpsertRoomDialog({ room, children, nativeButton = false, open: controlledOpen, onOpenChange }: UpsertRoomDialogProps & { nativeButton?: boolean, open?: boolean, onOpenChange?: (open: boolean) => void }) {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const open = controlledOpen ?? internalOpen;
+    const isControlled = controlledOpen !== undefined;
+    const [values, setValues] = useState<RoomFormValues>(() => getInitialValues(room));
     const [iconSearch, setIconSearch] = useState("");
     const [iconPickerOpen, setIconPickerOpen] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof RoomFormValues, string>>>({});
@@ -89,6 +91,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
 
 
     const handleOpenChange = (nextOpen: boolean) => {
+
         if (nextOpen) {
             setValues(getInitialValues(room));
             setIconSearch("");
@@ -97,7 +100,11 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
             setFormError(null);
         }
 
-        setOpen(nextOpen);
+        if (!isControlled) {
+            setInternalOpen(nextOpen);
+        }
+
+        onOpenChange?.(nextOpen);
     };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -137,7 +144,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
                 setValues(emptyValues);
             }
 
-            setOpen(false);
+            handleOpenChange(false);
         } catch (error) {
             if (error instanceof Error && error.message) {
                 setFormError(error.message);
@@ -149,7 +156,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            {children ? <DialogTrigger render={children} nativeButton={false} /> : null}
+            {children ? <DialogTrigger render={children} nativeButton={nativeButton} /> : null}
             <DialogContent className="sm:max-w-sm">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>

@@ -4,6 +4,7 @@ export type Room = {
     icon?: string | null;
     floorId?: number | null;
     floorName?: string | null;
+    devicesCount?: number;
     description?: string | null;
     created_at: string;
     updated_at: string;

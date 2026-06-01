@@ -2,6 +2,7 @@ export type Floor = {
     id: number;
     name: string;
     description?: string | null;
+    roomsCount?: number;
     created_at: string;
     updated_at: string;
 }
