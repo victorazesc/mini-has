@@ -2,7 +2,8 @@ export type Room = {
     id: number;
     name: string;
     icon?: string | null;
-    floor?: string | null;
+    floorId?: number | null;
+    floorName?: string | null;
     description?: string | null;
     created_at: string;
     updated_at: string;

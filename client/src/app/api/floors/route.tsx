@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 import { z } from "zod";
 
-const roomUpdateSchema = z.object({
-    name: z.string().min(1, "Nome e obrigatorio").optional(),
-    icon: z.string().nullable().optional(),
-    floorId: z.number().nullable().optional(),
+const floorSchema = z.object({
+    name: z.string().min(1, "Nome e obrigatorio"),
     description: z.string().nullable().optional(),
 });
 
-export async function PATCH(
-    request: NextRequest,
-    { params }: { params: Promise<{ room_id: string }> }
-) {
+export async function GET() {
     if (!env.SERVER_URL) {
         return NextResponse.json(
             { message: "SERVER_URL nao configurada no ambiente." },
@@ -20,13 +15,23 @@ export async function PATCH(
         );
     }
 
-    const { room_id: roomIdParam } = await params;
-    const roomId = Number(roomIdParam);
+    const response = await fetch(`${env.SERVER_URL}/floors`);
 
-    if (!Number.isInteger(roomId) || roomId < 1) {
+    if (!response.ok) {
         return NextResponse.json(
-            { message: "room_id invalido." },
-            { status: 400 }
+            { message: "Erro ao buscar pisos." },
+            { status: 500 }
+        );
+    }
+
+    return NextResponse.json(await response.json());
+}
+
+export async function POST(request: NextRequest) {
+    if (!env.SERVER_URL) {
+        return NextResponse.json(
+            { message: "SERVER_URL nao configurada no ambiente." },
+            { status: 500 }
         );
     }
 
@@ -41,7 +46,7 @@ export async function PATCH(
         );
     }
 
-    const parsed = roomUpdateSchema.safeParse(body);
+    const parsed = floorSchema.safeParse(body);
 
     if (!parsed.success) {
         return NextResponse.json(
@@ -53,8 +58,8 @@ export async function PATCH(
         );
     }
 
-    const response = await fetch(`${env.SERVER_URL}/rooms/${roomId}`, {
-        method: "PATCH",
+    const response = await fetch(`${env.SERVER_URL}/floors`, {
+        method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
@@ -65,10 +70,10 @@ export async function PATCH(
 
     if (!response.ok) {
         return NextResponse.json(
-            { message: data.detail ?? data.message ?? "Erro ao atualizar comodo." },
+            { message: data.detail ?? data.message ?? "Erro ao criar piso." },
             { status: response.status }
         );
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(data, { status: 201 });
 }

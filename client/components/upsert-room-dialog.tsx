@@ -16,14 +16,17 @@ import { useCreateRoom, useUpdateRoom } from "@/hooks/use-rooms"
 import { useMemo, useState } from "react"
 import { z } from "zod"
 import { Room } from "@/src/services/rooms.service"
+import { useFloors } from "@/hooks/use-floors"
 import { DynamicIcon, IconName, iconNames } from "lucide-react/dynamic"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "./ui/select"
 
 const MAX_VISIBLE_ICONS = 80;
+const NO_FLOOR_VALUE = "__none__";
 
 const schema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
     icon: z.string().optional(),
-    floor: z.string().optional(),
+    floorId: z.string().optional(),
     description: z.string().optional(),
 });
 
@@ -37,7 +40,7 @@ type UpsertRoomDialogProps = {
 const emptyValues: RoomFormValues = {
     name: "",
     icon: "",
-    floor: "",
+    floorId: NO_FLOOR_VALUE,
     description: "",
 };
 
@@ -52,7 +55,7 @@ function getInitialValues(room?: Room): RoomFormValues {
     return {
         name: room?.name ?? "",
         icon: room?.icon ?? "",
-        floor: room?.floor ?? "",
+        floorId: room?.floorId ? String(room.floorId) : NO_FLOOR_VALUE,
         description: room?.description ?? "",
     };
 }
@@ -64,6 +67,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
     const [iconPickerOpen, setIconPickerOpen] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof RoomFormValues, string>>>({});
     const [formError, setFormError] = useState<string | null>(null);
+    const { data: floors } = useFloors();
     const { mutateAsync: createRoom, isPending: isCreating } = useCreateRoom();
     const { mutateAsync: updateRoom, isPending: isUpdating } = useUpdateRoom();
     const isEditing = Boolean(room);
@@ -78,6 +82,11 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
             .filter((iconName) => !search || iconName.includes(search))
             .slice(0, MAX_VISIBLE_ICONS);
     }, [iconSearch]);
+
+    const selectedFloorLabel = values.floorId === NO_FLOOR_VALUE
+        ? "Sem piso"
+        : floors?.find((floor) => String(floor.id) === values.floorId)?.name || "Piso";
+
 
     const handleOpenChange = (nextOpen: boolean) => {
         if (nextOpen) {
@@ -117,7 +126,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
             const payload = {
                 name: parsed.data.name,
                 icon: parsed.data.icon || null,
-                floor: parsed.data.floor || null,
+                floorId: values.floorId === NO_FLOOR_VALUE ? null : Number(values.floorId),
                 description: parsed.data.description || null,
             };
 
@@ -237,17 +246,25 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
                         </Field>
                         <Field>
                             <Label htmlFor="room-floor">Piso</Label>
-                            <Input
-                                id="room-floor"
-                                name="floor"
-                                placeholder="Ex: 1 andar, 2 andar, Area externa"
+                            <Select
+                                value={values.floorId}
+                                onValueChange={(value) => setValues((current) => ({ ...current, floorId: value || NO_FLOOR_VALUE }))}
                                 disabled={isPending}
-                                value={values.floor}
-                                onChange={(event) => {
-                                    setValues((prev) => ({ ...prev, floor: event.target.value }));
-                                    setFormError(null);
-                                }}
-                            />
+                            >
+                                <SelectTrigger className="w-full">
+                                    {selectedFloorLabel}
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectGroup>
+                                        <SelectItem value={NO_FLOOR_VALUE}>Sem piso</SelectItem>
+                                        {(floors ?? []).map((floor) => (
+                                            <SelectItem key={floor.id} value={String(floor.id)}>
+                                                {floor.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectGroup>
+                                </SelectContent>
+                            </Select>
                         </Field>
                         <Field>
                             <Label htmlFor="room-description">Descricao</Label>

@@ -10,13 +10,12 @@ export class FloorService {
 
         const rows = this.storage.all<JsonObject>(`
   SELECT 
-  floors.*,
-  rooms.name AS room_name
+  floors.*
 FROM floors
-LEFT JOIN rooms ON rooms.floor_id = floors.id
 ORDER BY floors.id
         `);
-        return rows.map((row) => this.fromFloorRow(row));
+        const floors = rows.map((row) => this.fromFloorRow(row));
+        return floors;
 
     }
 

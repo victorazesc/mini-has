@@ -8,7 +8,7 @@ import { CirclePlusIcon } from "lucide-react";
 export default function RoomsPage() {
     const { data: rooms = [] } = useRooms();
     const roomsByFloor = rooms.reduce<Record<string, typeof rooms>>((acc, room) => {
-        const floor = room.floor?.trim() || "Sem piso";
+        const floor = room.floorName?.toString().trim() || "Sem piso";
         acc[floor] = [...(acc[floor] ?? []), room];
         return acc;
     }, {});

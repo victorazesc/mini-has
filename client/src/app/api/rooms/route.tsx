@@ -5,7 +5,7 @@ import { z } from "zod";
 const roomSchema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
     icon: z.string().nullable().optional(),
-    floor: z.string().nullable().optional(),
+    floorId: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
 });
 
