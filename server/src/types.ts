@@ -32,6 +32,7 @@ export interface Room {
   id: number;
   name: string;
   icon?: string | null;
+  floor?: string | null;
   description?: string | null;
   createdAt: string;
   updatedAt: string;

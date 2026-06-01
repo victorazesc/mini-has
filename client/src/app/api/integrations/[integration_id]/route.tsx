@@ -2,48 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 import { z } from "zod";
 
-const createIntegrationSchema = z.object({
-    type: z.string().min(1, "Tipo e obrigatorio"),
+const updateIntegrationSchema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
-    config: z.record(z.string(), z.unknown()),
+    config: z.record(z.string(), z.unknown()).optional(),
+    testOnUpdate: z.boolean().optional(),
 });
 
-export async function GET() {
-    if (!env.SERVER_URL) {
-        return NextResponse.json(
-            { message: "SERVER_URL nao configurada no ambiente." },
-            { status: 500 }
-        );
-    }
-
-    try {
-        const response = await fetch(`${env.SERVER_URL}/integrations`, {
-            headers: {
-                "Content-Type": "application/json",
-            },
-            cache: "no-store",
-        });
-
-        if (!response.ok) {
-            return NextResponse.json(
-                { message: "Erro ao buscar integracoes." },
-                { status: response.status }
-            );
-        }
-
-        return NextResponse.json(await response.json());
-    } catch (error) {
-        return NextResponse.json(
-            {
-                message: "Falha de comunicacao com o backend.",
-                error: error instanceof Error ? error.message : "Erro desconhecido.",
-            },
-            { status: 502 }
-        );
-    }
-}
-
-export async function POST(request: NextRequest) {
+export async function PATCH(
+    request: NextRequest,
+    context: { params: Promise<{ integration_id: string }> }
+) {
     if (!env.SERVER_URL) {
         return NextResponse.json(
             { message: "SERVER_URL nao configurada no ambiente." },
@@ -62,7 +30,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const parsed = createIntegrationSchema.safeParse(body);
+    const parsed = updateIntegrationSchema.safeParse(body);
 
     if (!parsed.success) {
         return NextResponse.json(
@@ -74,9 +42,11 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    const { integration_id } = await context.params;
+
     try {
-        const response = await fetch(`${env.SERVER_URL}/integrations`, {
-            method: "POST",
+        const response = await fetch(`${env.SERVER_URL}/integrations/${integration_id}`, {
+            method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
             },
@@ -95,13 +65,13 @@ export async function POST(request: NextRequest) {
         if (!response.ok) {
             return NextResponse.json(
                 {
-                    message: data.detail ?? data.message ?? "Falha ao criar integracao.",
+                    message: data.detail ?? data.message ?? "Falha ao atualizar integracao.",
                 },
                 { status: response.status }
             );
         }
 
-        return NextResponse.json(data, { status: 201 });
+        return NextResponse.json(data);
     } catch (error) {
         return NextResponse.json(
             {

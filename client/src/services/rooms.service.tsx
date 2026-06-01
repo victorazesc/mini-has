@@ -2,6 +2,7 @@ export type Room = {
     id: number;
     name: string;
     icon?: string | null;
+    floor?: string | null;
     description?: string | null;
     created_at: string;
     updated_at: string;
@@ -10,6 +11,7 @@ export type Room = {
 export type UpsertRoomPayload = {
     name: string;
     icon?: string | null;
+    floor?: string | null;
     description?: string | null;
 };
 

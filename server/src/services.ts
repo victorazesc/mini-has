@@ -21,7 +21,7 @@ export class HomeService {
   constructor(private readonly storage: StorageService) {}
 
   listRooms(): Room[] {
-    const rows = this.storage.all<JsonObject>('SELECT * FROM rooms ORDER BY name');
+    const rows = this.storage.all<JsonObject>('SELECT * FROM rooms ORDER BY COALESCE(floor, \'\'), name');
     return rows.map(fromRoomRow);
   }
 
@@ -33,8 +33,8 @@ export class HomeService {
   createRoom(request: JsonObject): Room {
     const now = this.storage.utcNow();
     const result = this.storage.run(
-      'INSERT INTO rooms (name, icon, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [request.name, request.icon, request.description, now, now],
+      'INSERT INTO rooms (name, icon, floor, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [request.name, request.icon, request.floor, request.description, now, now],
     );
     return this.getRoom(Number(result.lastInsertRowid)) as Room;
   }
@@ -42,7 +42,7 @@ export class HomeService {
   updateRoom(roomId: number, request: JsonObject): Room | null {
     const current = this.getRoom(roomId);
     if (!current) return null;
-    const fieldMap: Record<string, string> = { name: 'name', icon: 'icon', description: 'description' };
+    const fieldMap: Record<string, string> = { name: 'name', icon: 'icon', floor: 'floor', description: 'description' };
     const assignments: string[] = [];
     const values: unknown[] = [];
     for (const [source, target] of Object.entries(fieldMap)) {
@@ -505,6 +505,18 @@ export class HomeService {
     return this.getIntegration(integrationId);
   }
 
+  updateIntegration(integrationId: number, name: string, config: JsonObject, secrets: JsonObject, status: IntegrationStatus = 'created'): StoredIntegration | null {
+    this.storage.run(
+      `
+      UPDATE integrations
+      SET name = ?, status = ?, config_json = ?, secrets_json = ?, error = NULL, updated_at = ?
+      WHERE id = ?
+      `,
+      [name, status, this.storage.jsonDump(config), this.storage.jsonDump(secrets), this.storage.utcNow(), integrationId],
+    );
+    return this.getIntegration(integrationId);
+  }
+
   listIntegrations(): StoredIntegration[] {
     return this.storage.all<JsonObject>('SELECT * FROM integrations ORDER BY id').map((row) => this.fromIntegrationRow(row));
   }
@@ -741,6 +753,7 @@ function fromRoomRow(row: JsonObject): Room {
     id: row.id,
     name: row.name,
     icon: row.icon,
+    floor: row.floor,
     description: row.description,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

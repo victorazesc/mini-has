@@ -4,7 +4,12 @@ export type Integration = {
     id: number;
     name: string;
     type: string;
-    config: JSON;
+    status: string;
+    config: Record<string, unknown>;
+    error?: string | null;
+    lastSyncAt?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
 };
 
 export type SyncIntegrationResult = {
@@ -16,6 +21,22 @@ export type SyncIntegrationResult = {
     message?: string;
     details?: Record<string, unknown>;
 };
+
+export type UpdateIntegrationPayload = {
+    name: string;
+    config?: Record<string, unknown>;
+    testOnUpdate?: boolean;
+};
+
+export async function getIntegrations(): Promise<Integration[]> {
+    const response = await fetch(`/api/integrations`);
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao buscar integracoes"));
+    }
+
+    return response.json() as Promise<Integration[]>;
+}
 
 export async function createIntegration(data: { name?: string; type?: string, config?: JSON } | undefined): Promise<Integration> {
     // await new Promise(resolve => setTimeout(resolve, 10000));
@@ -29,6 +50,22 @@ export async function createIntegration(data: { name?: string; type?: string, co
 
     if (!response.ok) {
         throw new Error(await errorMessageFrom(response, "Erro ao criar integracao"));
+    }
+
+    return response.json() as Promise<Integration>;
+}
+
+export async function updateIntegration(integrationId: number, data: UpdateIntegrationPayload): Promise<Integration> {
+    const response = await fetch(`/api/integrations/${integrationId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao atualizar integracao"));
     }
 
     return response.json() as Promise<Integration>;

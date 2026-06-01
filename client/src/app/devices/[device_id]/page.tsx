@@ -15,6 +15,7 @@ import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus } from "@/src/constants/devices
 import { Separator } from "@/components/ui/separator";
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
+import { UpsertDeviceDialog } from "@/components/upsert-device-dialog";
 
 type SwitchChannel = {
     dpsId: string;
@@ -112,17 +113,19 @@ export default function DevicePage() {
                     </span>
                 </span>
             </span>);
-        setRightAction(
-            <Button variant="secondary" size="icon">
-                <SettingsIcon className="size-5" />
-            </Button>
-        );
+        setRightAction(device ? (
+            <UpsertDeviceDialog device={device}>
+                <Button variant="secondary" size="icon" aria-label="Editar dispositivo">
+                    <SettingsIcon className="size-5" />
+                </Button>
+            </UpsertDeviceDialog>
+        ) : null);
         
         return () => {
             setTitle(null);
             setRightAction(null);
         };
-    }, [deviceName, deviceRoomName, deviceOnline, setRightAction, setTitle]);
+    }, [device, deviceName, deviceRoomName, deviceOnline, setRightAction, setTitle]);
 
     useEffect(() => {
         if (!device?.id || queriedDeviceIdRef.current === device.id) {
@@ -263,7 +266,7 @@ export default function DevicePage() {
 
 function deviceImageSrc(deviceType: string): string {
     if (deviceType === "camera") return "/devices/camera.jpg";
-    if (deviceType === "cover") return "/window.svg";
+    if (deviceType === "cover") return "/devices/cover.png";
     if (["climate", "feeder", "switch", "switch2ch"].includes(deviceType)) return `/devices/${deviceType}.png`;
     return "/devices/switch.png";
 }

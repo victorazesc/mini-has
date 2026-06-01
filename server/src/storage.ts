@@ -70,6 +70,7 @@ export class StorageService implements OnModuleDestroy {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
         icon TEXT,
+        floor TEXT,
         description TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -162,6 +163,7 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_discovery_devices_last_seen_at ON discovery_devices(last_seen_at);
     `);
     this.ensureColumn('rooms', 'icon', 'TEXT');
+    this.ensureColumn('rooms', 'floor', 'TEXT');
   }
 
   private ensureColumn(table: string, column: string, definition: string) {

@@ -8,8 +8,8 @@ export type Device = {
     name: string;
     deviceType: string;
     provider: string;
-    roomId: number;
-    roomName: string;
+    roomId: number | null;
+    roomName: string | null;
     payload: {
         manufacturer: string;
         model: string;
@@ -43,6 +43,28 @@ export async function getDevice(deviceId: number): Promise<Device> {
 
     if (!response.ok) {
         throw new Error("Erro ao buscar dispositivo");
+    }
+
+    return response.json();
+}
+
+export type UpdateDevicePayload = {
+    name: string;
+    deviceType: string;
+    roomId: number | null;
+};
+
+export async function updateDevice(deviceId: number, data: UpdateDevicePayload): Promise<Device> {
+    const response = await fetch(`/api/devices/${deviceId}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao atualizar dispositivo");
     }
 
     return response.json();

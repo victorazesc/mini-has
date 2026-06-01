@@ -23,6 +23,7 @@ const MAX_VISIBLE_ICONS = 80;
 const schema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
     icon: z.string().optional(),
+    floor: z.string().optional(),
     description: z.string().optional(),
 });
 
@@ -36,6 +37,7 @@ type UpsertRoomDialogProps = {
 const emptyValues: RoomFormValues = {
     name: "",
     icon: "",
+    floor: "",
     description: "",
 };
 
@@ -50,6 +52,7 @@ function getInitialValues(room?: Room): RoomFormValues {
     return {
         name: room?.name ?? "",
         icon: room?.icon ?? "",
+        floor: room?.floor ?? "",
         description: room?.description ?? "",
     };
 }
@@ -114,6 +117,7 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
             const payload = {
                 name: parsed.data.name,
                 icon: parsed.data.icon || null,
+                floor: parsed.data.floor || null,
                 description: parsed.data.description || null,
             };
 
@@ -230,6 +234,20 @@ export function UpsertRoomDialog({ room, children }: UpsertRoomDialogProps) {
                                     </div>
                                 ) : null}
                             </div>
+                        </Field>
+                        <Field>
+                            <Label htmlFor="room-floor">Piso</Label>
+                            <Input
+                                id="room-floor"
+                                name="floor"
+                                placeholder="Ex: 1 andar, 2 andar, Area externa"
+                                disabled={isPending}
+                                value={values.floor}
+                                onChange={(event) => {
+                                    setValues((prev) => ({ ...prev, floor: event.target.value }));
+                                    setFormError(null);
+                                }}
+                            />
                         </Field>
                         <Field>
                             <Label htmlFor="room-description">Descricao</Label>

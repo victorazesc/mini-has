@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CommandResult, getDevice, getDevices, sendCommand } from "../src/services/devices.service";
+import { CommandResult, getDevice, getDevices, sendCommand, updateDevice, UpdateDevicePayload } from "../src/services/devices.service";
 import { toast } from "sonner";
 
 export type CommandRequest = {
@@ -47,4 +47,20 @@ export function useSendCommand() {
         },
     });
 
+}
+
+export function useUpdateDevice() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ deviceId, data }: { deviceId: number; data: UpdateDevicePayload }) => updateDevice(deviceId, data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["devices"] });
+            queryClient.invalidateQueries({ queryKey: ["device", variables.deviceId] });
+            toast.success("Dispositivo atualizado com sucesso");
+        },
+        onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "Erro ao atualizar dispositivo");
+        },
+    });
 }

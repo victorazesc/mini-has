@@ -198,6 +198,33 @@ export class IntegrationsController {
     return this.home.publicIntegration(integration);
   }
 
+  @Patch(':integration_id')
+  async updateIntegration(@Param('integration_id') integrationId: string, @Body() body: JsonObject) {
+    const id = Number(integrationId);
+    const integration = this.home.getIntegration(id);
+    if (!integration) throw notFound('Integration not found');
+
+    const name = String(body.name || integration.name).trim();
+    if (!name) throw new HttpException({ detail: 'Nome e obrigatorio.' }, HttpStatus.BAD_REQUEST);
+
+    const [configPatch, secretPatch] = this.providers.splitProviderConfig(integration.type, body.config || {});
+    const config = { ...integration.config, ...withoutEmptyValues(configPatch) };
+    const secrets = { ...integration.secrets, ...withoutEmptyValues(secretPatch) };
+
+    let status: IntegrationStatus = 'created';
+    if (body.testOnUpdate ?? body.test_on_update ?? true) {
+      const now = new Date().toISOString();
+      const pending: StoredIntegration = { ...integration, name, status: 'created', config, secrets, updatedAt: now };
+      const result = await this.providers.testProvider(pending);
+      if (!result.ok) throw new HttpException({ detail: result.message }, HttpStatus.BAD_REQUEST);
+      status = result.status;
+    }
+
+    const updated = this.home.updateIntegration(id, name, config, secrets, status);
+    if (!updated) throw notFound('Integration not found');
+    return this.home.publicIntegration(updated);
+  }
+
   @Post()
   async createIntegration(@Body() body: JsonObject) {
     const type = body.type as IntegrationType;
@@ -334,4 +361,10 @@ function notFound(detail: string): HttpException {
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function withoutEmptyValues(value: JsonObject): JsonObject {
+  return Object.fromEntries(
+    Object.entries(value || {}).filter(([, item]) => item !== undefined && item !== null && item !== ''),
+  );
 }

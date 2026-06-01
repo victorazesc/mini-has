@@ -24,3 +24,31 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(await response.json());
 }
+
+export async function PATCH(request: NextRequest) {
+    if (!env.SERVER_URL) {
+        return NextResponse.json(
+            { message: "SERVER_URL nao configurada no ambiente." },
+            { status: 500 }
+        );
+    }
+
+    const device_id = request.nextUrl.pathname.split("/").pop();
+    const body = await request.json();
+    const response = await fetch(`${env.SERVER_URL}/devices/${device_id}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        return NextResponse.json(
+            { message: "Erro ao atualizar dispositivo." },
+            { status: response.status }
+        );
+    }
+
+    return NextResponse.json(await response.json());
+}

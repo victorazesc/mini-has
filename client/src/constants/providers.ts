@@ -24,7 +24,7 @@ export const PROVIDERS = [
     {
         label: "MQTT",
         value: "mqtt",
-        icon: "./providers/diy.png",
+        icon: "./providers/mqtt.svg",
     },
 ]
 
@@ -33,7 +33,7 @@ export const PROVIDERS_ICON_BY_TYPE = {
     intelbras_izy: "./providers/intelbras.svg",
     smartthings_cloud: path.join(process.cwd(), "./providers/smartThings.svg"),
     generic_iot: path.join(process.cwd(), "./providers/diy.svg"),
-    mqtt: path.join(process.cwd(), "./providers/diy.svg"),
+    mqtt: path.join(process.cwd(), "./providers/mqtt.svg"),
 }
 
 export const PROVIDERS_NAME_BY_TYPE = {

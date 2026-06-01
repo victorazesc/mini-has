@@ -5,10 +5,11 @@ import { z } from "zod";
 const roomSchema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
     icon: z.string().nullable().optional(),
+    floor: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     if (!env.SERVER_URL) {
         return NextResponse.json(
             { message: "SERVER_URL nao configurada no ambiente." },
