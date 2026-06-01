@@ -65,6 +65,14 @@ export const data = {
       ),
     },
     {
+      title: "Automations",
+      url: "/automations",
+      icon: (
+        <Settings2Icon
+        />
+      ),
+    },
+    {
       title: "Projects",
       url: "#",
       icon: (
