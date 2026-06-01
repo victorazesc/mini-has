@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useUpdateIntegration } from "@/hooks/use-integrations"
+import { useDeleteIntegration, useUpdateIntegration } from "@/hooks/use-integrations"
 import { PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers"
 import { Integration } from "@/src/services/integration.service"
 import { useState } from "react"
@@ -65,7 +65,9 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
     const [values, setValues] = useState<IntegrationFormValues>(() => initialValues(integration));
     const [formError, setFormError] = useState<string | null>(null);
     const { mutateAsync: updateIntegration, isPending } = useUpdateIntegration();
+    const { mutateAsync: deleteIntegration, isPending: isDeleting } = useDeleteIntegration();
     const providerName = PROVIDERS_NAME_BY_TYPE[integration.type as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? integration.type;
+    const isBusy = isPending || isDeleting;
 
     const handleOpenChange = (nextOpen: boolean) => {
         if (nextOpen) {
@@ -79,6 +81,14 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
     const setValue = (key: keyof IntegrationFormValues, value: string) => {
         setValues((current) => ({ ...current, [key]: value }));
         setFormError(null);
+    };
+
+    const handleDelete = async () => {
+        const confirmed = window.confirm("Excluir esta integração? Os dispositivos e itens pendentes importados por ela também serão removidos.");
+        if (!confirmed) return;
+
+        await deleteIntegration(integration.id);
+        setOpen(false);
     };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -117,7 +127,7 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                             id={`integration-${integration.id}-name`}
                             label="Nome"
                             value={values.name}
-                            disabled={isPending}
+                            disabled={isBusy}
                             onChange={(value) => setValue("name", value)}
                         />
 
@@ -128,14 +138,14 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     label="Broker URL"
                                     value={values.brokerUrl}
                                     placeholder="mqtt://localhost:1883"
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("brokerUrl", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-discovery-prefix`}
                                     label="Discovery prefix"
                                     value={values.discoveryPrefix}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("discoveryPrefix", value)}
                                 />
                                 <FieldInput
@@ -143,7 +153,7 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     label="Usuario"
                                     value={values.username}
                                     placeholder="Manter atual"
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("username", value)}
                                 />
                                 <FieldInput
@@ -152,7 +162,7 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     type="password"
                                     value={values.password}
                                     placeholder="Manter atual"
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("password", value)}
                                 />
                             </>
@@ -164,7 +174,7 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     id={`integration-${integration.id}-access-id`}
                                     label="Access ID"
                                     value={values.accessId}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("accessId", value)}
                                 />
                                 <FieldInput
@@ -173,14 +183,14 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     type="password"
                                     value={values.accessSecret}
                                     placeholder="Manter atual"
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("accessSecret", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-region`}
                                     label="Região"
                                     value={values.region}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("region", value)}
                                 />
                             </>
@@ -192,28 +202,28 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                     id={`integration-${integration.id}-base-url`}
                                     label="Base URL"
                                     value={values.baseUrl}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("baseUrl", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-ip`}
                                     label="IP"
                                     value={values.ip}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("ip", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-device-type`}
                                     label="Tipo"
                                     value={values.deviceType}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("deviceType", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-room-hint`}
                                     label="Cômodo sugerido"
                                     value={values.roomHint}
-                                    disabled={isPending}
+                                    disabled={isBusy}
                                     onChange={(value) => setValue("roomHint", value)}
                                 />
                             </>
@@ -224,19 +234,25 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                 id={`integration-${integration.id}-mode`}
                                 label="Modo"
                                 value={values.mode}
-                                disabled={isPending}
+                                disabled={isBusy}
                                 onChange={(value) => setValue("mode", value)}
                             />
                         ) : null}
 
                         {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+                        <p className="text-xs text-muted-foreground">
+                            Excluir a integração também remove os dispositivos e itens pendentes importados por ela.
+                        </p>
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" disabled={isPending} onClick={() => setOpen(false)}>
+                        <Button type="button" variant="destructive" disabled={isBusy} onClick={handleDelete}>
+                            {isDeleting ? "Excluindo..." : "Excluir"}
+                        </Button>
+                        <Button type="button" variant="outline" disabled={isBusy} onClick={() => setOpen(false)}>
                             Cancelar
                         </Button>
-                        <Button type="submit" disabled={isPending}>
+                        <Button type="submit" disabled={isBusy}>
                             {isPending ? "Salvando..." : "Salvar"}
                         </Button>
                     </DialogFooter>

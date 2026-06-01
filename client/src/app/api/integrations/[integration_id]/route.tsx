@@ -82,3 +82,51 @@ export async function PATCH(
         );
     }
 }
+
+export async function DELETE(
+    _request: NextRequest,
+    context: { params: Promise<{ integration_id: string }> }
+) {
+    if (!env.SERVER_URL) {
+        return NextResponse.json(
+            { message: "SERVER_URL nao configurada no ambiente." },
+            { status: 500 }
+        );
+    }
+
+    const { integration_id } = await context.params;
+
+    try {
+        const response = await fetch(`${env.SERVER_URL}/integrations/${integration_id}`, {
+            method: "DELETE",
+        });
+
+        const responseText = await response.text();
+        const contentType = response.headers.get("content-type") ?? "";
+        const isJsonResponse = contentType.includes("application/json");
+        const data = responseText
+            ? isJsonResponse
+                ? JSON.parse(responseText)
+                : { message: responseText }
+            : { deleted: response.ok };
+
+        if (!response.ok) {
+            return NextResponse.json(
+                {
+                    message: data.detail ?? data.message ?? "Falha ao excluir integracao.",
+                },
+                { status: response.status }
+            );
+        }
+
+        return NextResponse.json(data);
+    } catch (error) {
+        return NextResponse.json(
+            {
+                message: "Falha de comunicacao com o backend.",
+                error: error instanceof Error ? error.message : "Erro desconhecido.",
+            },
+            { status: 502 }
+        );
+    }
+}

@@ -167,8 +167,7 @@ export class HomeService {
 
   deleteDevice(deviceId: number): boolean {
     return this.storage.transaction(() => {
-      this.storage.run('DELETE FROM entities WHERE device_id = ?', [deviceId]);
-      return this.storage.run('DELETE FROM devices WHERE id = ?', [deviceId]).changes > 0;
+      return this.deleteDeviceGraph(deviceId);
     });
   }
 
@@ -539,7 +538,32 @@ export class HomeService {
   }
 
   deleteIntegration(integrationId: number): boolean {
-    return this.storage.run('DELETE FROM integrations WHERE id = ?', [integrationId]).changes > 0;
+    return this.storage.transaction(() => {
+      const integration = this.getIntegration(integrationId);
+      if (!integration) return false;
+
+      const deviceRows = this.storage.all<{ id: number; inbox_id: number | null }>(
+        'SELECT id, inbox_id FROM devices WHERE integration_id = ?',
+        [integrationId],
+      );
+
+      for (const row of deviceRows) {
+        this.deleteDeviceGraph(Number(row.id));
+      }
+
+      const linkedInboxIds = Array.from(
+        new Set(
+          deviceRows
+            .map((row) => (typeof row.inbox_id === 'number' ? row.inbox_id : null))
+            .filter((inboxId): inboxId is number => inboxId !== null),
+        ),
+      );
+      this.deleteInboxItems(linkedInboxIds);
+
+      this.storage.run('DELETE FROM device_inbox WHERE source_type = ? AND source_id = ?', ['integration', integrationId]);
+
+      return this.storage.run('DELETE FROM integrations WHERE id = ?', [integrationId]).changes > 0;
+    });
   }
 
   publicIntegration(integration: StoredIntegration): Integration {
@@ -667,6 +691,27 @@ export class HomeService {
       [externalId, provider],
     );
     return Boolean(acceptedInbox);
+  }
+
+  private deleteDeviceGraph(deviceId: number): boolean {
+    const entityIds = this.storage
+      .all<{ id: number }>('SELECT id FROM entities WHERE device_id = ?', [deviceId])
+      .map((row) => Number(row.id));
+
+    if (entityIds.length) {
+      const placeholders = entityIds.map(() => '?').join(', ');
+      this.storage.run(`DELETE FROM command_logs WHERE entity_id IN (${placeholders})`, entityIds);
+      this.storage.run('DELETE FROM entities WHERE device_id = ?', [deviceId]);
+    }
+
+    this.storage.run('DELETE FROM device_command_logs WHERE device_id = ?', [deviceId]);
+    return this.storage.run('DELETE FROM devices WHERE id = ?', [deviceId]).changes > 0;
+  }
+
+  private deleteInboxItems(inboxIds: number[]): void {
+    if (!inboxIds.length) return;
+    const placeholders = inboxIds.map(() => '?').join(', ');
+    this.storage.run(`DELETE FROM device_inbox WHERE id IN (${placeholders})`, inboxIds);
   }
 
   private findLocalMatch(device: Device, _secrets: JsonObject): JsonObject | null {

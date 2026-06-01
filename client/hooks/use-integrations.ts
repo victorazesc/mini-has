@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createIntegration, getIntegrations, syncIntegration, updateIntegration, UpdateIntegrationPayload } from "../src/services/integration.service";
+import { createIntegration, deleteIntegration, getIntegrations, syncIntegration, updateIntegration, UpdateIntegrationPayload } from "../src/services/integration.service";
 import { toast } from "sonner";
 
 export function useIntegrations() {
@@ -69,4 +69,25 @@ export function useSyncIntegration() {
             toast.error("Erro ao sincronizar integração");
         },
     });
-}   
+}
+
+export function useDeleteIntegration() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (integrationId: number) => deleteIntegration(integrationId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["integrations"] });
+            queryClient.invalidateQueries({ queryKey: ["devices"] });
+            toast.success("Integração excluída com sucesso");
+        },
+        onError: (error) => {
+            if (error instanceof Error && error.message) {
+                toast.error(error.message);
+                return { error: error.message };
+            }
+
+            toast.error("Erro ao excluir integração");
+        },
+    });
+}

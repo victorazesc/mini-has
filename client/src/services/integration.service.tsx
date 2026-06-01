@@ -28,6 +28,10 @@ export type UpdateIntegrationPayload = {
     testOnUpdate?: boolean;
 };
 
+export type DeleteIntegrationResult = {
+    deleted: boolean;
+};
+
 export async function getIntegrations(): Promise<Integration[]> {
     const response = await fetch(`/api/integrations`);
 
@@ -69,6 +73,18 @@ export async function updateIntegration(integrationId: number, data: UpdateInteg
     }
 
     return response.json() as Promise<Integration>;
+}
+
+export async function deleteIntegration(integrationId: number): Promise<DeleteIntegrationResult> {
+    const response = await fetch(`/api/integrations/${integrationId}`, {
+        method: "DELETE",
+    });
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao excluir integracao"));
+    }
+
+    return response.json() as Promise<DeleteIntegrationResult>;
 }
 
 export async function syncIntegration(integration_id: number): Promise<SyncIntegrationResult> {
