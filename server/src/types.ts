@@ -62,6 +62,7 @@ export interface Room {
   icon?: string | null;
   floorId?: number | null;
   floorName?: string | null;
+  devicesCount?: number;
   description?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -259,6 +260,11 @@ export interface DiscoveredDevice {
   services: DiscoveredService[];
   openPorts: number[];
   confidence: number;
+  identification?: {
+    label: string;
+    reason: string;
+    certainty: 'confirmed' | 'probable' | 'limited';
+  } | null;
   raw?: JsonObject;
 }
 

@@ -41,7 +41,8 @@ export class HomeService {
 
   listRooms(): Room[] {
     const rows = this.storage.all<JsonObject>(`
-      SELECT rooms.*, floors.name AS floor_name
+      SELECT rooms.*, floors.name AS floor_name,
+             (SELECT COUNT(*) FROM devices WHERE devices.room_id = rooms.id) AS devices_count
       FROM rooms
       LEFT JOIN floors ON floors.id = rooms.floor_id
       ORDER BY COALESCE(floors.name, ''), rooms.name
@@ -51,7 +52,8 @@ export class HomeService {
 
   getRoom(roomId: number): Room | null {
     const row = this.storage.get<JsonObject>(`
-      SELECT rooms.*, floors.name AS floor_name
+      SELECT rooms.*, floors.name AS floor_name,
+             (SELECT COUNT(*) FROM devices WHERE devices.room_id = rooms.id) AS devices_count
       FROM rooms
       LEFT JOIN floors ON floors.id = rooms.floor_id
       WHERE rooms.id = ?
@@ -1295,6 +1297,24 @@ export class HomeService {
   }
 
   private hasAcceptedOrAddedInboxDevice(device: InboxDevice): boolean {
+    if (device.sourceType === 'discovery' || String(device.payload.provider || '') === 'discovery') {
+      const discoveryMac = String(device.payload.mac || '').toUpperCase();
+      const discoveryIp = String(device.payload.ip || '');
+      if (discoveryMac || discoveryIp) {
+        const savedDevices = this.listDevices();
+        const matched = savedDevices.some((savedDevice) => {
+          const local = nested(savedDevice.payload, 'local') || {};
+          const payloadStatus = nested(savedDevice.payload, 'status') || {};
+          const runtimeState = nested(payloadStatus, 'state') || {};
+          const savedMac = String(local.mac || '').toUpperCase();
+          const savedIp = String(firstNonEmpty(local.ip, runtimeState.ip) || '');
+          if (discoveryMac && savedMac) return discoveryMac === savedMac;
+          return Boolean(discoveryIp && savedIp && discoveryIp === savedIp);
+        });
+        if (matched) return true;
+      }
+    }
+
     const provider = String(device.payload.provider || device.sourceType || '').trim();
     const externalId = String(device.payload.externalId || device.externalId || '').trim();
     if (!provider || !externalId) return false;
@@ -1339,7 +1359,7 @@ export class HomeService {
       return { ...payload, deviceKey: row.device_key };
     });
     const targetIp = privateIp(firstNonEmpty(nested(device.payload, 'payload', 'raw', 'last_ip'), nested(device.payload, 'payload', 'raw', 'ip'), device.payload.ip));
-    const targetMac = String(firstNonEmpty(device.payload.mac, nested(device.payload, 'payload', 'raw', 'mac')) || '').toUpperCase();
+    const targetMac = String(firstNonEmpty(device.payload.mac, nested(device.payload, 'local', 'mac'), nested(device.payload, 'payload', 'raw', 'mac')) || '').toUpperCase();
     for (const discovery of discoveries) {
       if (targetIp && discovery.ip === targetIp) return localPayload(device, discovery, 'ip', this.storage.utcNow());
       if (targetMac && String(discovery.mac || '').toUpperCase() === targetMac) return localPayload(device, discovery, 'mac', this.storage.utcNow());
@@ -1854,6 +1874,7 @@ function fromRoomRow(row: JsonObject): Room {
     icon: row.icon,
     floorId: row.floor_id,
     floorName: row.floor_name,
+    devicesCount: row.devices_count,
     description: row.description,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -16,11 +16,11 @@ export class CommandsService {
   async executeDeviceCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
     try {
       if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
-        return this.executeTuyaCommand(device, secrets, request);
+        return await this.executeTuyaCommand(device, secrets, request);
       }
-      if (device.provider === 'smartthings_cloud') return this.executeSmartthingsCommand(device, request);
-      if (device.provider === 'mqtt') return this.executeMqttCommand(device, request);
-      if (['generic_iot', 'persiana_custom'].includes(device.provider)) return this.executeHttpCommand(device, request);
+      if (device.provider === 'smartthings_cloud') return await this.executeSmartthingsCommand(device, request);
+      if (device.provider === 'mqtt') return await this.executeMqttCommand(device, request);
+      if (['generic_iot', 'persiana_custom'].includes(device.provider)) return await this.executeHttpCommand(device, request);
       return { ok: false, status: 'unsupported', message: `Provider ${device.provider} ainda nao tem executor.`, result: {} };
     } catch (error) {
       return { ok: false, status: 'error', message: messageFrom(error), result: { deviceId: device.id, command: request.command } };
@@ -33,13 +33,34 @@ export class CommandsService {
     try {
       return await this.executeTuyaLocalCommand(device, secrets, request);
     } catch (localError) {
+      const previousIp = String((device.payload.local as JsonObject | undefined)?.ip || '');
+      const relinkedDevice = this.home.autoLinkLocalDevice(device.id);
+      const relinkedIp = String((relinkedDevice?.payload.local as JsonObject | undefined)?.ip || '');
+
+      if (relinkedDevice && relinkedIp && relinkedIp !== previousIp) {
+        try {
+          const relinkedResult = await this.executeTuyaLocalCommand(relinkedDevice, secrets, request);
+          return {
+            ...relinkedResult,
+            message: 'Comando enviado pela rede local apos atualizar o IP do dispositivo.',
+            result: { ...relinkedResult.result, relinkedFrom: previousIp, relinkedTo: relinkedIp },
+          };
+        } catch {
+          // Continue to the existing cloud fallback.
+        }
+      }
+
       if (!device.integrationId) throw localError;
-      const cloudResult = await this.executeTuyaCloudCommand(device, request);
-      return {
-        ...cloudResult,
-        message: 'Comando enviado pela Tuya Cloud apos falha na conexao local.',
-        result: { ...cloudResult.result, fallbackFrom: 'local', localError: messageFrom(localError) },
-      };
+      try {
+        const cloudResult = await this.executeTuyaCloudCommand(device, request);
+        return {
+          ...cloudResult,
+          message: 'Comando enviado pela Tuya Cloud apos falha na conexao local.',
+          result: { ...cloudResult.result, fallbackFrom: 'local', localError: messageFrom(localError) },
+        };
+      } catch (cloudError) {
+        throw new Error(`Falha local: ${messageFrom(localError)}. Fallback Tuya Cloud: ${messageFrom(cloudError)}`);
+      }
     }
   }
 

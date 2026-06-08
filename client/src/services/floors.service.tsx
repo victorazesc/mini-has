@@ -2,6 +2,7 @@ export type Floor = {
     id: number;
     name: string;
     description?: string | null;
+    modelUrl?: string | null;
     roomsCount?: number;
     created_at: string;
     updated_at: string;
@@ -10,6 +11,24 @@ export type Floor = {
 export type UpsertFloorPayload = {
     name: string;
     description?: string | null;
+    modelUrl?: string | null;
+};
+
+export type FloorDevicePosition = {
+    floorId: number;
+    deviceId: number;
+    x: number;
+    y: number;
+    z: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type UpsertFloorDevicePosition = {
+    deviceId: number;
+    x: number;
+    y: number;
+    z: number;
 };
 
 export async function getFloors(): Promise<Floor[]> {
@@ -50,6 +69,52 @@ export async function updateFloor(floorId: number, data: UpsertFloorPayload): Pr
 
     if (!response.ok) {
         throw new Error("Erro ao atualizar piso");
+    }
+
+    return response.json();
+}
+
+export async function uploadFloorModel(floorId: number, file: File): Promise<Floor> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`/api/floors/${floorId}/model`, {
+        method: "POST",
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? "Erro ao enviar modelo 3D");
+    }
+
+    return response.json();
+}
+
+export async function getFloorDevicePositions(floorId: number): Promise<FloorDevicePosition[]> {
+    const response = await fetch(`/api/floors/${floorId}/device-positions`);
+
+    if (!response.ok) {
+        throw new Error("Erro ao buscar posicoes do piso");
+    }
+
+    return response.json();
+}
+
+export async function replaceFloorDevicePositions(
+    floorId: number,
+    positions: UpsertFloorDevicePosition[],
+): Promise<FloorDevicePosition[]> {
+    const response = await fetch(`/api/floors/${floorId}/device-positions`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ positions }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao salvar posicoes do piso");
     }
 
     return response.json();

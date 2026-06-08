@@ -1,9 +1,8 @@
 "use client"
-import { RoomCard } from "@/components/room-card";
 import { UpsertRoomDialog } from "@/components/upsert-room-dialog";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useRooms } from "@/hooks/use-rooms";
-import { CirclePlusIcon, PlusCircle } from "lucide-react";
+import { BoxIcon, CirclePlusIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useFloors } from "@/hooks/use-floors";
 import { Button } from "@/components/ui/button";
@@ -12,12 +11,12 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuGroup,
-    DropdownMenuLabel,
-    DropdownMenuItem, DropdownMenuSeparator
+    DropdownMenuItem
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import { UpsertFloorDialog } from "@/components/upsert-floor-dialog";
 import Image from "next/image";
+import Link from "next/link";
 import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 
 export default function RoomsPage() {
@@ -65,13 +64,41 @@ export default function RoomsPage() {
                     {floors.map((floor) => (
                         <UpsertFloorDialog key={floor.id} floor={floor}>
                             <Card className="cursor-pointer hover:bg-secondary/80 transition-all duration-300 hover:shadow-lg ">
-                                <CardContent className="flex flex-row items-center gap-4">
+                                <CardContent className="flex flex-row items-center gap-4 pb-3">
                                     <Image src={`/images/first_floor.jpg`} alt={floor.name} width={100} height={100} className="rounded-lg" />
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <h3 className="text-base font-semibold py-4">{floor.name}</h3>
                                         <h3 className="text-base">{floor.roomsCount} cômodo{floor.roomsCount === 1 ? "" : "s"}</h3>
                                     </div>
                                 </CardContent>
+                                <CardFooter>
+                                    {floor.modelUrl ? (
+                                        <Button
+                                            className="w-full"
+                                            nativeButton={false}
+                                            render={
+                                                <Link
+                                                    href={`/floor-editor?floorId=${floor.id}`}
+                                                    onClick={(event) => event.stopPropagation()}
+                                                />
+                                            }
+                                            variant="outline"
+                                        >
+                                            <BoxIcon className="size-4" />
+                                            Editar 3D
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            className="w-full"
+                                            disabled
+                                            onClick={(event) => event.stopPropagation()}
+                                            variant="outline"
+                                        >
+                                            <BoxIcon className="size-4" />
+                                            Sem modelo 3D
+                                        </Button>
+                                    )}
+                                </CardFooter>
                             </Card>
                             {/* <FloorCard floor={floor} /> */}
                         </UpsertFloorDialog>

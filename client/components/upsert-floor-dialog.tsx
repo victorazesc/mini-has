@@ -12,12 +12,11 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldError, FieldGroup } from "@/components/ui/field"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { z } from "zod"    
 import { Floor } from "@/src/services/floors.service"
-import { useFloors, useCreateFloor, useUpdateFloor } from "@/hooks/use-floors"
-import { DynamicIcon, IconName, iconNames } from "lucide-react/dynamic"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "./ui/select"
+import { useCreateFloor, useUpdateFloor, useUploadFloorModel } from "@/hooks/use-floors"
+import { useRouter } from "next/navigation"
 
 const schema = z.object({
     name: z.string().min(1, "Nome e obrigatorio"),
@@ -44,22 +43,26 @@ function getInitialValues(floor?: Floor): FloorFormValues {
 }
 
 export function UpsertFloorDialog({ floor, children, nativeButton = false, open: controlledOpen, onOpenChange }: UpsertFloorDialogProps & { nativeButton?: boolean, open?: boolean, onOpenChange?: (open: boolean) => void }) {
+    const router = useRouter();
     const [internalOpen, setInternalOpen] = useState(false);
     const open = controlledOpen ?? internalOpen;
     const isControlled = controlledOpen !== undefined;
     const [values, setValues] = useState<FloorFormValues>(() => getInitialValues(floor));
+    const [modelFile, setModelFile] = useState<File | null>(null);
     const [errors, setErrors] = useState<Partial<Record<keyof FloorFormValues, string>>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const { mutateAsync: createFloor, isPending: isCreating } = useCreateFloor();
     const { mutateAsync: updateFloor, isPending: isUpdating } = useUpdateFloor();
+    const { mutateAsync: uploadFloorModel, isPending: isUploadingModel } = useUploadFloorModel();
     const isEditing = Boolean(floor);
-    const isPending = isCreating || isUpdating;
+    const isPending = isCreating || isUpdating || isUploadingModel;
 
 
     const handleOpenChange = (nextOpen: boolean) => {
 
         if (nextOpen) {
             setValues(getInitialValues(floor));
+            setModelFile(null);
             setErrors({});
             setFormError(null);
         }
@@ -93,17 +96,31 @@ export function UpsertFloorDialog({ floor, children, nativeButton = false, open:
         setErrors({});
         setFormError(null);
 
+        if (modelFile && !modelFile.name.toLowerCase().endsWith(".glb")) {
+            setFormError("Modelo invalido. Use um arquivo .glb.");
+            return;
+        }
+
         try {
             const payload = {
                 name: parsed.data.name,
                 description: parsed.data.description || null,
             };
 
+            let savedFloor = floor;
+
             if (floor) {
-                await updateFloor({ floorId: floor.id, data: payload });
+                savedFloor = await updateFloor({ floorId: floor.id, data: payload });
             } else {
-                await createFloor(payload);
+                savedFloor = await createFloor(payload);
                 setValues(emptyValues);
+            }
+
+            if (modelFile && savedFloor) {
+                await uploadFloorModel({ floorId: savedFloor.id, file: modelFile });
+                handleOpenChange(false);
+                router.push(`/floor-editor?floorId=${savedFloor.id}`);
+                return;
             }
 
             handleOpenChange(false);
@@ -159,12 +176,29 @@ export function UpsertFloorDialog({ floor, children, nativeButton = false, open:
                                 }}
                             />
                         </Field>
+                        <Field>
+                            <Label htmlFor="floor-model">Modelo 3D (.glb)</Label>
+                            <Input
+                                id="floor-model"
+                                name="model"
+                                type="file"
+                                accept=".glb,model/gltf-binary"
+                                disabled={isPending}
+                                onChange={(event) => {
+                                    setModelFile(event.target.files?.[0] ?? null);
+                                    setFormError(null);
+                                }}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {floor?.modelUrl ? "Este piso ja tem modelo 3D." : "Envie um .glb para liberar a edição 3D."}
+                            </p>
+                        </Field>
                     </FieldGroup>
                     <FieldError className="text-center w-full mb-6">{formError}</FieldError>
                     <DialogFooter>
                         <DialogClose render={<Button variant="outline" disabled={isPending}>Cancelar</Button>} />
                         <Button type="submit" disabled={isPending}>
-                            {isPending ? "Salvando..." : isEditing ? "Salvar" : "Criar"}
+                            {isPending ? "Salvando..." : modelFile ? "Enviar e editar 3D" : isEditing ? "Salvar" : "Criar"}
                         </Button>
                     </DialogFooter>
                 </form>

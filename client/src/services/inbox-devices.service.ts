@@ -8,21 +8,31 @@ export type DiscoveredDevice = {
     externalId: string;
     status: string;
     payload: {
-        manufacturer: string;
-        model: string;
+        manufacturer?: string | null;
+        model?: string | null;
         externalId: string;
-        name: string;
-        provider: string;
-        deviceType: string;
-        capabilities: {
+        name?: string | null;
+        provider?: string | null;
+        deviceType?: string | null;
+        capabilities?: {
             category: string;
             primarySwitchCode: string;
             status: { code: string; value: string }[];
         };
-        status: {
+        status?: {
             online: boolean;
             state: string;
         };
+        ip?: string | null;
+        mac?: string | null;
+        hostname?: string | null;
+        openPorts?: number[];
+        confidence?: number;
+        identification?: {
+            label: string;
+            reason: string;
+            certainty: "confirmed" | "probable" | "limited";
+        } | null;
         payload: {
             category: string;
             productName: string;

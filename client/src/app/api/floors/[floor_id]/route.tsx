@@ -2,16 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 import { z } from "zod";
 
-const roomUpdateSchema = z.object({
+const floorUpdateSchema = z.object({
     name: z.string().min(1, "Nome e obrigatorio").optional(),
-    icon: z.string().nullable().optional(),
-    floor: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
+    modelUrl: z.string().nullable().optional(),
 });
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: Promise<{ room_id: string }> }
+    { params }: { params: Promise<{ floor_id: string }> }
 ) {
     if (!env.SERVER_URL) {
         return NextResponse.json(
@@ -20,12 +19,12 @@ export async function PATCH(
         );
     }
 
-    const { room_id: roomIdParam } = await params;
-    const roomId = Number(roomIdParam);
+    const { floor_id: floorIdParam } = await params;
+    const floorId = Number(floorIdParam);
 
-    if (!Number.isInteger(roomId) || roomId < 1) {
+    if (!Number.isInteger(floorId) || floorId < 1) {
         return NextResponse.json(
-            { message: "room_id invalido." },
+            { message: "floor_id invalido." },
             { status: 400 }
         );
     }
@@ -41,7 +40,7 @@ export async function PATCH(
         );
     }
 
-    const parsed = roomUpdateSchema.safeParse(body);
+    const parsed = floorUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
         return NextResponse.json(
@@ -53,7 +52,7 @@ export async function PATCH(
         );
     }
 
-    const response = await fetch(`${env.SERVER_URL}/rooms/${roomId}`, {
+    const response = await fetch(`${env.SERVER_URL}/floors/${floorId}`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -65,7 +64,7 @@ export async function PATCH(
 
     if (!response.ok) {
         return NextResponse.json(
-            { message: data.detail ?? data.message ?? "Erro ao atualizar comodo." },
+            { message: data.detail ?? data.message ?? "Erro ao atualizar piso." },
             { status: response.status }
         );
     }

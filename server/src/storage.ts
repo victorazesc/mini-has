@@ -147,6 +147,18 @@ export class StorageService implements OnModuleDestroy {
         updated_at TEXT NOT NULL,
         UNIQUE(provider, external_id)
       );
+      CREATE TABLE IF NOT EXISTS floor_device_positions (
+        floor_id INTEGER NOT NULL,
+        device_id INTEGER NOT NULL,
+        x REAL NOT NULL,
+        y REAL NOT NULL,
+        z REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY(floor_id, device_id),
+        FOREIGN KEY(floor_id) REFERENCES floors(id) ON DELETE CASCADE,
+        FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
+      );
       CREATE TABLE IF NOT EXISTS entities (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         device_id INTEGER NOT NULL,
@@ -247,6 +259,7 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_scenes_room_id ON scenes(room_id);
       CREATE INDEX IF NOT EXISTS idx_scene_actions_scene_id ON scene_actions(scene_id, order_index ASC);
       CREATE INDEX IF NOT EXISTS idx_scene_actions_device_id ON scene_actions(device_id);
+      CREATE INDEX IF NOT EXISTS idx_floor_device_positions_device_id ON floor_device_positions(device_id);
       CREATE INDEX IF NOT EXISTS idx_scene_runs_scene_id ON scene_runs(scene_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_automations_room_id ON automations(room_id);
       CREATE INDEX IF NOT EXISTS idx_automations_scene_id ON automations(scene_id);
@@ -260,6 +273,7 @@ export class StorageService implements OnModuleDestroy {
     `);
     this.ensureColumn('rooms', 'icon', 'TEXT');
     this.ensureColumn('rooms', 'floor_id', 'INTEGER');
+    this.ensureColumn('floors', 'model_url', 'TEXT');
   }
 
   private ensureColumn(table: string, column: string, definition: string) {

@@ -8,7 +8,7 @@ import { HomeService } from './services';
 import { StorageService } from './storage';
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 9000];
+const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 6668, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 9000];
 const HTTP_PORTS = new Set([80, 81, 5000, 8000, 8008, 8009, 8080, 8123, 8266, 9000]);
 const HTTPS_PORTS = new Set([443]);
 const RTSP_PORTS = new Set([554, 8554]);
@@ -152,7 +152,43 @@ export class DiscoveryService {
       devices = devices.map((device) => mergeOpenPorts(device, portsByIp.get(device.ip || '') || []));
     }
     devices = await probeDevices(filterValidDevices(devices, request.subnet_prefix), request.probeMode);
-    return devices.map(enrichDevice).sort(sortDevice);
+    return this.identifyDevices(devices.map(enrichDevice)).sort(sortDevice);
+  }
+
+  private identifyDevices(devices: DiscoveredDevice[]): DiscoveredDevice[] {
+    const registered = this.home.listDevices();
+
+    return devices.map((device) => {
+      const matched = registered.find((candidate) => {
+        const local = candidate.payload.local as JsonObject | undefined;
+        const payloadStatus = candidate.payload.status as JsonObject | undefined;
+        const runtimeState = payloadStatus?.state as JsonObject | undefined;
+        const localMac = normalizeMac(String(local?.mac || ''));
+        const localIp = String(local?.ip || runtimeState?.ip || '');
+        if (device.mac && localMac) return localMac === normalizeMac(device.mac);
+        return Boolean(device.ip && localIp === device.ip);
+      });
+
+      if (matched) {
+        const matchedLocal = matched.payload.local as JsonObject | undefined;
+        const matchedByMac = Boolean(device.mac && matchedLocal?.mac && normalizeMac(String(matchedLocal.mac)) === normalizeMac(device.mac));
+        return {
+          ...device,
+          name: matched.name,
+          model: String(matched.payload.model || device.model || matched.deviceType),
+          deviceType: matched.deviceType,
+          manufacturer: String(matched.payload.manufacturer || device.manufacturer || ''),
+          confidence: 0.99,
+          identification: {
+            label: matched.name,
+            reason: matchedByMac ? 'MAC corresponde a um dispositivo já cadastrado.' : 'IP corresponde a um dispositivo já cadastrado.',
+            certainty: 'confirmed',
+          },
+        };
+      }
+
+      return identifyProbableDevice(device);
+    });
   }
 
   private createScanRecord(request: JsonObject, status: JobStatus, createdAt: string, startedAt?: string): number {
@@ -195,6 +231,9 @@ export class DiscoveryService {
     for (const device of devices) {
       const key = deviceKey(device);
       if (!key) continue;
+      const previousRow = this.storage.get<JsonObject>('SELECT payload_json FROM discovery_devices WHERE device_key = ?', [key]);
+      const previous = previousRow ? this.storage.jsonLoad<DiscoveredDevice>(previousRow.payload_json, emptyDiscoveredDevice()) : null;
+      const savedDevice = previous ? mergeHistoricalDevice(previous, device) : device;
       this.storage.run(
         `
         INSERT INTO discovery_devices (device_key, payload_json, first_seen_at, last_seen_at, last_scan_id)
@@ -204,9 +243,9 @@ export class DiscoveryService {
           last_seen_at = excluded.last_seen_at,
           last_scan_id = excluded.last_scan_id
         `,
-        [key, this.storage.jsonDump(stripRaw(device)), seenAt, seenAt, scanId],
+        [key, this.storage.jsonDump(stripRaw(savedDevice)), seenAt, seenAt, scanId],
       );
-      this.upsertDiscoveryInbox(scanId, key, device);
+      this.upsertDiscoveryInbox(scanId, key, savedDevice);
     }
   }
 
@@ -487,6 +526,26 @@ function mergeDevice(left: DiscoveredDevice, right: DiscoveredDevice): Discovere
   };
 }
 
+function mergeHistoricalDevice(previous: DiscoveredDevice, current: DiscoveredDevice): DiscoveredDevice {
+  const merged = mergeDevice(current, previous);
+  if (identificationRank(previous.identification) <= identificationRank(current.identification)) return merged;
+  return {
+    ...merged,
+    name: previous.name || merged.name,
+    model: previous.model || merged.model,
+    deviceType: previous.deviceType || merged.deviceType,
+    identification: previous.identification,
+    confidence: Math.max(previous.confidence, current.confidence),
+  };
+}
+
+function identificationRank(identification?: DiscoveredDevice['identification']): number {
+  if (identification?.certainty === 'confirmed') return 3;
+  if (identification?.certainty === 'probable') return 2;
+  if (identification?.certainty === 'limited') return 1;
+  return 0;
+}
+
 function mergeOpenPorts(device: DiscoveredDevice, ports: number[]): DiscoveredDevice {
   if (!ports.length) return device;
   return { ...device, openPorts: [...new Set([...device.openPorts, ...ports])].sort((a, b) => a - b) };
@@ -510,13 +569,60 @@ function enrichDevice(device: DiscoveredDevice): DiscoveredDevice {
   return { ...device, manufacturer, deviceType, confidence: confidence(device, manufacturer, deviceType) };
 }
 
+function identifyProbableDevice(device: DiscoveredDevice): DiscoveredDevice {
+  const services = device.services.map((service) => [service.type, service.name, ...Object.values(service.properties || {})].filter(Boolean).join(' ')).join(' ').toLowerCase();
+  const manufacturer = String(device.manufacturer || '').toLowerCase();
+  const ports = new Set(device.openPorts);
+
+  if (services.includes('airtunes') || services.includes('airplay')) {
+    return withIdentification(device, 'Dispositivo Apple / AirPlay', 'Serviço AirTunes/AirPlay detectado na rede.', 'probable', 'media');
+  }
+  if (String(device.name || '').toLowerCase().includes('mainsail')) {
+    return withIdentification(device, 'Impressora 3D / Mainsail', 'Interface Mainsail detectada via HTTP.', 'probable', 'printer');
+  }
+  if (device.deviceType === 'camera' || ports.has(554) || ports.has(8554)) {
+    return withIdentification(device, 'Possível câmera IP', 'Serviço de vídeo RTSP detectado.', 'probable', 'camera');
+  }
+  if (ports.has(6668) || manufacturer.includes('tuya')) {
+    return withIdentification(device, 'Dispositivo Tuya local', 'Porta local Tuya 6668 ou fabricante Tuya detectado.', 'probable', 'iot');
+  }
+  if (device.ip?.endsWith('.1')) {
+    return withIdentification(device, `Roteador / gateway${device.name ? ` ${device.name}` : ''}`, 'Endereço de gateway e interface de rede detectada.', 'probable', 'network');
+  }
+  if (device.deviceType === 'network') {
+    return withIdentification(device, `Equipamento de rede ${device.name || device.manufacturer || ''}`.trim(), 'Interface e comportamento de equipamento de rede.', 'probable', 'network');
+  }
+  if (isPrivateMac(device.mac)) {
+    return withIdentification(device, 'Dispositivo com MAC privado', 'MAC aleatório impede identificar fabricante e modelo com segurança.', 'limited', device.deviceType || 'unknown');
+  }
+  if (device.manufacturer) {
+    return withIdentification(device, `Dispositivo ${device.manufacturer}`, 'Identificação limitada ao fabricante do endereço MAC.', 'limited', device.deviceType || 'unknown');
+  }
+  return withIdentification(device, 'Dispositivo desconhecido', 'Nenhum serviço, hostname ou fabricante confiável foi encontrado.', 'limited', device.deviceType || 'unknown');
+}
+
+function withIdentification(
+  device: DiscoveredDevice,
+  label: string,
+  reason: string,
+  certainty: 'confirmed' | 'probable' | 'limited',
+  deviceType: string,
+): DiscoveredDevice {
+  return {
+    ...device,
+    name: device.name || label,
+    deviceType,
+    identification: { label, reason, certainty },
+  };
+}
+
 function inferDeviceType(device: DiscoveredDevice, manufacturer?: string | null): string {
   const serviceBlob = device.services.map((service) => [service.type, service.name, ...Object.values(service.properties || {})].filter(Boolean).join(' ')).join(' ').toLowerCase();
   const identity = [device.hostname, device.name, device.model, manufacturer].filter(Boolean).join(' ').toLowerCase();
   const ports = new Set(device.openPorts);
   const text = serviceBlob + identity;
   if (text.includes('_printer') || identity.includes('printer')) return 'printer';
-  if (hasAny(text, ['googlecast', 'mediarenderer', 'dlna', 'dial', 'chromecast', 'smart tv'])) return 'media';
+  if (hasAny(text, ['googlecast', 'mediarenderer', 'dlna', 'dial', 'chromecast', 'smart tv', 'airtunes', 'airplay'])) return 'media';
   if (ports.has(554) || ports.has(8554) || hasAny(text, ['rtsp', 'onvif', 'hikvision', 'dahua', 'ip camera', 'camera'])) return 'camera';
   if (hasAny(text, ['espressif', 'arduino', 'esphome', '_esphomelib', '_arduino', '_hap', '_matter'])) return 'iot';
   if (ports.has(6053) || ports.has(8266) || ports.has(1883) || ports.has(8883) || serviceBlob.includes('_mqtt')) return 'iot';
@@ -524,6 +630,12 @@ function inferDeviceType(device: DiscoveredDevice, manufacturer?: string | null)
   if (hasAny(text, ['router', 'gateway', 'openwrt', 'routeros', 'tplink', 'tp-link', 'ubiquiti', 'mikrotik'])) return 'network';
   if (!device.services.length && !device.openPorts.length && hasAny(String(manufacturer || '').toLowerCase(), ['apple', 'samsung', 'xiaomi', 'motorola'])) return 'mobile';
   return 'unknown';
+}
+
+function isPrivateMac(mac?: string | null): boolean {
+  if (!mac) return false;
+  const firstOctet = Number.parseInt(mac.split(':')[0] || '', 16);
+  return Number.isFinite(firstOctet) && (firstOctet & 2) === 2;
 }
 
 function confidence(device: DiscoveredDevice, manufacturer: string | null | undefined, deviceType: string): number {
@@ -698,7 +810,14 @@ function hasAny(value: string, terms: string[]): boolean {
 }
 
 function decodeHtml(value: string): string {
-  return value.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return value
+    .replace(/&#(\d+);/g, (_match, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function toInt(value: string | number | null | undefined): number | null {

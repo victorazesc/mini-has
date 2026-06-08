@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription } from "@/components/ui/card"
-import { Blinds, Brain, Camera, Lightbulb, Loader2Icon, PawPrint, Power, Wifi } from "lucide-react"
+import { CircleCheck, Lightbulb, Loader2Icon, MapPin, Network, Search, Wifi } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./ui/skeleton"
@@ -21,9 +21,15 @@ export function DiscoveredDeviceCard({ device, onAddDevice, addDeviceLoading, on
     ignoreDeviceLoading: boolean,
     rooms: Room[],
 }) {
-    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.payload.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
-    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.payload.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
-    const ProviderName = PROVIDERS_NAME_BY_TYPE[device.payload.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
+    const deviceType = device.payload.deviceType ?? "iot"
+    const provider = device.payload.provider ?? device.sourceType ?? "discovery"
+    const deviceName = device.payload.name ?? device.payload.manufacturer ?? device.payload.externalId ?? "Dispositivo encontrado"
+    const deviceModel = device.payload.model ?? device.payload.manufacturer ?? deviceType
+    const online = device.payload.status?.online
+    const identification = device.payload.identification
+    const DeviceIcon = DEVICE_ICON_BY_TYPE[deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
+    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
+    const ProviderName = PROVIDERS_NAME_BY_TYPE[provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const [selectedRoom, setSelectedRoom] = useState<string | undefined>(undefined)
     return (
         <Card className={cn("col-span-1")} key={device.id}>
@@ -33,7 +39,7 @@ export function DiscoveredDeviceCard({ device, onAddDevice, addDeviceLoading, on
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
                     <CardTitle className="flex items-center gap-2">
-                        {device.payload.name}
+                        {deviceName}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
@@ -41,8 +47,41 @@ export function DiscoveredDeviceCard({ device, onAddDevice, addDeviceLoading, on
                                 <Image src={ProviderIcon} alt={ProviderName} width={24} height={24} />
                             </div>
                             <span>{ProviderName}</span>
-                        </div> • <span>{device.payload.model}</span></CardDescription>
-                    <CardDescription>{device.payload.status.online ? <span className="flex items-center gap-2 text-green-500"><Wifi className="size-4" /> Online</span> : <span className="flex items-center gap-2 text-red-500"><Wifi className="size-4" color="red" /> Offline</span>}</CardDescription>
+                        </div> • <span>{deviceModel}</span></CardDescription>
+                    <CardDescription>
+                        {online === true ? (
+                            <span className="flex items-center gap-2 text-green-500"><Wifi className="size-4" /> Online</span>
+                        ) : online === false ? (
+                            <span className="flex items-center gap-2 text-red-500"><Wifi className="size-4" color="red" /> Offline</span>
+                        ) : (
+                            <span className="flex items-center gap-2 text-muted-foreground"><Wifi className="size-4" /> Estado desconhecido</span>
+                        )}
+                    </CardDescription>
+                    {device.sourceType === "discovery" ? (
+                        <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+                            <p className="flex items-center gap-2">
+                                <Network className="size-3.5" />
+                                {[device.payload.ip, device.payload.mac].filter(Boolean).join(" • ")}
+                            </p>
+                            {device.payload.openPorts?.length ? (
+                                <p className="flex items-center gap-2">
+                                    <MapPin className="size-3.5" />
+                                    Portas: {device.payload.openPorts.join(", ")}
+                                </p>
+                            ) : null}
+                            {identification ? (
+                                <p className="flex items-start gap-2">
+                                    {identification.certainty === "confirmed" ? <CircleCheck className="mt-0.5 size-3.5 shrink-0 text-green-500" /> : <Search className="mt-0.5 size-3.5 shrink-0" />}
+                                    <span>
+                                        <strong className="font-medium text-foreground">{identification.label}</strong>
+                                        {" — "}
+                                        {identification.reason}
+                                        {typeof device.payload.confidence === "number" ? ` Confiança: ${Math.round(device.payload.confidence * 100)}%.` : ""}
+                                    </span>
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </CardHeader>
             <CardFooter className="flex-row justify-between items-center gap-1.5 text-sm">
