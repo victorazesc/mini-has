@@ -59,6 +59,7 @@ import type { Device } from "@/src/services/devices.service";
 import type { Floor } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import { CameraViewControls } from "./camera-view-controls";
+import { SlideAlarmAction } from "../ui/slideAlarm";
 
 type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm";
 type DevicePosition = [number, number, number];
@@ -728,33 +729,62 @@ function QuickActions({ devices, alarmDevice }: { devices: SpatialDevice[]; alar
     }
   };
 
-  const toggleAlarm = async () => {
+  const [alarmStatus, setAlarmStatus] = useState<"armed" | "disarmed" | "arming" | "disarming" | "unknown">("disarmed");
+  const activateAlarm = async () => {
     if (!alarmDevice) return;
     if (alarmArmed && !window.confirm("Desarmar a central de alarme?")) return;
-    await sendCommand({
-      deviceId: alarmDevice.id,
-      command: { command: alarmArmed ? "disarm" : "arm", params: {} },
-    });
+    setAlarmStatus("arming");
+    try {
+      await sendCommand({
+        deviceId: alarmDevice.id,
+        command: {
+          command: "arm",
+          params: {},
+        },
+      });
+
+      setAlarmStatus("armed");
+    } catch (error) {
+      setAlarmStatus("disarmed");
+      throw error;
+    };
+  };
+  const deactivateAlarm = async () => {
+    if (!alarmDevice) return;
+    if (alarmArmed && !window.confirm("Desarmar a central de alarme?")) return;
+    setAlarmStatus("disarming");
+    try {
+      await sendCommand({
+        deviceId: alarmDevice.id,
+        command: {
+          command: "disarm",
+          params: {},
+        },
+      });
+
+      setAlarmStatus("disarmed");
+    } catch (error) {
+      setAlarmStatus("disarmed");
+      throw error;
+    };
   };
 
+  useEffect(() => {
+    if (!alarmDevice) {
+      setAlarmStatus("unknown");
+    } else if (["armed", "partial"].includes(String(alarmDevice.status?.state || "").toLowerCase())) {
+      setAlarmStatus("armed");
+    } else {
+      setAlarmStatus("disarmed");
+    }
+  }, [alarmDevice]);
   return (
     <div className="absolute bottom-5 left-6 z-20 flex gap-3">
-      <button
-        className="flex h-14 w-[250px] items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/70 px-4 text-left text-white backdrop-blur"
-        disabled={!alarmDevice || isPending}
-        type="button"
-        onClick={toggleAlarm}
-      >
-        <span className="flex size-11 items-center justify-center rounded-full bg-emerald-400/15">
-          <Lock className="size-5" />
-        </span>
-        <span>
-          <span className="block text-base font-semibold">Segurança</span>
-          <span className="text-sm text-emerald-300">
-            {!alarmDevice ? "Central não adicionada" : alarmArmed ? "Desarmar central de alarme" : "Armar central de alarme"}
-          </span>
-        </span>
-      </button>
+      <SlideAlarmAction
+        status={alarmStatus}
+        onArm={activateAlarm}
+        onDisarm={deactivateAlarm}
+      />
       <button
         className="flex h-14 w-[250px] items-center gap-3 rounded-2xl border border-white/10 bg-black/45 px-4 text-left text-white backdrop-blur disabled:cursor-not-allowed disabled:opacity-50"
         disabled={isPending || turnOffCommands.length === 0}
