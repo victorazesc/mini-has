@@ -8,7 +8,6 @@ import {
   Grid,
   Html,
   Line,
-  OrbitControls,
   TransformControls,
   useGLTF,
 } from "@react-three/drei";
@@ -17,23 +16,31 @@ import {
   Blinds,
   Check,
   Grid2X2,
-  LayoutPanelLeft,
   Lightbulb,
   ListPlus,
   Move3D,
+  Rotate3D,
   Redo2,
   RotateCcw,
   Save,
   Settings,
   Trash2,
   Undo2,
+  View,
   X,
 } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { DoubleSide, Group } from "three";
 
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDevices } from "@/hooks/use-devices";
 import {
   useFloorDevicePositions,
@@ -41,9 +48,14 @@ import {
   useReplaceFloorDevicePositions,
 } from "@/hooks/use-floors";
 import { useRooms } from "@/hooks/use-rooms";
+import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
 import type { Floor } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
+import {
+  CameraViewControls,
+  type CameraActions,
+} from "@/components/3d/camera-view-controls";
 
 type FloorModelProps = {
   url: string;
@@ -237,7 +249,7 @@ function snap(value: number) {
   return Math.round(value / SNAP_STEP) * SNAP_STEP;
 }
 
-function getEditorPoint(event: ThreeEvent<PointerEvent>): Point2 {
+function getEditorPoint(event: { point: { x: number; z: number } }): Point2 {
   return {
     x: snap(event.point.x),
     z: snap(event.point.z),
@@ -261,7 +273,6 @@ function DeviceMarkerLayer({
   selected,
   onDragEnd,
   onDragStart,
-  onHoverChange,
   onSelect,
 }: {
   device: FloorDevice & {
@@ -271,7 +282,6 @@ function DeviceMarkerLayer({
   selected?: boolean;
   onDragEnd: (event: ThreeEvent<PointerEvent>) => void;
   onDragStart: (device: FloorDevice, event: ThreeEvent<PointerEvent>) => void;
-  onHoverChange: (hovered: boolean) => void;
   onSelect: (device: FloorDevice) => void;
 }) {
   const deviceType = DEVICE_TYPES[device.type];
@@ -280,24 +290,22 @@ function DeviceMarkerLayer({
   return (
     <group
       position={device.position}
-      onClick={(event) => {
+      onClick={selected ? undefined : (event) => {
         event.stopPropagation();
         onSelect(device);
       }}
-      onPointerDown={(event) => {
+      onPointerDown={selected ? undefined : (event) => {
         stopCanvasInteraction(event);
         onDragStart(device, event);
       }}
-      onPointerEnter={(event) => {
+      onPointerEnter={selected ? undefined : (event) => {
         event.stopPropagation();
-        onHoverChange(true);
         setCursor("grab");
       }}
-      onPointerLeave={() => {
-        onHoverChange(false);
+      onPointerLeave={selected ? undefined : () => {
         setCursor("default");
       }}
-      onPointerUp={onDragEnd}
+      onPointerUp={selected ? undefined : onDragEnd}
     >
       <Line
         color={deviceType.color}
@@ -313,10 +321,12 @@ function DeviceMarkerLayer({
         <meshBasicMaterial color={deviceType.color} depthTest={false} />
       </mesh>
 
-      <mesh position={[0, 1.16, 0]}>
-        <sphereGeometry args={[0.5, 24, 16]} />
-        <meshBasicMaterial color={markerColor} opacity={0.02} transparent />
-      </mesh>
+      {!selected ? (
+        <mesh position={[0, 1.16, 0]}>
+          <sphereGeometry args={[0.35, 24, 16]} />
+          <meshBasicMaterial color={markerColor} opacity={0.02} transparent />
+        </mesh>
+      ) : null}
 
       <Html center position={[0, 1.15, 0]} style={{ pointerEvents: "none" }}>
         <div
@@ -357,7 +367,7 @@ function DeviceTransformGizmo({
       <TransformControls
         mode="translate"
         object={transformObject}
-        size={0.8}
+        size={1.1}
         space="world"
         translationSnap={SNAP_STEP}
         onMouseDown={() => onDragChange(true)}
@@ -403,6 +413,7 @@ type FloorViewerTestProps = {
 export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setRightAction, setTitle } = useHeaderTitle();
   const floorIdFromUrl = parseFloorId(searchParams.get("floorId"));
   const requestedFloorId = floorIdFromUrl ?? initialFloorId;
   const {
@@ -429,7 +440,9 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     null,
   );
   const [draggingDeviceId, setDraggingDeviceId] = useState<number | null>(null);
-  const [orbitLocked, setOrbitLocked] = useState(false);
+  const gizmoDraggingRef = useRef(false);
+  const editorModelRef = useRef<Group | null>(null);
+  const [cameraActions, setCameraActions] = useState<CameraActions | null>(null);
   const [activeFilter, setActiveFilter] = useState<DeviceFilter>("all");
   const {
     data: floorPositionRows = [],
@@ -466,6 +479,92 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
       ),
     [devices],
   );
+
+  useEffect(() => {
+    setTitle(
+      <div className="flex items-center gap-3">
+        <span className="font-semibold">
+          Editor 3d - {selectedFloor?.name ?? "Piso"}
+        </span>
+        <Select
+          disabled={!floors.length}
+          value={selectedFloorId ? String(selectedFloorId) : null}
+          onValueChange={(value) => {
+            const floorId = Number(value);
+            const nextFloorId = Number.isFinite(floorId) ? floorId : null;
+            setSelectedFloorId(nextFloorId);
+            if (nextFloorId) {
+              router.replace(`/floor-editor?floorId=${nextFloorId}`, {
+                scroll: false,
+              });
+            }
+            setSelectedDeviceId(null);
+            setPositioningDeviceId(null);
+            setDraggingDeviceId(null);
+          }}
+        >
+          <SelectTrigger
+            aria-label="Selecionar piso"
+            className="w-44 border border-border bg-background/80 px-3"
+            size="sm"
+          >
+            <SelectValue placeholder="Selecionar piso">
+              {selectedFloor?.name}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="start">
+            {floors.map((floor) => (
+              <SelectItem key={floor.id} value={String(floor.id)}>
+                {floor.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>,
+    );
+    setRightAction(
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-full border border-border p-0.5">
+          <Button
+            className="rounded-full px-3"
+            onClick={() => cameraActions?.topView()}
+            size="sm"
+            variant="ghost"
+          >
+            <View className="size-4" />
+            Topo
+          </Button>
+          <Button
+            className="rounded-full px-3"
+            onClick={() => cameraActions?.defaultView()}
+            size="sm"
+            variant="ghost"
+          >
+            <Rotate3D className="size-4" />
+            Isométrica
+          </Button>
+        </div>
+        <span className="h-5 w-px bg-border" />
+        <Undo2 className="size-5" />
+        <Redo2 className="size-5 opacity-35" />
+        <span className="h-5 w-px bg-border" />
+        <Settings className="size-5" />
+      </div>,
+    );
+
+    return () => {
+      setTitle(null);
+      setRightAction(null);
+    };
+  }, [
+    cameraActions,
+    floors,
+    router,
+    selectedFloor?.name,
+    selectedFloorId,
+    setRightAction,
+    setTitle,
+  ]);
   const filteredDevices = useMemo(
     () =>
       activeFilter === "all"
@@ -524,7 +623,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
       if (event.key === "Escape") {
         setPositioningDeviceId(null);
         setDraggingDeviceId(null);
-        setOrbitLocked(false);
         setCursor("default");
       }
     }
@@ -558,25 +656,10 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     }));
     setSelectedDeviceId(device.id);
     setPositioningDeviceId(device.id);
-    setOrbitLocked(true);
-  }
-
-  function handleEditorPointerDown(event: ThreeEvent<PointerEvent>) {
-    event.stopPropagation();
-
-    if (!positioningDeviceId) {
-      setSelectedDeviceId(null);
-      return;
-    }
-
-    updateDevicePosition(positioningDeviceId, getEditorPoint(event));
-    setDraggingDeviceId(positioningDeviceId);
-    setOrbitLocked(true);
-    setCursor("grabbing");
   }
 
   function handleEditorPointerMove(event: ThreeEvent<PointerEvent>) {
-    if (!draggingDeviceId) {
+    if (!draggingDeviceId || gizmoDraggingRef.current) {
       return;
     }
 
@@ -585,13 +668,12 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
   }
 
   function handleEditorPointerUp(event: ThreeEvent<PointerEvent>) {
-    if (!draggingDeviceId) {
+    if (!draggingDeviceId || gizmoDraggingRef.current) {
       return;
     }
 
     event.stopPropagation();
     setDraggingDeviceId(null);
-    setOrbitLocked(Boolean(positioningDeviceId));
     setCursor("default");
   }
 
@@ -602,7 +684,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     setSelectedDeviceId(device.id);
     setPositioningDeviceId(device.id);
     setDraggingDeviceId(device.id);
-    setOrbitLocked(true);
     setCursor("grabbing");
   }
 
@@ -641,7 +722,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
       },
     );
     setPositioningDeviceId(null);
-    setOrbitLocked(false);
   }
 
   function resetMock() {
@@ -649,54 +729,11 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     setSelectedDeviceId(devices[0]?.id ?? null);
     setPositioningDeviceId(null);
     setDraggingDeviceId(null);
-    setOrbitLocked(false);
     setCursor("default");
   }
 
   return (
     <section className="flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-2xl bg-[#050505] text-white">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 px-5">
-        <div className="flex items-center gap-5">
-          <LayoutPanelLeft className="size-5 text-white/80" />
-          <h1 className="text-xl font-semibold tracking-normal">
-            Editor 3d - {selectedFloor?.name ?? "Piso"}
-          </h1>
-          <select
-            aria-label="Selecionar piso"
-            className="h-9 rounded-full border border-white/10 bg-black px-4 text-sm text-white outline-none"
-            disabled={!floors.length}
-            value={selectedFloorId ?? ""}
-            onChange={(event) => {
-              const floorId = Number(event.target.value);
-              const nextFloorId = Number.isFinite(floorId) ? floorId : null;
-              setSelectedFloorId(nextFloorId);
-              if (nextFloorId) {
-                router.replace(`/floor-editor?floorId=${nextFloorId}`, {
-                  scroll: false,
-                });
-              }
-              setSelectedDeviceId(null);
-              setPositioningDeviceId(null);
-              setDraggingDeviceId(null);
-              setOrbitLocked(false);
-            }}
-          >
-            {!floors.length ? <option value="">Sem pisos</option> : null}
-            {floors.map((floor) => (
-              <option key={floor.id} value={floor.id}>
-                {floor.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-3 text-white/75">
-          <Undo2 className="size-5" />
-          <Redo2 className="size-5 opacity-35" />
-          <span className="h-5 w-px bg-white/10" />
-          <Settings className="size-5" />
-        </div>
-      </header>
-
       <div className="grid min-h-0 flex-1 gap-5 p-5 pb-3 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="relative min-h-[520px] overflow-hidden rounded-3xl border border-white/10 bg-black">
           <div className="absolute left-7 top-7 z-10 flex gap-5">
@@ -740,7 +777,7 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
                     <span className="text-teal-300">{selectedDevice.name}</span>
                   </p>
                   <p className="text-sm text-white/45">
-                    Arraste para posicionar o dispositivo
+                    Arraste o marcador ou use o eixo Y
                   </p>
                 </div>
               </div>
@@ -749,7 +786,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
                 type="button"
                 onClick={() => {
                   setPositioningDeviceId(null);
-                  setOrbitLocked(false);
                 }}
               >
                 Cancelar
@@ -766,9 +802,11 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
 
             <Suspense fallback={null}>
               {selectedFloorModelUrl ? (
-                <Bounds fit clip observe margin={1.1}>
-                  <FloorModel url={selectedFloorModelUrl} />
-                </Bounds>
+                <group ref={editorModelRef}>
+                  <Bounds fit clip margin={1.1}>
+                    <FloorModel url={selectedFloorModelUrl} />
+                  </Bounds>
+                </group>
               ) : null}
 
               <Environment preset="apartment" />
@@ -789,7 +827,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
             <mesh
               position={[EDITOR_CENTER.x, EDITOR_Y, EDITOR_CENTER.z]}
               rotation={[-Math.PI / 2, 0, 0]}
-              onPointerDown={handleEditorPointerDown}
               onPointerMove={handleEditorPointerMove}
               onPointerUp={handleEditorPointerUp}
             >
@@ -810,7 +847,6 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
                 selected={selectedDeviceId === device.id}
                 onDragEnd={handleEditorPointerUp}
                 onDragStart={handleMarkerDragStart}
-                onHoverChange={setOrbitLocked}
                 onSelect={(selectedMarker) => {
                   setSelectedDeviceId(selectedMarker.id);
                 }}
@@ -821,8 +857,8 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
               <DeviceTransformGizmo
                 position={selectedDevice.position}
                 onDragChange={(dragging) => {
+                  gizmoDraggingRef.current = dragging;
                   setDraggingDeviceId(dragging ? selectedDevice.id : null);
-                  setOrbitLocked(dragging);
                   setCursor(dragging ? "grabbing" : "default");
                 }}
                 onPositionChange={(position) => {
@@ -831,9 +867,10 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
               />
             ) : null}
 
-            <OrbitControls
-              enabled={!draggingDeviceId && !orbitLocked}
-              makeDefault
+            <CameraViewControls
+              enabled={!draggingDeviceId}
+              modelRef={editorModelRef}
+              onReady={setCameraActions}
             />
           </Canvas>
 
@@ -850,7 +887,7 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
           </div>
 
           <p className="absolute bottom-7 left-7 z-10 text-sm text-white/35">
-            Arraste para posicionar o dispositivo
+            Arraste a cena para girar. Use o eixo Y para ajustar a altura.
           </p>
         </div>
 

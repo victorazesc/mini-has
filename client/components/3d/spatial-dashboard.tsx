@@ -6,7 +6,6 @@ import {
   Environment,
   Html,
   Line,
-  OrbitControls,
   useGLTF,
 } from "@react-three/drei";
 import {
@@ -24,19 +23,31 @@ import {
   Lock,
   Move3D,
   Power,
+  Rotate3D,
   Settings,
   Shield,
   Snowflake,
   Sun,
   TriangleAlert,
+  View,
   X,
   Zap,
 } from "lucide-react";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import * as THREE from "three";
 
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useDevices, useSendCommand } from "@/hooks/use-devices";
 import type { SendCommandVariables } from "@/hooks/use-devices";
 import { cn } from "@/lib/utils";
@@ -47,6 +58,7 @@ import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
 import type { Floor } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
+import { CameraViewControls } from "./camera-view-controls";
 
 type DeviceType = "light" | "climate" | "cover" | "sensor";
 type DevicePosition = [number, number, number];
@@ -340,44 +352,6 @@ function EnergyCard() {
   );
 }
 
-function FloorSelector({
-  deviceCounts,
-  floors,
-  selectedFloorId,
-  onSelectFloor,
-}: {
-  deviceCounts: Record<number, number>;
-  floors: Floor[];
-  selectedFloorId: number | null;
-  onSelectFloor: (floorId: number) => void;
-}) {
-  return (
-    <section className="rounded-2xl border border-white/10 bg-black/45 p-5 text-white backdrop-blur">
-      <h2 className="text-base font-semibold">Pisos</h2>
-      <div className="mt-5 space-y-1.5">
-        {floors.map((floor) => {
-          const count = deviceCounts[floor.id] ?? 0;
-
-          return (
-            <button
-              key={floor.id}
-              className="flex h-9 w-full items-center justify-between rounded-full px-4 text-left text-base transition hover:bg-white/10 data-[active=true]:bg-white/15"
-              data-active={selectedFloorId === floor.id}
-              type="button"
-              onClick={() => onSelectFloor(floor.id)}
-            >
-              <span>{floor.name}</span>
-              <span className="text-white/80">
-                {count} dispositivo{count === 1 ? "" : "s"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 function DeviceMarker({
   device,
   isSelected,
@@ -416,7 +390,7 @@ function DeviceMarker({
         <sphereGeometry args={[0.13, 16, 16]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.7} />
       </mesh>
-      <Html center position={iconPosition}>
+      <Html center position={iconPosition} zIndexRange={[10, 0]}>
         <button
           aria-label={`Abrir controle de ${device.name}, ${stateLabel}`}
           className={cn(
@@ -460,7 +434,7 @@ function DeviceControlPanel({
     : "Sem registro";
 
   return (
-    <aside className="absolute right-6 top-[236px] z-20 w-[380px] max-w-[calc(100vw-3rem)] rounded-2xl border border-white/10 bg-black/75 p-4 text-white shadow-2xl backdrop-blur">
+    <aside className="absolute bottom-20 right-5 top-5 z-20 flex w-[380px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/85 p-4 text-white shadow-2xl backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-white/45">{device.room}</p>
@@ -468,6 +442,7 @@ function DeviceControlPanel({
           <p className="mt-1 text-xs text-white/60">{type.label}</p>
         </div>
         <button
+          aria-label="Fechar controle do dispositivo"
           className="rounded-full p-2 text-white/60 transition hover:bg-white/10 hover:text-white"
           type="button"
           onClick={onClose}
@@ -492,7 +467,7 @@ function DeviceControlPanel({
         <p className="mt-1">{lastSeenAt}</p>
       </div>
 
-      <div className="mt-4 max-h-[calc(100vh-430px)] overflow-y-auto pr-1">
+      <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
         <RealDeviceControl device={device.device} type={device.type} />
       </div>
     </aside>
@@ -766,28 +741,95 @@ function FilterDock({
 }
 
 export function SpatialDashboard() {
+  const router = useRouter();
   const { setRightAction, setTitle } = useHeaderTitle();
+  const { setOpen, setOpenMobile } = useSidebar();
   const { data: floors = [] } = useFloors();
   const { data: rooms = [] } = useRooms();
   const { data: devices = [] } = useDevices();
   const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | null>(null);
   const [activeDeviceType, setActiveDeviceType] = useState<DeviceType | "all">("all");
+  const [cameraActions, setCameraActions] = useState<{
+    topView: () => void;
+    defaultView: () => void;
+    focusDevice: (position: DevicePosition) => void;
+  } | null>(null);
+  const modelGroupRef = useRef<THREE.Group | null>(null);
   const { data: positionRows = [] } = useFloorDevicePositions(selectedFloorId);
 
   useEffect(() => {
-    setTitle("Visão espacial");
+    setTitle(
+      <div className="flex items-center gap-3">
+        <span>Visão espacial</span>
+        <Select
+          disabled={!floors.length}
+          value={selectedFloorId ? String(selectedFloorId) : null}
+          onValueChange={(value) => {
+            setSelectedFloorId(Number(value));
+            setSelectedDeviceId(null);
+            setActiveDeviceType("all");
+          }}
+        >
+          <SelectTrigger
+            aria-label="Selecionar piso"
+            className="w-44 border border-border bg-background/80 px-3"
+            size="sm"
+          >
+            <SelectValue placeholder="Selecionar piso">
+              {getSelectedFloor(floors, selectedFloorId)?.name}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent align="start">
+            {floors.map((floor) => (
+              <SelectItem key={floor.id} value={String(floor.id)}>
+                {floor.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>,
+    );
     setRightAction(
-      <Button size="icon" variant="ghost">
-        <Settings className="size-5" />
-      </Button>,
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-full border border-border p-0.5">
+          <Button
+            className="rounded-full px-3"
+            onClick={() => cameraActions?.topView()}
+            size="sm"
+            variant="ghost"
+          >
+            <View className="size-4" />
+            Topo
+          </Button>
+          <Button
+            className="rounded-full px-3"
+            onClick={() => cameraActions?.defaultView()}
+            size="sm"
+            variant="ghost"
+          >
+            <Rotate3D className="size-4" />
+            Isométrica
+          </Button>
+        </div>
+        <span className="h-5 w-px bg-border" />
+        <Button
+          aria-label="Editar piso selecionado"
+          disabled={!selectedFloorId}
+          onClick={() => router.push(`/floor-editor?floorId=${selectedFloorId}`)}
+          size="icon"
+          variant="ghost"
+        >
+          <Settings className="size-5" />
+        </Button>
+      </div>,
     );
 
     return () => {
       setTitle(null);
       setRightAction(null);
     };
-  }, [setRightAction, setTitle]);
+  }, [cameraActions, floors, router, selectedFloorId, setRightAction, setTitle]);
 
   useEffect(() => {
     if (!floors.length) {
@@ -809,23 +851,6 @@ export function SpatialDashboard() {
     [rooms, selectedFloorId],
   );
   const positions = useMemo(() => positionRowsToMap(positionRows), [positionRows]);
-  const deviceCountsByFloor = useMemo(() => {
-    const floorByRoomId = new Map(
-      rooms
-        .filter((room) => room.floorId)
-        .map((room) => [room.id, room.floorId as number]),
-    );
-
-    return devices.reduce<Record<number, number>>((acc, device) => {
-      const floorId = device.roomId ? floorByRoomId.get(device.roomId) : null;
-
-      if (floorId) {
-        acc[floorId] = (acc[floorId] ?? 0) + 1;
-      }
-
-      return acc;
-    }, {});
-  }, [devices, rooms]);
   const floorDevices = useMemo(
     () => buildFloorDevices(devices, floorRooms, positions),
     [devices, floorRooms, positions],
@@ -861,6 +886,23 @@ export function SpatialDashboard() {
     }
   }, [activeDeviceType, availableDeviceTypes]);
 
+  function closeSelectedDevice() {
+    if (!selectedDeviceId) return;
+
+    setSelectedDeviceId(null);
+    cameraActions?.topView();
+  }
+
+  function selectDevice(device: SpatialDevice) {
+    setOpen(false);
+    setOpenMobile(false);
+    setSelectedDeviceId(device.id);
+
+    if (device.position) {
+      cameraActions?.focusDevice(device.position);
+    }
+  }
+
   return (
     <main className="-my-4 min-h-[calc(100vh-var(--header-height))] overflow-hidden bg-[#050505] text-white md:-my-6">
       <div className="relative min-h-[calc(100vh-var(--header-height))]">
@@ -870,60 +912,49 @@ export function SpatialDashboard() {
           <EnergyCard />
         </div>
 
-        <div className="absolute right-6 top-8 z-20 w-[320px]">
-          <FloorSelector
-            deviceCounts={deviceCountsByFloor}
-            floors={floors}
-            selectedFloorId={selectedFloorId}
-            onSelectFloor={(floorId) => {
-              setSelectedFloorId(floorId);
-              setSelectedDeviceId(null);
-              setActiveDeviceType("all");
-            }}
-          />
-        </div>
-
         {selectedDevice ? (
           <DeviceControlPanel
             device={selectedDevice}
-            onClose={() => setSelectedDeviceId(null)}
+            onClose={closeSelectedDevice}
           />
         ) : null}
 
-        <div className="absolute inset-0">
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 right-0 transition-[right] duration-200 lg:left-[320px]",
+            selectedDevice && "lg:right-[420px]",
+          )}
+        >
           <Canvas
             camera={{ position: [28, 16, 16], fov: 42 }}
             className="h-full w-full"
-            onPointerMissed={() => setSelectedDeviceId(null)}
+            onPointerMissed={closeSelectedDevice}
           >
             <ambientLight intensity={0.9} />
             <directionalLight position={[6, 12, 7]} intensity={1.4} />
             <Suspense fallback={null}>
               {selectedFloor?.modelUrl ? (
-                <Bounds fit clip observe margin={1.55}>
-                  <FloorModel url={selectedFloor.modelUrl} />
-                </Bounds>
+                <group ref={modelGroupRef}>
+                  <Bounds fit clip margin={1.55}>
+                    <FloorModel url={selectedFloor.modelUrl} />
+                  </Bounds>
+                  {visibleDevices.map((device) => (
+                    <DeviceMarker
+                      key={device.id}
+                      device={device}
+                      isSelected={selectedDeviceId === device.id}
+                      onSelect={() => selectDevice(device)}
+                    />
+                  ))}
+                </group>
               ) : null}
               <Environment preset="apartment" />
             </Suspense>
-
-            {visibleDevices.map((device) => (
-              <DeviceMarker
-                key={device.id}
-                device={device}
-                isSelected={selectedDeviceId === device.id}
-                onSelect={() => setSelectedDeviceId(device.id)}
-              />
-            ))}
-
-            <OrbitControls
-              enableDamping
-              enablePan
-              enableRotate
-              enableZoom
-              makeDefault
-              maxPolarAngle={Math.PI / 2.15}
-              target={[20, 3, -2]}
+            <CameraViewControls
+              focusScale={1.65}
+              modelRef={modelGroupRef}
+              onReady={setCameraActions}
+              viewScale={0.72}
             />
           </Canvas>
         </div>
@@ -938,14 +969,16 @@ export function SpatialDashboard() {
         ) : null}
 
         <QuickActions devices={floorDevices} />
-        <FilterDock
-          activeType={activeDeviceType}
-          availableTypes={availableDeviceTypes}
-          onSelect={(type) => {
-            setActiveDeviceType(type);
-            setSelectedDeviceId(null);
-          }}
-        />
+        {!selectedDevice ? (
+          <FilterDock
+            activeType={activeDeviceType}
+            availableTypes={availableDeviceTypes}
+            onSelect={(type) => {
+              setActiveDeviceType(type);
+              setSelectedDeviceId(null);
+            }}
+          />
+        ) : null}
       </div>
     </main>
   );
