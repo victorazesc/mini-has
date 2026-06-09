@@ -4,6 +4,7 @@ import { DEFAULT_PORT, DEFAULT_TIMEOUT_MS, TuyaLanClient } from './tuya-lan';
 import { CommandRequest, CommandResult, Device, JsonObject, StoredIntegration } from './types';
 import { ProvidersService } from './providers';
 import { HomeService, dpsIdFromCode } from './services';
+import { Amt8000Client, Amt8000Status } from './amt8000';
 
 @Injectable()
 export class CommandsService {
@@ -20,6 +21,7 @@ export class CommandsService {
       }
       if (device.provider === 'smartthings_cloud') return await this.executeSmartthingsCommand(device, request);
       if (device.provider === 'mqtt') return await this.executeMqttCommand(device, request);
+      if (device.provider === 'intelbras_amt8000') return await this.executeAmt8000Command(device, secrets, request);
       if (['generic_iot', 'persiana_custom'].includes(device.provider)) return await this.executeHttpCommand(device, request);
       return { ok: false, status: 'unsupported', message: `Provider ${device.provider} ainda nao tem executor.`, result: {} };
     } catch (error) {
@@ -170,12 +172,57 @@ export class CommandsService {
     };
   }
 
+  private async executeAmt8000Command(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
+    const integration = device.integrationId ? this.home.getIntegration(device.integrationId) : null;
+    const ip = String(request.params?.ip || integration?.config.ip || device.payload.ip || nested(device.payload, 'payload', 'ip') || '').trim();
+    const port = Number(request.params?.port || integration?.config.port || device.payload.port || nested(device.payload, 'payload', 'port') || 9009);
+    const password = String(integration?.secrets.password || secrets.password || '').trim();
+    const client = new Amt8000Client(ip, port, password);
+    const partition = Number(request.params?.partition);
+    let status: Amt8000Status;
+
+    if (request.command === 'query') status = await client.getStatus();
+    else if (request.command === 'arm' || request.command === 'arm_all') status = await client.arm();
+    else if (request.command === 'disarm' || request.command === 'disarm_all') status = await client.disarm();
+    else if (request.command === 'arm_partition') status = await client.arm(partition);
+    else if (request.command === 'disarm_partition') status = await client.disarm(partition);
+    else throw new Error('Comando AMT 8000 invalido. Use query, arm, disarm, arm_partition ou disarm_partition.');
+
+    return {
+      ok: true,
+      status: request.command === 'query' ? 'ok' : 'sent',
+      message: request.command === 'query' ? 'Status da central AMT 8000 atualizado.' : 'Comando confirmado pela central AMT 8000.',
+      result: {
+        deviceId: device.id,
+        provider: device.provider,
+        transport: 'isecnet-v2',
+        action: request.command,
+        statusSummary: amt8000StatusSummary(status),
+      },
+    };
+  }
+
   private async mqttStatusSnapshot(integration: StoredIntegration, device: Device): Promise<JsonObject | null> {
     const topic = mqttStatusSubscriptionTopic(device);
     if (!topic) return null;
     const messages = await this.providers.collectMqttMessages(integration, topic, 800);
     return mqttSnapshotFromMessages(messages, device);
   }
+}
+
+function amt8000StatusSummary(status: Amt8000Status): JsonObject {
+  return {
+    online: true,
+    state: status.state.toLowerCase(),
+    siren: status.sirenLive,
+    zonesFiring: status.zonesFiring,
+    zonesClosed: status.zonesClosed,
+    battery: status.battery,
+    tamper: status.tamper,
+    version: status.version,
+    partitions: status.partitions.filter((partition) => partition.index > 0),
+    zones: status.zones,
+  };
 }
 
 function tuyaLocalResult(device: Device, config: JsonObject, action: string, dpsId: string, value: unknown, payload: JsonObject): CommandResult {

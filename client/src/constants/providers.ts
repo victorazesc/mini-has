@@ -12,6 +12,11 @@ export const PROVIDERS = [
         icon: "./providers/intelbras.png",
     },
     {
+        label: "Intelbras AMT 8000",
+        value: "intelbras_amt8000",
+        icon: "./providers/intelbras.svg",
+    },
+    {
         label: "SmartThings Cloud",
         value: "smartthings_cloud",
         icon: "./providers/smartthings.png",
@@ -31,6 +36,7 @@ export const PROVIDERS = [
 export const PROVIDERS_ICON_BY_TYPE = {
     tuya_cloud: path.join(process.cwd(), "./providers/tuya.svg"),
     intelbras_izy: "./providers/intelbras.svg",
+    intelbras_amt8000: "./providers/intelbras.svg",
     smartthings_cloud: path.join(process.cwd(), "./providers/smartThings.svg"),
     generic_iot: path.join(process.cwd(), "./providers/diy.svg"),
     mqtt: path.join(process.cwd(), "./providers/mqtt.svg"),
@@ -39,6 +45,7 @@ export const PROVIDERS_ICON_BY_TYPE = {
 export const PROVIDERS_NAME_BY_TYPE = {
     tuya_cloud: "Tuya",
     intelbras_izy: "Intelbras",
+    intelbras_amt8000: "Intelbras AMT 8000",
     smartthings_cloud: "SmartThings",
     generic_iot: "DIY",
     mqtt: "MQTT",

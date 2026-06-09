@@ -11,6 +11,7 @@ import {
 } from './types';
 import { StorageService } from './storage';
 import { MqttConnectionOptions, MqttMessage, MqttService } from './mqtt';
+import { Amt8000Client, Amt8000Status } from './amt8000';
 
 const EMPTY_BODY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 const SMARTTHINGS_API_BASE_URL = 'https://api.smartthings.com';
@@ -31,6 +32,7 @@ const SECRET_FIELDS: Partial<Record<IntegrationType, Set<string>>> = {
   smartthings_cloud: new Set(['token', 'accessToken', 'refreshToken', 'clientId', 'clientSecret', 'tokenType', 'expiresAt', 'expiresIn', 'scope']),
   mqtt: new Set(['username', 'password']),
   tuya_local: new Set(['localKey']),
+  intelbras_amt8000: new Set(['password']),
 };
 
 @Injectable()
@@ -68,6 +70,16 @@ export class ProvidersService {
         name: 'Intelbras Izy',
         description: 'Provider para devices Izy compatíveis com Tuya LAN/Cloud.',
         fields: [{ key: 'mode', label: 'Modo', default: 'tuya_compatible' }],
+      },
+      {
+        type: 'intelbras_amt8000',
+        name: 'Intelbras AMT 8000',
+        description: 'Le status, particoes e zonas da central local via ISECNet v2.',
+        fields: [
+          { key: 'ip', label: 'IP', required: true },
+          { key: 'port', label: 'Porta', required: true, default: 9009 },
+          { key: 'password', label: 'Senha da central', required: true, secret: true },
+        ],
       },
       {
         type: 'persiana_custom',
@@ -135,6 +147,20 @@ export class ProvidersService {
       if (integration.type === 'intelbras_izy_tuya') {
         return { ok: true, status: 'connected', message: 'Izy configurado como Tuya-compatible.' };
       }
+      if (integration.type === 'intelbras_amt8000') {
+        const panelStatus = await this.amt8000Client(integration).getStatus();
+        return {
+          ok: true,
+          status: 'connected',
+          message: 'Central Intelbras AMT 8000 conectada.',
+          details: {
+            model: panelStatus.model,
+            version: panelStatus.version,
+            partitions: panelStatus.partitions.filter((partition) => partition.index > 0).length,
+            zones: panelStatus.zones.length,
+          },
+        };
+      }
       return { ok: true, status: 'created', message: 'Provider registrado; sync ainda nao implementado.' };
     } catch (error) {
       return { ok: false, status: 'error', message: messageFrom(error) };
@@ -145,6 +171,7 @@ export class ProvidersService {
     if (integration.type === 'tuya_cloud') return this.syncTuyaCloud(integration);
     if (integration.type === 'smartthings_cloud') return this.syncSmartthings(integration);
     if (integration.type === 'mqtt') return this.syncMqtt(integration);
+    if (integration.type === 'intelbras_amt8000') return this.syncAmt8000(integration);
     if (integration.type === 'persiana_custom' || integration.type === 'generic_iot') return [[this.deviceFromHttpLikeProvider(integration)], {}];
     if (integration.type === 'intelbras_izy_tuya') {
       return [[], { note: 'Use discovery LAN para achar Tuya 6667/6668 e Tuya Cloud para obter nomes/localKey.' }];
@@ -302,6 +329,21 @@ export class ProvidersService {
     return [devices, { total: devices.length, messages: messages.length, discoveryPrefix, scanMs }];
   }
 
+  private async syncAmt8000(integration: StoredIntegration): Promise<[ProviderDevice[], JsonObject]> {
+    const status = await this.amt8000Client(integration).getStatus();
+    return [[normalizeAmt8000Device(integration, status)], {
+      partitions: status.partitions.filter((partition) => partition.index > 0).length,
+      zones: status.zones.length,
+    }];
+  }
+
+  private amt8000Client(integration: StoredIntegration): Amt8000Client {
+    const ip = String(integration.config.ip || '').trim();
+    const port = Number(integration.config.port || 9009);
+    const password = String(integration.secrets.password || '').trim();
+    return new Amt8000Client(ip, port, password);
+  }
+
   private mqttConnectionOptions(integration: StoredIntegration): MqttConnectionOptions {
     return {
       brokerUrl: this.mqttBrokerUrl(integration),
@@ -442,6 +484,98 @@ export class ProvidersService {
       entities: [{ key: 'main', type: deviceType, name: integration.name, commandSchema, capabilities: { baseUrl } }],
     };
   }
+}
+
+function normalizeAmt8000Device(integration: StoredIntegration, status: Amt8000Status): ProviderDevice {
+  const ip = String(integration.config.ip || '').trim();
+  const port = Number(integration.config.port || 9009);
+  const partitions = status.partitions.filter((partition) => partition.index > 0);
+  const panelState = {
+    online: true,
+    state: status.state.toLowerCase(),
+    siren: status.sirenLive,
+    zonesFiring: status.zonesFiring,
+    zonesClosed: status.zonesClosed,
+    battery: status.battery,
+    tamper: status.tamper,
+    version: status.version,
+  };
+  const entities: ProviderEntity[] = [
+    {
+      key: 'main',
+      type: 'alarm',
+      name: integration.name,
+      commandSchema: { commands: ['query', 'arm', 'disarm', 'arm_partition', 'disarm_partition'] },
+      state: panelState,
+      capabilities: { partitions: partitions.map((partition) => partition.index) },
+    },
+    {
+      key: 'siren',
+      type: 'binary_sensor',
+      name: 'Sirene',
+      commandSchema: { commands: ['query'] },
+      state: { online: true, state: status.sirenLive ? 'on' : 'off', active: status.sirenLive },
+      capabilities: { deviceClass: 'siren', readOnly: true },
+    },
+    ...partitions.map((partition) => ({
+      key: `partition_${partition.index}`,
+      type: 'alarm',
+      name: `Particao ${partition.index}`,
+      commandSchema: { commands: ['query', 'arm_partition', 'disarm_partition'], partition: partition.index },
+      state: {
+        online: true,
+        state: partition.armed ? 'armed' : 'disarmed',
+        armed: partition.armed,
+        stay: partition.stay,
+        firing: partition.firing,
+        fired: partition.fired,
+      },
+      capabilities: { partition: partition.index },
+    })),
+    ...status.zones.map((zone) => ({
+      key: `zone_${zone.number}`,
+      type: 'binary_sensor',
+      name: `Zona ${zone.number}`,
+      commandSchema: { commands: ['query'], readOnly: true },
+      state: {
+        online: true,
+        state: zone.open ? 'open' : 'closed',
+        open: zone.open,
+        violated: zone.violated,
+        bypassed: zone.bypassed,
+        tamper: zone.tamper,
+        lowBattery: zone.lowBattery,
+      },
+      capabilities: { zone: zone.number, deviceClass: 'opening', readOnly: true },
+    })),
+  ];
+
+  return {
+    externalId: `amt8000:${ip}:${port}`,
+    name: integration.name,
+    provider: 'intelbras_amt8000',
+    deviceType: 'alarm',
+    manufacturer: 'Intelbras',
+    model: `AMT 8000 (${status.model})`,
+    ip,
+    localDeviceKey: `isecnet:${ip}:${port}`,
+    capabilities: {
+      protocol: 'isecnet-v2',
+      partitions: partitions.length,
+      partitionIndexes: partitions.map((partition) => partition.index),
+      zones: status.zones.length,
+    },
+    status: panelState,
+    payload: {
+      ip,
+      port,
+      protocol: 'isecnet-v2',
+      model: status.model,
+      version: status.version,
+    },
+    secrets: { password: integration.secrets.password },
+    entities,
+  };
 }
 
 function normalizeMqttDevices(messages: MqttMessage[], brokerUrl: string, discoveryPrefix: string): ProviderDevice[] {

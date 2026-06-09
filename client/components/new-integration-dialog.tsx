@@ -35,6 +35,12 @@ const integrationProviders = [
         localOnly: true,
     },
     {
+        value: "intelbras_amt8000",
+        name: "Intelbras AMT 8000",
+        icon: "./providers/intelbras.svg",
+        localOnly: true,
+    },
+    {
         value: "diy",
         name: "DIY",
         icon: "./providers/diy.svg",
@@ -104,4 +110,4 @@ export function NewIntegrationDialog({ children }: { children: React.ReactElemen
         </>
 
     )
-}       
+}

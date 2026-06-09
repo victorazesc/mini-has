@@ -28,7 +28,18 @@ import {
 import { CommandsService } from './commands';
 import { StorageService } from './storage';
 
-const SCENE_ALLOWED_COMMANDS = new Set(['turn_on', 'turn_off', 'open', 'close', 'stop', 'set_position']);
+const SCENE_ALLOWED_COMMANDS = new Set([
+  'turn_on',
+  'turn_off',
+  'open',
+  'close',
+  'stop',
+  'set_position',
+  'arm',
+  'disarm',
+  'arm_partition',
+  'disarm_partition',
+]);
 const AUTOMATION_ALLOWED_TRIGGER_TYPES = new Set<AutomationTriggerType>(['device_state_changed', 'entity_state_changed']);
 
 @Injectable()
@@ -665,6 +676,9 @@ export class HomeService {
     if (commandResult.result.provider === 'mqtt' && isObject(commandResult.result.statusSummary)) {
       return this.updateMqttRuntimeState(deviceId, commandResult);
     }
+    if (commandResult.result.provider === 'intelbras_amt8000' && isObject(commandResult.result.statusSummary)) {
+      return this.updateAmt8000RuntimeState(deviceId, commandResult);
+    }
     const dps = commandResult.result.dps;
     if (!isObject(dps) || !Object.keys(dps).length) return this.getDevice(deviceId);
     const current = this.getDevice(deviceId);
@@ -702,6 +716,21 @@ export class HomeService {
     );
     this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
     this.logRuntimeStatusEvent(deviceId, current.status, status, { dps, ...(eventSource || {}) });
+    return this.getDevice(deviceId);
+  }
+
+  private updateAmt8000RuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
+    const current = this.getDevice(deviceId);
+    if (!current) return null;
+    const now = this.storage.utcNow();
+    const summary = commandResult.result.statusSummary as JsonObject;
+    const status = { ...current.status, ...summary, lastSeenAt: now };
+    this.storage.run('UPDATE devices SET status_json = ?, updated_at = ? WHERE id = ?', [
+      this.storage.jsonDump(status),
+      now,
+      deviceId,
+    ]);
+    this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'intelbras_amt8000', action: commandResult.result.action });
     return this.getDevice(deviceId);
   }
 
@@ -1298,6 +1327,14 @@ export class HomeService {
 
   private hasAcceptedOrAddedInboxDevice(device: InboxDevice): boolean {
     if (device.sourceType === 'discovery' || String(device.payload.provider || '') === 'discovery') {
+      const identification = nested(device.payload, 'identification') || {};
+      const isGenericTuyaDiscovery =
+        String(device.payload.manufacturer || '').trim().toLowerCase() === 'tuya' ||
+        String(identification.label || '').trim() === 'Dispositivo Tuya local';
+      if (isGenericTuyaDiscovery && this.listDevices().some((savedDevice) => savedDevice.provider === 'tuya_cloud')) {
+        return true;
+      }
+
       const discoveryMac = String(device.payload.mac || '').toUpperCase();
       const discoveryIp = String(device.payload.ip || '');
       if (discoveryMac || discoveryIp) {
@@ -1815,6 +1852,12 @@ export class HomeService {
         const position = Number(params.position);
         if (!Number.isFinite(position)) {
           throw new Error(`Acao ${index + 1} precisa de params.position para set_position.`);
+        }
+      }
+      if (command === 'arm_partition' || command === 'disarm_partition') {
+        const partition = Number(params.partition);
+        if (!Number.isInteger(partition) || partition < 1 || partition > 15) {
+          throw new Error(`Acao ${index + 1} precisa de params.partition entre 1 e 15.`);
         }
       }
 

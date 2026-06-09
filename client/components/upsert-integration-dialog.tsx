@@ -28,6 +28,7 @@ type IntegrationFormValues = {
     region: string;
     baseUrl: string;
     ip: string;
+    port: string;
     deviceType: string;
     roomHint: string;
     mode: string;
@@ -39,7 +40,7 @@ type UpsertIntegrationDialogProps = {
 };
 
 function stringValue(value: unknown): string {
-    return typeof value === "string" ? value : "";
+    return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }
 
 function initialValues(integration: Integration): IntegrationFormValues {
@@ -54,6 +55,7 @@ function initialValues(integration: Integration): IntegrationFormValues {
         region: stringValue(integration.config?.region) || "auto",
         baseUrl: stringValue(integration.config?.baseUrl),
         ip: stringValue(integration.config?.ip),
+        port: stringValue(integration.config?.port) || "9009",
         deviceType: stringValue(integration.config?.deviceType),
         roomHint: stringValue(integration.config?.roomHint),
         mode: stringValue(integration.config?.mode),
@@ -239,6 +241,34 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                             />
                         ) : null}
 
+                        {integration.type === "intelbras_amt8000" ? (
+                            <>
+                                <FieldInput
+                                    id={`integration-${integration.id}-ip`}
+                                    label="IP"
+                                    value={values.ip}
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("ip", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-port`}
+                                    label="Porta"
+                                    value={values.port}
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("port", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-password`}
+                                    label="Senha da central"
+                                    type="password"
+                                    value={values.password}
+                                    placeholder="Manter atual"
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("password", value)}
+                                />
+                            </>
+                        ) : null}
+
                         {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
                         <p className="text-xs text-muted-foreground">
                             Excluir a integração também remove os dispositivos e itens pendentes importados por ela.
@@ -324,6 +354,14 @@ function configForIntegration(type: string, values: IntegrationFormValues): Reco
     if (type === "intelbras_izy_tuya") {
         return compactConfig({
             mode: values.mode.trim(),
+        });
+    }
+
+    if (type === "intelbras_amt8000") {
+        return compactConfig({
+            ip: values.ip.trim(),
+            port: Number(values.port) || 9009,
+            password: values.password,
         });
     }
 

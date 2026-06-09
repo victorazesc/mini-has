@@ -2,13 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { promises as dns } from 'node:dns';
 import { Socket } from 'node:net';
+import { networkInterfaces } from 'node:os';
 import { promisify } from 'node:util';
 import { CreateDiscoveryJobRequest, DiscoveredDevice, DiscoveredService, JobStatus, JsonObject, ProbeMode, DiscoveryJob, SavedDiscoveryDevice, SavedDiscoveryScan } from './types';
 import { HomeService } from './services';
 import { StorageService } from './storage';
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 6668, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 9000];
+const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 6668, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 9000, 9009];
 const HTTP_PORTS = new Set([80, 81, 5000, 8000, 8008, 8009, 8080, 8123, 8266, 9000]);
 const HTTPS_PORTS = new Set([443]);
 const RTSP_PORTS = new Set([554, 8554]);
@@ -270,12 +271,26 @@ export class DiscoveryService {
 
 function normalizeRequest(raw: CreateDiscoveryJobRequest): Required<CreateDiscoveryJobRequest> {
   return {
-    subnet_prefix: raw?.subnet_prefix || '192.168.0',
+    subnet_prefix: raw?.subnet_prefix || localSubnetPrefix(),
     scan_ports: raw?.scan_ports ?? true,
     timeout_seconds: Math.min(15, Math.max(1, Number(raw?.timeout_seconds || 3))),
     probeMode: raw?.probeMode || 'aggressive',
     ports: raw?.ports || null,
   };
+}
+
+function localSubnetPrefix(): string {
+  for (const addresses of Object.values(networkInterfaces())) {
+    const address = addresses?.find((item) =>
+      item.family === 'IPv4' && !item.internal && isPrivateIpv4(item.address),
+    );
+    if (address) return address.address.split('.').slice(0, 3).join('.');
+  }
+  return '192.168.0';
+}
+
+function isPrivateIpv4(value: string): boolean {
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(value);
 }
 
 async function pingSweep(subnetPrefix: string, timeoutSeconds: number): Promise<void> {
@@ -580,6 +595,9 @@ function identifyProbableDevice(device: DiscoveredDevice): DiscoveredDevice {
   if (String(device.name || '').toLowerCase().includes('mainsail')) {
     return withIdentification(device, 'Impressora 3D / Mainsail', 'Interface Mainsail detectada via HTTP.', 'probable', 'printer');
   }
+  if (ports.has(9009)) {
+    return withIdentification(device, 'Central Intelbras AMT 8000 PRO', 'Porta ISECNet v2 9009 detectada.', 'confirmed', 'alarm');
+  }
   if (device.deviceType === 'camera' || ports.has(554) || ports.has(8554)) {
     return withIdentification(device, 'Possível câmera IP', 'Serviço de vídeo RTSP detectado.', 'probable', 'camera');
   }
@@ -623,6 +641,7 @@ function inferDeviceType(device: DiscoveredDevice, manufacturer?: string | null)
   const text = serviceBlob + identity;
   if (text.includes('_printer') || identity.includes('printer')) return 'printer';
   if (hasAny(text, ['googlecast', 'mediarenderer', 'dlna', 'dial', 'chromecast', 'smart tv', 'airtunes', 'airplay'])) return 'media';
+  if (ports.has(9009) || text.includes('isecnet')) return 'alarm';
   if (ports.has(554) || ports.has(8554) || hasAny(text, ['rtsp', 'onvif', 'hikvision', 'dahua', 'ip camera', 'camera'])) return 'camera';
   if (hasAny(text, ['espressif', 'arduino', 'esphome', '_esphomelib', '_arduino', '_hap', '_matter'])) return 'iot';
   if (ports.has(6053) || ports.has(8266) || ports.has(1883) || ports.has(8883) || serviceBlob.includes('_mqtt')) return 'iot';
@@ -716,6 +735,7 @@ function serviceTypeForPort(port: number): string {
       6053: 'esphome',
       8266: 'arduino-ota',
       8883: 'mqtts',
+      9009: 'isecnet-v2',
     } as Record<number, string>
   )[port] || `tcp/${port}`;
 }

@@ -60,7 +60,7 @@ import type { Floor } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import { CameraViewControls } from "./camera-view-controls";
 
-type DeviceType = "light" | "climate" | "cover" | "sensor";
+type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm";
 type DevicePosition = [number, number, number];
 
 type WeatherData = {
@@ -91,11 +91,13 @@ const DEVICE_TYPES: Record<DeviceType, { label: string; color: string }> = {
   climate: { label: "Clima", color: "#22d3ee" },
   cover: { label: "Cortina", color: "#818cf8" },
   sensor: { label: "Sensor", color: "#facc15" },
+  alarm: { label: "Central de alarme", color: "#34d399" },
 };
 
 function getDeviceVisualState(device: SpatialDevice): "on" | "off" | "offline" {
   if (!device.online) return "offline";
   if (device.type === "sensor") return "on";
+  if (device.type === "alarm") return ["armed", "partial"].includes(String(device.state || "").toLowerCase()) ? "on" : "off";
 
   const state = String(device.state || "").toLowerCase();
   return ["on", "open", "opening", "closing", "active", "cool", "heat", "dry", "fan", "auto"].includes(state)
@@ -137,6 +139,10 @@ function getDeviceType(deviceType: string): DeviceType {
 
   if (normalizedType.includes("sensor")) {
     return "sensor";
+  }
+
+  if (normalizedType.includes("alarm") || normalizedType.includes("alarme")) {
+    return "alarm";
   }
 
   return "light";
@@ -196,6 +202,7 @@ function DeviceGlyph({
   if (type === "climate") return <Snowflake className={className} />;
   if (type === "cover") return <Blinds className={className} />;
   if (type === "sensor") return <Move3D className={className} />;
+  if (type === "alarm") return <Shield className={className} />;
   return <Lightbulb className={className} />;
 }
 
@@ -276,8 +283,10 @@ function WeatherPanel() {
   );
 }
 
-function SummaryCard({ devices }: { devices: SpatialDevice[] }) {
+function SummaryCard({ devices, alarmDevice }: { devices: SpatialDevice[]; alarmDevice?: Device }) {
   const activeDevices = devices.filter((device) => getDeviceVisualState(device) === "on").length;
+  const alarmState = String(alarmDevice?.status?.state || "disarmed").toLowerCase();
+  const alarmActive = ["armed", "partial"].includes(alarmState);
 
   return (
     <section className="rounded-2xl border border-white/10 bg-black/35 p-4 text-white backdrop-blur">
@@ -309,7 +318,9 @@ function SummaryCard({ devices }: { devices: SpatialDevice[] }) {
             <Shield className="size-4 text-red-500" />
             Segurança
           </span>
-          <span className="text-red-500">Desativada</span>
+          <span className={alarmActive ? "text-emerald-400" : "text-red-500"}>
+            {alarmActive ? (alarmState === "partial" ? "Parcial" : "Armada") : "Desativada"}
+          </span>
         </div>
       </div>
     </section>
@@ -537,7 +548,54 @@ function RealDeviceControl({
     );
   }
 
+  if (type === "alarm") {
+    return <AlarmDeviceControl device={device} />;
+  }
+
   return <SwitchDeviceControl device={device} />;
+}
+
+function AlarmDeviceControl({ device }: { device: Device }) {
+  const { mutate: sendCommand, isPending } = useSendCommand();
+  const state = String(device.status?.state || "unknown").toLowerCase();
+  const partitionIndexes = Array.isArray(device.capabilities?.partitionIndexes)
+    ? device.capabilities.partitionIndexes.map(Number).filter(Number.isInteger)
+    : [];
+
+  const command = (action: string, partition?: number) => {
+    if (action.startsWith("disarm") && !window.confirm("Desarmar a central de alarme?")) return;
+    sendCommand({
+      deviceId: device.id,
+      command: { command: action, params: partition ? { partition } : {} },
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-white/10 bg-white/8 p-3 text-sm">
+        <p className="text-white/45">Estado da central</p>
+        <p className="mt-1 font-medium capitalize">{state}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button disabled={isPending} onClick={() => command("arm")} variant="outline">Armar tudo</Button>
+        <Button disabled={isPending} onClick={() => command("disarm")} variant="destructive">Desarmar tudo</Button>
+      </div>
+      {partitionIndexes.length ? (
+        <div className="space-y-2">
+          <p className="text-xs text-white/45">Partições</p>
+          {partitionIndexes.map((partition) => (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-2" key={partition}>
+              <span className="text-sm">Partição {partition}</span>
+              <div className="flex gap-2">
+                <Button disabled={isPending} onClick={() => command("arm_partition", partition)} size="sm" variant="outline">Armar</Button>
+                <Button disabled={isPending} onClick={() => command("disarm_partition", partition)} size="sm" variant="ghost">Desarmar</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function SwitchDeviceControl({ device }: { device: Device }) {
@@ -655,9 +713,10 @@ function getTurnOffCommands(device: SpatialDevice): SendCommandVariables[] {
   }];
 }
 
-function QuickActions({ devices }: { devices: SpatialDevice[] }) {
+function QuickActions({ devices, alarmDevice }: { devices: SpatialDevice[]; alarmDevice?: Device }) {
   const { mutateAsync: sendCommand, isPending } = useSendCommand();
   const turnOffCommands = devices.flatMap(getTurnOffCommands);
+  const alarmArmed = ["armed", "partial"].includes(String(alarmDevice?.status?.state || "").toLowerCase());
 
   const turnOffAll = async () => {
     for (const command of turnOffCommands) {
@@ -669,18 +728,31 @@ function QuickActions({ devices }: { devices: SpatialDevice[] }) {
     }
   };
 
+  const toggleAlarm = async () => {
+    if (!alarmDevice) return;
+    if (alarmArmed && !window.confirm("Desarmar a central de alarme?")) return;
+    await sendCommand({
+      deviceId: alarmDevice.id,
+      command: { command: alarmArmed ? "disarm" : "arm", params: {} },
+    });
+  };
+
   return (
     <div className="absolute bottom-5 left-6 z-20 flex gap-3">
       <button
         className="flex h-14 w-[250px] items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950/70 px-4 text-left text-white backdrop-blur"
+        disabled={!alarmDevice || isPending}
         type="button"
+        onClick={toggleAlarm}
       >
         <span className="flex size-11 items-center justify-center rounded-full bg-emerald-400/15">
           <Lock className="size-5" />
         </span>
         <span>
           <span className="block text-base font-semibold">Segurança</span>
-          <span className="text-sm text-emerald-300">Armar central de alarme</span>
+          <span className="text-sm text-emerald-300">
+            {!alarmDevice ? "Central não adicionada" : alarmArmed ? "Desarmar central de alarme" : "Armar central de alarme"}
+          </span>
         </span>
       </button>
       <button
@@ -873,6 +945,10 @@ export function SpatialDashboard() {
     () => floorDevices.find((device) => device.id === selectedDeviceId) ?? null,
     [floorDevices, selectedDeviceId],
   );
+  const alarmDevice = useMemo(
+    () => devices.find((device) => device.provider === "intelbras_amt8000"),
+    [devices],
+  );
 
   useEffect(() => {
     if (selectedDeviceId && !floorDevices.some((device) => device.id === selectedDeviceId)) {
@@ -908,7 +984,7 @@ export function SpatialDashboard() {
       <div className="relative min-h-[calc(100vh-var(--header-height))]">
         <div className="absolute left-6 top-7 z-20 w-[280px] space-y-3">
           <WeatherPanel />
-          <SummaryCard devices={floorDevices} />
+          <SummaryCard alarmDevice={alarmDevice} devices={floorDevices} />
           <EnergyCard />
         </div>
 
@@ -985,7 +1061,7 @@ export function SpatialDashboard() {
           </div>
         ) : null}
 
-        <QuickActions devices={floorDevices} />
+        <QuickActions alarmDevice={alarmDevice} devices={floorDevices} />
         {!selectedDevice ? (
           <FilterDock
             activeType={activeDeviceType}
