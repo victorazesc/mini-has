@@ -8,8 +8,8 @@ import { Button } from "./ui/button";
 import { DiscoveredDeviceCard } from "./discovered-device-card";
 import { useRooms } from "@/hooks/use-rooms";
 import { useAddInboxDevice, useIgnoreInboxDevice } from "@/hooks/use-inbox-devices";
-import { DiscoveredDevice } from "@/src/services/inbox-devices.service";
-import { useEffect, useRef } from "react";
+import { DiscoveredDevice, scanInboxDevices } from "@/src/services/inbox-devices.service";
+import { useEffect, useRef, useState } from "react";
 
 export function ScanDevicesDialog({
     children,
@@ -47,11 +47,20 @@ export function ScanDevicesDialog({
 
     const { data: rooms } = useRooms();
     const autoSyncedIntegrationIdRef = useRef<number | null>(null);
+    const [isScanningDiscovery, setIsScanningDiscovery] = useState(false);
 
     const handleSyncIntegration = async () => {
         try {
             if (!integrationId) {
-                toast.error("ID da integração não informado");
+                if (provider) {
+                    toast.error("ID da integração não informado");
+                    return;
+                }
+
+                setIsScanningDiscovery(true);
+                await scanInboxDevices();
+                await refetchInboxDevices();
+                toast.success("Busca de dispositivos concluída");
                 return;
             }
             await syncIntegration(integrationId);
@@ -62,6 +71,8 @@ export function ScanDevicesDialog({
                     ? error.message
                     : "Erro ao sincronizar integração"
             );
+        } finally {
+            setIsScanningDiscovery(false);
         }
     };
 
@@ -94,12 +105,12 @@ export function ScanDevicesDialog({
             <DialogContent className="max-w-screen min-w-full h-screen content-start overflow-auto">
                 <Button
                     onClick={handleSyncIntegration}
-                    disabled={isPendingSyncIntegration}
+                    disabled={isPendingSyncIntegration || isScanningDiscovery}
                     variant="outline"
                     size="sm"
                     className="absolute top-4 right-16 z-10"
                 >
-                    {isPendingSyncIntegration ? "Sincronizando..." : "Reescanear"}
+                    {isPendingSyncIntegration || isScanningDiscovery ? "Buscando..." : "Reescanear"}
                 </Button>
 
                 <DialogHeader>
@@ -122,7 +133,7 @@ export function ScanDevicesDialog({
                     </div>
                 )}
 
-                {!isLoadingInboxDevices && !isPendingSyncIntegration && devices.length === 0 && (
+                {!isLoadingInboxDevices && !isPendingSyncIntegration && !isScanningDiscovery && devices.length === 0 && (
                     <div className="rounded-lg border border-dashed p-8 text-center">
                         <p className="text-sm font-medium">
                             Nenhum dispositivo pendente encontrado

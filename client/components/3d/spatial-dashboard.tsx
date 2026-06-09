@@ -904,7 +904,7 @@ export function SpatialDashboard() {
   }
 
   return (
-    <main className="-my-4 min-h-[calc(100vh-var(--header-height))] overflow-hidden bg-[#050505] text-white md:-my-6">
+    <main className="-my-4 min-h-[calc(100vh-var(--header-height))] overflow-hidden bg-background md:-my-6">
       <div className="relative min-h-[calc(100vh-var(--header-height))]">
         <div className="absolute left-6 top-7 z-20 w-[280px] space-y-3">
           <WeatherPanel />
@@ -921,42 +921,59 @@ export function SpatialDashboard() {
 
         <div
           className={cn(
-            "absolute inset-y-0 left-0 right-0 transition-[right] duration-200 lg:left-[320px]",
+            "absolute inset-y-0 left-0 right-0 overflow-hidden transition-[right] duration-200 lg:left-[320px]",
+            "bg-background",
             selectedDevice && "lg:right-[420px]",
           )}
         >
-          <Canvas
-            camera={{ position: [28, 16, 16], fov: 42 }}
-            className="h-full w-full"
-            onPointerMissed={closeSelectedDevice}
-          >
-            <ambientLight intensity={0.9} />
-            <directionalLight position={[6, 12, 7]} intensity={1.4} />
-            <Suspense fallback={null}>
-              {selectedFloor?.modelUrl ? (
-                <group ref={modelGroupRef}>
-                  <Bounds fit clip margin={1.55}>
-                    <FloorModel url={selectedFloor.modelUrl} />
-                  </Bounds>
-                  {visibleDevices.map((device) => (
-                    <DeviceMarker
-                      key={device.id}
-                      device={device}
-                      isSelected={selectedDeviceId === device.id}
-                      onSelect={() => selectDevice(device)}
-                    />
-                  ))}
-                </group>
-              ) : null}
-              <Environment preset="apartment" />
-            </Suspense>
-            <CameraViewControls
-              focusScale={1.65}
-              modelRef={modelGroupRef}
-              onReady={setCameraActions}
-              viewScale={0.72}
-            />
-          </Canvas>
+
+          <div className="pointer-events-none absolute inset-0 bg-background" />
+
+          {/* Glow central usando cor da sidebar */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,color-mix(in_oklch,var(--sidebar)_92%,transparent)_0%,color-mix(in_oklch,var(--sidebar)_48%,transparent)_34%,transparent_72%)]" />
+
+          {/* Grid grande com fade no centro */}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(circle_at_center,transparent_0%,black_38%,black_100%)]" />
+
+          {/* Grid fino mais sutil */}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(circle_at_center,transparent_0%,black_42%,black_100%)]" />
+
+          {/* Vignette nas bordas */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,transparent_48%,color-mix(in_oklch,var(--background)_92%,transparent)_100%)]" />
+          <div className="relative z-10 h-full w-full">
+            <Canvas
+              camera={{ position: [28, 16, 16], fov: 42 }}
+              className="h-full w-full"
+              onPointerMissed={closeSelectedDevice}
+            >
+              <ambientLight intensity={0.9} />
+              <directionalLight position={[6, 12, 7]} intensity={1.4} />
+              <Suspense fallback={null}>
+                {selectedFloor?.modelUrl ? (
+                  <group ref={modelGroupRef}>
+                    <Bounds fit clip margin={1.55}>
+                      <FloorModel url={selectedFloor.modelUrl} />
+                    </Bounds>
+                    {visibleDevices.map((device) => (
+                      <DeviceMarker
+                        key={device.id}
+                        device={device}
+                        isSelected={selectedDeviceId === device.id}
+                        onSelect={() => selectDevice(device)}
+                      />
+                    ))}
+                  </group>
+                ) : null}
+                <Environment preset="apartment" />
+              </Suspense>
+              <CameraViewControls
+                focusScale={1.65}
+                modelRef={modelGroupRef}
+                onReady={setCameraActions}
+                viewScale={0.72}
+              />
+            </Canvas>
+          </div>
         </div>
 
         {!selectedFloor?.modelUrl ? (

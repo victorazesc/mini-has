@@ -104,3 +104,22 @@ export async function ignoreInboxDevice(device: DiscoveredDevice): Promise<void>
 
     return response.json();
 }
+
+export async function scanInboxDevices(): Promise<void> {
+    const response = await fetch("/api/discovery/scan", {
+        method: "POST",
+    });
+
+    if (!response.ok) {
+        let message = "Erro ao reescanear dispositivos";
+
+        try {
+            const data = await response.json();
+            message = data.message ?? data.detail ?? data.error ?? message;
+        } catch {
+            // Keep the fallback message when the backend response is not JSON.
+        }
+
+        throw new Error(message);
+    }
+}
