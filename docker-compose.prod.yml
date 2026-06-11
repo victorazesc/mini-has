@@ -37,13 +37,17 @@ services:
       - ./client/.env
     environment:
       SERVER_URL: http://server:8000
+      FLOOR_MODEL_UPLOAD_DIR: /app/uploads/floors
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
       - "3000:3000"
+    volumes:
+      - client_floor_models:/app/uploads/floors
     depends_on:
       - server
 
 volumes:
   server_data:
+  client_floor_models:
   mosquitto_data:
   mosquitto_log:

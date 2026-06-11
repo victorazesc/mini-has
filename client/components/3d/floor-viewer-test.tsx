@@ -9,7 +9,6 @@ import {
   Html,
   Line,
   TransformControls,
-  useGLTF,
 } from "@react-three/drei";
 import {
   AirVent,
@@ -42,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDevices } from "@/hooks/use-devices";
+import { useAssetAvailability } from "@/hooks/use-asset-availability";
 import {
   useFloorDevicePositions,
   useFloors,
@@ -50,16 +50,13 @@ import {
 import { useRooms } from "@/hooks/use-rooms";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
-import type { Floor } from "@/src/services/floors.service";
+import type { Floor, FloorDevicePosition } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import {
   CameraViewControls,
   type CameraActions,
 } from "@/components/3d/camera-view-controls";
-
-type FloorModelProps = {
-  url: string;
-};
+import { FloorModel, FloorModelErrorBoundary } from "@/components/3d/floor-model";
 
 type DeviceType = "light" | "climate" | "cover" | "sensor";
 type DeviceFilter = DeviceType | "all";
@@ -73,6 +70,11 @@ type FloorDevice = {
   position?: DevicePosition;
   dirty?: boolean;
 };
+
+const EMPTY_FLOORS: Floor[] = [];
+const EMPTY_ROOMS: Room[] = [];
+const EMPTY_DEVICES: Device[] = [];
+const EMPTY_FLOOR_POSITION_ROWS: FloorDevicePosition[] = [];
 
 type Point2 = {
   x: number;
@@ -121,18 +123,6 @@ type DevicePositionState = Record<
     position: DevicePosition;
   }
 >;
-
-function FloorModel({ url }: FloorModelProps) {
-  const { scene } = useGLTF(url);
-
-  useEffect(() => {
-    scene.traverse((object) => {
-      object.raycast = () => null;
-    });
-  }, [scene]);
-
-  return <primitive object={scene} />;
-}
 
 function DeviceGlyph({
   className,
@@ -243,6 +233,27 @@ function positionsFromRows(
       },
     ]),
   );
+}
+
+function areDevicePositionsEqual(
+  currentPositions: DevicePositionState,
+  nextPositions: DevicePositionState,
+) {
+  const currentIds = Object.keys(currentPositions);
+  const nextIds = Object.keys(nextPositions);
+
+  if (currentIds.length !== nextIds.length) return false;
+
+  return currentIds.every((deviceId) => {
+    const current = currentPositions[Number(deviceId)];
+    const next = nextPositions[Number(deviceId)];
+
+    return Boolean(next)
+      && current.dirty === next.dirty
+      && current.position[0] === next.position[0]
+      && current.position[1] === next.position[1]
+      && current.position[2] === next.position[2];
+  });
 }
 
 function snap(value: number) {
@@ -417,17 +428,17 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
   const floorIdFromUrl = parseFloorId(searchParams.get("floorId"));
   const requestedFloorId = floorIdFromUrl ?? initialFloorId;
   const {
-    data: floors = [],
+    data: floors = EMPTY_FLOORS,
     isError: floorsError,
     isLoading: floorsLoading,
   } = useFloors();
   const {
-    data: rooms = [],
+    data: rooms = EMPTY_ROOMS,
     isError: roomsError,
     isLoading: roomsLoading,
   } = useRooms();
   const {
-    data: realDevices = [],
+    data: realDevices = EMPTY_DEVICES,
     isError: devicesError,
     isLoading: devicesLoading,
   } = useDevices();
@@ -445,7 +456,7 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
   const [cameraActions, setCameraActions] = useState<CameraActions | null>(null);
   const [activeFilter, setActiveFilter] = useState<DeviceFilter>("all");
   const {
-    data: floorPositionRows = [],
+    data: floorPositionRows = EMPTY_FLOOR_POSITION_ROWS,
     isError: floorPositionsError,
     isLoading: floorPositionsLoading,
   } = useFloorDevicePositions(selectedFloorId);
@@ -455,6 +466,11 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     [floors, selectedFloorId],
   );
   const selectedFloorModelUrl = selectedFloor?.modelUrl ?? null;
+  const modelAvailability = useAssetAvailability(selectedFloorModelUrl);
+  const [failedModelUrl, setFailedModelUrl] = useState<string | null>(null);
+  const availableModelUrl = selectedFloorModelUrl && modelAvailability === "available" && failedModelUrl !== selectedFloorModelUrl
+    ? selectedFloorModelUrl
+    : null;
   const floorRooms = useMemo(
     () => getFloorRooms(rooms, selectedFloorId),
     [rooms, selectedFloorId],
@@ -479,6 +495,10 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
       ),
     [devices],
   );
+
+  useEffect(() => {
+    setFailedModelUrl(null);
+  }, [selectedFloorModelUrl]);
 
   useEffect(() => {
     setTitle(
@@ -580,7 +600,9 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
 
   useEffect(() => {
     if (!floors.length) {
-      setSelectedFloorId(null);
+      if (selectedFloorId !== null) {
+        setSelectedFloorId(null);
+      }
       return;
     }
 
@@ -600,9 +622,9 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
 
   useEffect(() => {
     if (!devices.length) {
-      setSelectedDeviceId(null);
-      setPositioningDeviceId(null);
-      setDraggingDeviceId(null);
+      if (selectedDeviceId !== null) setSelectedDeviceId(null);
+      if (positioningDeviceId !== null) setPositioningDeviceId(null);
+      if (draggingDeviceId !== null) setDraggingDeviceId(null);
       return;
     }
 
@@ -612,10 +634,15 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     ) {
       setSelectedDeviceId(devices[0].id);
     }
-  }, [devices, selectedDeviceId]);
+  }, [devices, draggingDeviceId, positioningDeviceId, selectedDeviceId]);
 
   useEffect(() => {
-    setDevicePositions(positionsFromRows(floorPositionRows));
+    const nextPositions = positionsFromRows(floorPositionRows);
+
+    setDevicePositions((currentPositions) => areDevicePositionsEqual(currentPositions, nextPositions)
+      ? currentPositions
+      : nextPositions,
+    );
   }, [floorPositionRows, selectedFloorId]);
 
   useEffect(() => {
@@ -801,10 +828,15 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
             <directionalLight position={[6, 12, 7]} intensity={1.4} />
 
             <Suspense fallback={null}>
-              {selectedFloorModelUrl ? (
+              {availableModelUrl ? (
                 <group ref={editorModelRef}>
                   <Bounds fit clip margin={1.1}>
-                    <FloorModel url={selectedFloorModelUrl} />
+                    <FloorModelErrorBoundary
+                      resetKey={availableModelUrl}
+                      onError={() => setFailedModelUrl(availableModelUrl)}
+                    >
+                      <FloorModel url={availableModelUrl} />
+                    </FloorModelErrorBoundary>
                   </Bounds>
                 </group>
               ) : null}
@@ -1074,4 +1106,3 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
   );
 }
 
-useGLTF.preload("/3d_mock_test/floor.glb");

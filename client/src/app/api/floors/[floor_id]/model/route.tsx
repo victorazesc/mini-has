@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "process";
 
+import { getFloorModelUploadDir } from "@/src/lib/floor-model-storage";
+
 const MAX_MODEL_SIZE = 80 * 1024 * 1024;
 
 function getSafeFileName(floorId: number, fileName: string) {
@@ -62,9 +64,9 @@ export async function POST(
         );
     }
 
-    const uploadDir = join(process.cwd(), "public", "uploads", "floors");
+    const uploadDir = getFloorModelUploadDir();
     const safeFileName = getSafeFileName(floorId, file.name);
-    const modelUrl = `/uploads/floors/${safeFileName}`;
+    const modelUrl = `/api/uploads/floors/${safeFileName}`;
 
     await mkdir(uploadDir, { recursive: true });
     await writeFile(join(uploadDir, safeFileName), Buffer.from(await file.arrayBuffer()));

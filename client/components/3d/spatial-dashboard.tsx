@@ -6,7 +6,6 @@ import {
   Environment,
   Html,
   Line,
-  useGLTF,
 } from "@react-three/drei";
 import {
   AirVent,
@@ -50,15 +49,17 @@ import {
 import { useSidebar } from "@/components/ui/sidebar";
 import { useDevices, useSendCommand } from "@/hooks/use-devices";
 import type { SendCommandVariables } from "@/hooks/use-devices";
+import { useAssetAvailability } from "@/hooks/use-asset-availability";
 import { cn } from "@/lib/utils";
 import type { DeviceStatus } from "@/src/constants/devices_types";
 import { useFloorDevicePositions, useFloors } from "@/hooks/use-floors";
 import { useRooms } from "@/hooks/use-rooms";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
-import type { Floor } from "@/src/services/floors.service";
+import type { Floor, FloorDevicePosition } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import { CameraViewControls } from "./camera-view-controls";
+import { FloorModel, FloorModelErrorBoundary } from "./floor-model";
 import { SlideAlarmAction } from "../ui/slideAlarm";
 
 type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm";
@@ -85,6 +86,11 @@ type SpatialDevice = {
   position?: DevicePosition;
 };
 
+const EMPTY_FLOORS: Floor[] = [];
+const EMPTY_ROOMS: Room[] = [];
+const EMPTY_DEVICES: Device[] = [];
+const EMPTY_FLOOR_POSITION_ROWS: FloorDevicePosition[] = [];
+
 const DEVICE_Y = 3.39;
 
 const DEVICE_TYPES: Record<DeviceType, { label: string; color: string }> = {
@@ -104,18 +110,6 @@ function getDeviceVisualState(device: SpatialDevice): "on" | "off" | "offline" {
   return ["on", "open", "opening", "closing", "active", "cool", "heat", "dry", "fan", "auto"].includes(state)
     ? "on"
     : "off";
-}
-
-function FloorModel({ url }: { url: string }) {
-  const { scene } = useGLTF(url);
-
-  useEffect(() => {
-    scene.traverse((object) => {
-      object.raycast = () => null;
-    });
-  }, [scene]);
-
-  return <primitive object={scene} />;
 }
 
 function getDeviceType(deviceType: string): DeviceType {
@@ -846,9 +840,9 @@ export function SpatialDashboard() {
   const router = useRouter();
   const { setRightAction, setTitle } = useHeaderTitle();
   const { setOpen, setOpenMobile } = useSidebar();
-  const { data: floors = [] } = useFloors();
-  const { data: rooms = [] } = useRooms();
-  const { data: devices = [] } = useDevices();
+  const { data: floors = EMPTY_FLOORS } = useFloors();
+  const { data: rooms = EMPTY_ROOMS } = useRooms();
+  const { data: devices = EMPTY_DEVICES } = useDevices();
   const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | null>(null);
   const [activeDeviceType, setActiveDeviceType] = useState<DeviceType | "all">("all");
@@ -858,7 +852,7 @@ export function SpatialDashboard() {
     focusDevice: (position: DevicePosition) => void;
   } | null>(null);
   const modelGroupRef = useRef<THREE.Group | null>(null);
-  const { data: positionRows = [] } = useFloorDevicePositions(selectedFloorId);
+  const { data: positionRows = EMPTY_FLOOR_POSITION_ROWS } = useFloorDevicePositions(selectedFloorId);
 
   useEffect(() => {
     setTitle(
@@ -935,7 +929,9 @@ export function SpatialDashboard() {
 
   useEffect(() => {
     if (!floors.length) {
-      setSelectedFloorId(null);
+      if (selectedFloorId !== null) {
+        setSelectedFloorId(null);
+      }
       return;
     }
 
@@ -947,6 +943,15 @@ export function SpatialDashboard() {
   const selectedFloor = useMemo(
     () => getSelectedFloor(floors, selectedFloorId),
     [floors, selectedFloorId],
+  );
+  const selectedFloorModelUrl = selectedFloor?.modelUrl ?? null;
+  const modelAvailability = useAssetAvailability(selectedFloorModelUrl);
+  const [failedModelUrl, setFailedModelUrl] = useState<string | null>(null);
+  const availableModelUrl = selectedFloorModelUrl && modelAvailability === "available" && failedModelUrl !== selectedFloorModelUrl
+    ? selectedFloorModelUrl
+    : null;
+  const isModelUnavailable = Boolean(
+    selectedFloorModelUrl && (modelAvailability === "unavailable" || failedModelUrl === selectedFloorModelUrl),
   );
   const floorRooms = useMemo(
     () => getFloorRooms(rooms, selectedFloorId),
@@ -979,6 +984,10 @@ export function SpatialDashboard() {
     () => devices.find((device) => device.provider === "intelbras_amt8000"),
     [devices],
   );
+
+  useEffect(() => {
+    setFailedModelUrl(null);
+  }, [selectedFloorModelUrl]);
 
   useEffect(() => {
     if (selectedDeviceId && !floorDevices.some((device) => device.id === selectedDeviceId)) {
@@ -1055,10 +1064,15 @@ export function SpatialDashboard() {
               <ambientLight intensity={0.9} />
               <directionalLight position={[6, 12, 7]} intensity={1.4} />
               <Suspense fallback={null}>
-                {selectedFloor?.modelUrl ? (
+                {availableModelUrl ? (
                   <group ref={modelGroupRef}>
                     <Bounds fit clip margin={1.55}>
-                      <FloorModel url={selectedFloor.modelUrl} />
+                      <FloorModelErrorBoundary
+                        resetKey={availableModelUrl}
+                        onError={() => setFailedModelUrl(availableModelUrl)}
+                      >
+                        <FloorModel url={availableModelUrl} />
+                      </FloorModelErrorBoundary>
                     </Bounds>
                     {visibleDevices.map((device) => (
                       <DeviceMarker
@@ -1082,11 +1096,20 @@ export function SpatialDashboard() {
           </div>
         </div>
 
-        {!selectedFloor?.modelUrl ? (
+        {!selectedFloorModelUrl ? (
           <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-black/60 px-8 py-6 text-center backdrop-blur">
             <p className="text-lg font-semibold">Sem modelo 3D neste piso</p>
             <p className="mt-2 text-sm text-white/50">
               Adicione um modelo na edição do piso.
+            </p>
+          </div>
+        ) : null}
+
+        {isModelUnavailable ? (
+          <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/10 bg-black/60 px-8 py-6 text-center backdrop-blur">
+            <p className="text-lg font-semibold">Modelo 3D indisponível</p>
+            <p className="mt-2 text-sm text-white/50">
+              Envie o modelo novamente na edição do piso.
             </p>
           </div>
         ) : null}
