@@ -1,5 +1,5 @@
 import { JsonObject } from '../../types';
-import { StorageService } from '../../storage';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

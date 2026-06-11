@@ -1,16 +1,21 @@
 import { Module } from '@nestjs/common';
-import { FloorController } from './floor.controller';
-import { FloorService } from './floor.service';
+import { RoomController } from './room.controller';
+import { RoomService } from './room.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { CommonService } from '../common/common.service';
+
 @Module({
     controllers: [
-        FloorController
+        RoomController
     ],
     providers: [
-        FloorService,
+        RoomService,
         StorageService,
         CommonService
     ],
+    exports: [
+        RoomService,
+        StorageService,
+    ],
 })
-export class FloorModule { }
+export class RoomModule { }
