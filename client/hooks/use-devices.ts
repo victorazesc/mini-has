@@ -46,6 +46,7 @@ export function useSendCommand() {
 
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["devices"] });
+            queryClient.invalidateQueries({ queryKey: ["entities"] });
             queryClient.invalidateQueries({
                 queryKey: ["device", variables.deviceId],
             });

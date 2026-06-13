@@ -45,6 +45,8 @@ Tipos atuais:
 - `tuya_local`
 - `smartthings_cloud`
 - `intelbras_izy_tuya`
+- `intelbras_amt8000`
+- `intelbras_solar`
 - `persiana_custom`
 - `generic_iot`
 - `esphome`
@@ -107,6 +109,70 @@ Por padrão `testOnCreate` é `true`: a API testa a credencial antes de salvar.
   }
 }
 ```
+
+### Criar Intelbras Solar Send
+
+Integra microinversores Intelbras via OpenAPI Solarman. A integracao e somente leitura.
+
+```json
+{
+  "type": "intelbras_solar",
+  "name": "Intelbras Solar Send",
+  "config": {
+    "appId": "xxxxx",
+    "appSecret": "xxxxx",
+    "email": "usuario@email.com",
+    "password": "xxxxx",
+    "moduleCount": 4
+  }
+}
+```
+
+### Criar integração de câmeras ONVIF/RTSP
+
+Busca câmeras na rede local pelas portas RTSP `554` e `8554`. Usuário, senha e caminho RTSP são configurados individualmente no dispositivo após ele ser aceito.
+
+```json
+{
+  "type": "onvif_camera",
+  "name": "Cameras da rede",
+  "config": {
+    "subnetPrefix": "192.168.1"
+  }
+}
+```
+
+### Configurar uma câmera
+
+```http
+PATCH /devices/{id}
+```
+
+```json
+{
+  "cameraConfig": {
+    "ip": "192.168.1.10",
+    "port": 554,
+    "username": "admin",
+    "password": "xxxxx",
+    "rtspPath": "/cam/realmonitor?channel=1&subtype=0"
+  }
+}
+```
+
+Carregar a configuração individual salva:
+
+```http
+GET /devices/{id}/configuration
+```
+
+Exibir o stream RTSP no navegador, convertido localmente para MJPEG:
+
+```http
+GET /devices/{id}/stream.mjpeg
+```
+
+O stream exige `ffmpeg` instalado no servidor. O binário pode ser definido por `FFMPEG_PATH`.
 
 ### Testar integração
 
@@ -357,6 +423,31 @@ Quando o comando ou `query` retorna `dps`, a API persiste o estado em `devices.s
 `devices.capabilities.status` e nas `entities` do device. Depois disso, `GET /devices`
 e `GET /entities` já retornam o último estado conhecido sem consultar o device de novo.
 
+## Disponibilidade local
+
+O servidor reconcilia automaticamente a disponibilidade local dos devices:
+
+- probe de controle local a cada 60 segundos;
+- discovery LAN leve a cada 5 minutos enquanto houver Tuya Cloud sem rota local, sem criar itens na inbox;
+- vínculo Tuya por handshake autenticado usando `deviceId + localKey`, sem associação por chute;
+- Tuya com rota local usa LAN por padrão e mantém fallback cloud;
+- MQTT local, Intelbras AMT e HTTP local são marcados como disponíveis offline;
+- providers sem protocolo LAN, como SmartThings, são marcados como somente cloud.
+
+Intervalos configuráveis:
+
+- `LOCAL_RECONCILE_INTERVAL_MS`
+- `LOCAL_DISCOVERY_INTERVAL_MS`
+
+Execução manual:
+
+```http
+POST /devices/reconcile-local
+```
+
+O resultado fica em `device.status.connectivity`, incluindo `controlMode`,
+`offlineReady`, `localAvailable`, `checkedAt`, `transport` e `reason`.
+
 ## Entities
 
 Entities são os pontos controláveis:
@@ -368,10 +459,25 @@ Entities são os pontos controláveis:
 - `camera`
 - `climate`
 
+Um device físico multicanal continua sendo um único device. Cada canal controlável
+é uma entity própria, podendo ter nome e posição espacial independentes.
+
 ### Listar
 
 ```http
 GET /entities
+```
+
+### Renomear
+
+```http
+PATCH /entities/{id}
+```
+
+```json
+{
+  "name": "Luz da prateleira"
+}
 ```
 
 ### Enviar comando
@@ -390,6 +496,16 @@ POST /entities/{id}/command
 ```
 
 Esta rota continua disponível para logs/compatibilidade. Para controle real por provider, prefira `POST /devices/{id}/command`.
+
+## Posições espaciais
+
+```http
+GET /floors/{id}/device-positions
+PUT /floors/{id}/device-positions
+```
+
+Cada posição recebe `deviceId` e, para canais multicanal, pode receber também
+`entityId`. Assim canais do mesmo device podem ser posicionados separadamente.
 
 ## Banco SQLite
 

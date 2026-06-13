@@ -17,7 +17,7 @@ type InboxWriter = {
 };
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 6668, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 9000, 9009];
+const DEFAULT_PORTS = [21, 22, 23, 53, 80, 81, 443, 554, 1883, 5000, 5353, 6053, 6668, 8000, 8008, 8009, 8080, 8123, 8266, 8554, 8883, 8899, 9000, 9009];
 const HTTP_PORTS = new Set([80, 81, 5000, 8000, 8008, 8009, 8080, 8123, 8266, 9000]);
 const HTTPS_PORTS = new Set([443]);
 const RTSP_PORTS = new Set([554, 8554]);
@@ -57,6 +57,7 @@ const FALLBACK_MANUFACTURERS: Record<string, string> = {
   'C4:EB:FF': 'TP-Link',
   '0C:8E:29': 'Tuya',
   '4C:A9:19': 'Samsung',
+  '54:6C:AC': 'Intelbras',
 };
 
 @Injectable()
@@ -88,13 +89,13 @@ export class DiscoveryService {
     }
   }
 
-  async scanNow(rawRequest: CreateDiscoveryJobRequest): Promise<{ scanId: number; result: DiscoveredDevice[] }> {
+  async scanNow(rawRequest: CreateDiscoveryJobRequest, options: { upsertInbox?: boolean } = {}): Promise<{ scanId: number; result: DiscoveredDevice[] }> {
     const request = normalizeRequest(rawRequest);
     const now = this.storage.utcNow();
     const scanId = this.createScanRecord(request, 'running', now, now);
     try {
       const result = await this.runDiscovery(request);
-      this.updateScanRecord(scanId, { status: 'finished', result, finished_at: this.storage.utcNow() });
+      this.updateScanRecord(scanId, { status: 'finished', result, finished_at: this.storage.utcNow() }, options);
       return { scanId, result };
     } catch (error) {
       this.updateScanRecord(scanId, { status: 'failed', error: messageFrom(error), finished_at: this.storage.utcNow() });
@@ -221,7 +222,7 @@ export class DiscoveryService {
     return updated;
   }
 
-  private updateScanRecord(scanId: number, updates: Partial<DiscoveryJob>): SavedDiscoveryScan | null {
+  private updateScanRecord(scanId: number, updates: Partial<DiscoveryJob>, options: { upsertInbox?: boolean } = {}): SavedDiscoveryScan | null {
     const fields: JsonObject = {};
     if (updates.status) fields.status = updates.status;
     if (updates.result) fields.result_json = this.storage.jsonDump(updates.result.map(stripRaw));
@@ -232,11 +233,11 @@ export class DiscoveryService {
       const assignments = Object.keys(fields).map((field) => `${field} = ?`).join(', ');
       this.storage.run(`UPDATE discovery_scans SET ${assignments} WHERE id = ?`, [...Object.values(fields), scanId]);
     }
-    if (updates.result?.length) this.saveDiscoveredDevices(scanId, updates.result, updates.finished_at || updates.started_at || this.storage.utcNow());
+    if (updates.result?.length) this.saveDiscoveredDevices(scanId, updates.result, updates.finished_at || updates.started_at || this.storage.utcNow(), options.upsertInbox !== false);
     return this.getSavedScan(scanId);
   }
 
-  private saveDiscoveredDevices(scanId: number, devices: DiscoveredDevice[], seenAt: string): void {
+  private saveDiscoveredDevices(scanId: number, devices: DiscoveredDevice[], seenAt: string, upsertInbox = true): void {
     for (const device of devices) {
       const key = deviceKey(device);
       if (!key) continue;
@@ -254,7 +255,7 @@ export class DiscoveryService {
         `,
         [key, this.storage.jsonDump(stripRaw(savedDevice)), seenAt, seenAt, scanId],
       );
-      this.upsertDiscoveryInbox(scanId, key, savedDevice);
+      if (upsertInbox) this.upsertDiscoveryInbox(scanId, key, savedDevice);
     }
   }
 
@@ -606,6 +607,9 @@ function identifyProbableDevice(device: DiscoveredDevice): DiscoveredDevice {
   if (ports.has(9009)) {
     return withIdentification(device, 'Central Intelbras AMT 8000 PRO', 'Porta ISECNet v2 9009 detectada.', 'confirmed', 'alarm');
   }
+  if (ports.has(8899)) {
+    return withIdentification(device, 'Logger de inversor solar', 'Porta local de logger solar 8899 detectada.', 'probable', 'solar_inverter');
+  }
   if (device.deviceType === 'camera' || ports.has(554) || ports.has(8554)) {
     return withIdentification(device, 'Possível câmera IP', 'Serviço de vídeo RTSP detectado.', 'probable', 'camera');
   }
@@ -650,6 +654,7 @@ function inferDeviceType(device: DiscoveredDevice, manufacturer?: string | null)
   if (text.includes('_printer') || identity.includes('printer')) return 'printer';
   if (hasAny(text, ['googlecast', 'mediarenderer', 'dlna', 'dial', 'chromecast', 'smart tv', 'airtunes', 'airplay'])) return 'media';
   if (ports.has(9009) || text.includes('isecnet')) return 'alarm';
+  if (ports.has(8899) || hasAny(text, ['solar', 'inverter', 'inversor', 'solarman'])) return 'solar_inverter';
   if (ports.has(554) || ports.has(8554) || hasAny(text, ['rtsp', 'onvif', 'hikvision', 'dahua', 'ip camera', 'camera'])) return 'camera';
   if (hasAny(text, ['espressif', 'arduino', 'esphome', '_esphomelib', '_arduino', '_hap', '_matter'])) return 'iot';
   if (ports.has(6053) || ports.has(8266) || ports.has(1883) || ports.has(8883) || serviceBlob.includes('_mqtt')) return 'iot';
@@ -744,6 +749,7 @@ function serviceTypeForPort(port: number): string {
       8266: 'arduino-ota',
       8883: 'mqtts',
       9009: 'isecnet-v2',
+      8899: 'solar-logger',
     } as Record<number, string>
   )[port] || `tcp/${port}`;
 }

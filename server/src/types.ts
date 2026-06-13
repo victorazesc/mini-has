@@ -6,6 +6,7 @@ export type IntegrationType =
   | 'smartthings_cloud'
   | 'intelbras_izy_tuya'
   | 'intelbras_amt8000'
+  | 'intelbras_solar'
   | 'persiana_custom'
   | 'generic_iot'
   | 'esphome'

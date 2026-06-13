@@ -24,7 +24,7 @@ const schema = z.object({
     discoveryPrefix: z.string().min(1, "Prefixo e obrigatorio"),
 });
 
-export function MqttIntegrationDialog({ open }: { open: boolean }) {
+export function MqttIntegrationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const [values, setValues] = useState<z.infer<typeof schema>>({
         brokerUrl: "",
         username: "",
@@ -73,7 +73,7 @@ export function MqttIntegrationDialog({ open }: { open: boolean }) {
 
     return (
         <>
-            <Dialog open={open && !showScanDialog}>
+            <Dialog open={open && !showScanDialog} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-sm">
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
@@ -152,7 +152,10 @@ export function MqttIntegrationDialog({ open }: { open: boolean }) {
                     </form>
                 </DialogContent>
             </Dialog>
-            <ScanDevicesDialog open={showScanDialog} onOpenChange={setShowScanDialog} provider="mqtt" integrationId={integrationId ?? undefined} />
+            <ScanDevicesDialog open={showScanDialog} onOpenChange={(nextOpen) => {
+                setShowScanDialog(nextOpen);
+                if (!nextOpen) onOpenChange(false);
+            }} provider="mqtt" integrationId={integrationId ?? undefined} />
         </>
     )
 }

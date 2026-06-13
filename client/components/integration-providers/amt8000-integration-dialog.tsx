@@ -23,7 +23,7 @@ const schema = z.object({
     password: z.string().regex(/^\d{4}(\d{2})?$/, "A senha deve ter 4 ou 6 digitos"),
 });
 
-export function Amt8000IntegrationDialog({ open }: { open: boolean }) {
+export function Amt8000IntegrationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const [values, setValues] = useState<z.infer<typeof schema>>({
         ip: "192.168.1.33",
         port: "9009",
@@ -70,7 +70,7 @@ export function Amt8000IntegrationDialog({ open }: { open: boolean }) {
 
     return (
         <>
-            <Dialog open={open && !showScanDialog}>
+            <Dialog open={open && !showScanDialog} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-sm">
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
@@ -135,7 +135,10 @@ export function Amt8000IntegrationDialog({ open }: { open: boolean }) {
             </Dialog>
             <ScanDevicesDialog
                 open={showScanDialog}
-                onOpenChange={setShowScanDialog}
+                onOpenChange={(nextOpen) => {
+                    setShowScanDialog(nextOpen);
+                    if (!nextOpen) onOpenChange(false);
+                }}
                 provider="intelbras_amt8000"
                 integrationId={integrationId ?? undefined}
             />

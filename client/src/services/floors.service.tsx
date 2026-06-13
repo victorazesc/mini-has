@@ -17,6 +17,7 @@ export type UpsertFloorPayload = {
 export type FloorDevicePosition = {
     floorId: number;
     deviceId: number;
+    entityId?: number | null;
     x: number;
     y: number;
     z: number;
@@ -26,6 +27,7 @@ export type FloorDevicePosition = {
 
 export type UpsertFloorDevicePosition = {
     deviceId: number;
+    entityId?: number;
     x: number;
     y: number;
     z: number;

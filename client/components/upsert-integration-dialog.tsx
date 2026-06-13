@@ -32,6 +32,12 @@ type IntegrationFormValues = {
     deviceType: string;
     roomHint: string;
     mode: string;
+    appId: string;
+    appSecret: string;
+    email: string;
+    moduleCount: string;
+    subnetPrefix: string;
+    rtspPath: string;
 };
 
 type UpsertIntegrationDialogProps = {
@@ -59,6 +65,12 @@ function initialValues(integration: Integration): IntegrationFormValues {
         deviceType: stringValue(integration.config?.deviceType),
         roomHint: stringValue(integration.config?.roomHint),
         mode: stringValue(integration.config?.mode),
+        appId: stringValue(integration.config?.appId),
+        appSecret: "",
+        email: stringValue(integration.config?.email),
+        moduleCount: stringValue(integration.config?.moduleCount) || "4",
+        subnetPrefix: stringValue(integration.config?.subnetPrefix) || "192.168.1",
+        rtspPath: stringValue(integration.config?.rtspPath) || "/cam/realmonitor?channel=1&subtype=0",
     };
 }
 
@@ -269,6 +281,60 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                             </>
                         ) : null}
 
+                        {integration.type === "intelbras_solar" ? (
+                            <>
+                                <FieldInput
+                                    id={`integration-${integration.id}-app-id`}
+                                    label="Solarman App ID"
+                                    value={values.appId}
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("appId", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-app-secret`}
+                                    label="Solarman App Secret"
+                                    type="password"
+                                    value={values.appSecret}
+                                    placeholder="Manter atual"
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("appSecret", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-email`}
+                                    label="E-mail da conta"
+                                    value={values.email}
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("email", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-password`}
+                                    label="Senha da conta"
+                                    type="password"
+                                    value={values.password}
+                                    placeholder="Manter atual"
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("password", value)}
+                                />
+                                <FieldInput
+                                    id={`integration-${integration.id}-module-count`}
+                                    label="Quantidade de modulos"
+                                    value={values.moduleCount}
+                                    disabled={isBusy}
+                                    onChange={(value) => setValue("moduleCount", value)}
+                                />
+                            </>
+                        ) : null}
+
+                        {integration.type === "onvif_camera" ? (
+                            <FieldInput
+                                id={`integration-${integration.id}-subnet-prefix`}
+                                label="Sub-rede"
+                                value={values.subnetPrefix}
+                                disabled={isBusy}
+                                onChange={(value) => setValue("subnetPrefix", value)}
+                            />
+                        ) : null}
+
                         {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
                         <p className="text-xs text-muted-foreground">
                             Excluir a integração também remove os dispositivos e itens pendentes importados por ela.
@@ -362,6 +428,22 @@ function configForIntegration(type: string, values: IntegrationFormValues): Reco
             ip: values.ip.trim(),
             port: Number(values.port) || 9009,
             password: values.password,
+        });
+    }
+
+    if (type === "intelbras_solar") {
+        return compactConfig({
+            appId: values.appId.trim(),
+            appSecret: values.appSecret,
+            email: values.email.trim(),
+            password: values.password,
+            moduleCount: Number(values.moduleCount) || 4,
+        });
+    }
+
+    if (type === "onvif_camera") {
+        return compactConfig({
+            subnetPrefix: values.subnetPrefix.trim(),
         });
     }
 

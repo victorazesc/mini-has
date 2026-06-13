@@ -119,6 +119,7 @@ export type ClimateFanDirection = keyof typeof climateFanDirections;
 export type ClimatePredefinedMode = keyof typeof climatePredefinedModes;
 
 type ClimateDialProps = {
+    compact?: boolean;
     isLoading?: boolean;
     value: number;
     currentTemperature?: number | null;
@@ -139,6 +140,7 @@ type ClimateDialProps = {
 };
 
 export function ClimateDial({
+    compact = false,
     isLoading = false,
     value,
     currentTemperature,
@@ -297,6 +299,56 @@ export function ClimateDial({
     const formattedCurrentTemperature = typeof currentTemperature === "number" && Number.isFinite(currentTemperature)
         ? `${Math.round(currentTemperature)}${unit}`
         : "--";
+
+    if (compact) {
+        return (
+            <div className="w-full space-y-3 overflow-hidden rounded-2xl border border-white/10 bg-white/8 p-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <p className="text-xs text-white/45">Temperatura atual</p>
+                        <p className="mt-1 text-lg font-medium">{formattedCurrentTemperature}</p>
+                    </div>
+                    <p className="rounded-full bg-white/8 px-3 py-1 text-xs text-white/65">
+                        {climateModes[status]?.label}
+                    </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-black/25 p-3">
+                    <Button
+                        aria-label="Diminuir temperatura"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleDecrease}
+                        disabled={controlsDisabled || isLoading}
+                        className="size-11 shrink-0 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10"
+                    >
+                        <Minus className="size-5" />
+                    </Button>
+                    <div className="min-w-0 text-center">
+                        <p className="text-xs text-white/45">Temperatura desejada</p>
+                        <p className="mt-1 text-4xl font-light tabular-nums">{Math.floor(value)}{unit}</p>
+                    </div>
+                    <Button
+                        aria-label="Aumentar temperatura"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleIncrease}
+                        disabled={controlsDisabled || isLoading}
+                        className="size-11 shrink-0 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10"
+                    >
+                        <Plus className="size-5" />
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <CompactClimateSelect label="Modo" value={mode} options={Object.values(climateModes)} onValueChange={(value) => onChangeMode?.(value as ClimateMode)} />
+                    <CompactClimateSelect disabled={controlsDisabled} label="Ventilador" value={fanMode} options={Object.values(climateFanModes)} onValueChange={(value) => onChangeFanMode?.(value as ClimateFanMode)} />
+                    <CompactClimateSelect disabled={controlsDisabled} label="Direção" value={fanDirection} options={Object.values(climateFanDirections)} onValueChange={(value) => onChangeFanDirection?.(value as ClimateFanDirection)} />
+                    <CompactClimateSelect disabled={controlsDisabled} label="Extra" value={predefinedMode} options={Object.values(climatePredefinedModes)} onValueChange={(value) => onChangePredefinedMode?.(value as ClimatePredefinedMode)} />
+                </div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -568,5 +620,47 @@ export function ClimateDial({
                 </div>
             </CardFooter>
         </Card>
+    );
+}
+
+function CompactClimateSelect({
+    disabled = false,
+    label,
+    value,
+    options,
+    onValueChange,
+}: {
+    disabled?: boolean;
+    label: string;
+    value: string;
+    options: readonly { icon: React.ReactNode; label: string; value: string }[];
+    onValueChange: (value: string) => void;
+}) {
+    const selected = options.find((option) => option.value === value);
+
+    return (
+        <Select disabled={disabled} value={value} onValueChange={(nextValue) => {
+            if (nextValue) onValueChange(nextValue);
+        }}>
+            <SelectTrigger className="h-auto min-w-0 rounded-xl border-white/10 bg-black/20 px-3 py-2">
+                <SelectValue>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="[&>svg]:size-4">{selected?.icon}</span>
+                        <span className="min-w-0 text-left">
+                            <span className="block text-[10px] uppercase tracking-wide text-white/40">{label}</span>
+                            <span className="block truncate text-xs text-white/80">{selected?.label}</span>
+                        </span>
+                    </div>
+                </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+                {options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                        {option.icon}
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     );
 }

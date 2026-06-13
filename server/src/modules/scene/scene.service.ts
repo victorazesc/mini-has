@@ -3,6 +3,8 @@ import { CommandsService } from '../../infrastructure/commands/commands.service'
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { CommandRequest, CommandResult, JsonObject, Scene, SceneAction, SceneRun, SceneRunStatus } from '../../types';
 import { DeviceService } from '../device/device.service';
+import { dpsIdFromCode } from '../device/device.utils';
+import { EntityService } from '../entity/entity.service';
 import { RoomService } from '../room/room.service';
 
 const SCENE_ALLOWED_COMMANDS = new Set([
@@ -24,6 +26,7 @@ export class SceneService {
         private readonly storage: StorageService,
         private readonly rooms: RoomService,
         private readonly devices: DeviceService,
+        private readonly entities: EntityService,
         private readonly commands: CommandsService,
     ) { }
 
@@ -310,7 +313,18 @@ export class SceneService {
                 throw new Error(`Comando ${command || '(vazio)'} nao e suportado em scenes no MVP.`);
             }
 
-            const params = isObject(item.params) ? item.params : {};
+            const params = isObject(item.params) ? { ...item.params } : {};
+            if (has(params, 'entityId')) {
+                const entityId = Number(params.entityId);
+                const entity = Number.isInteger(entityId) && entityId > 0 ? this.entities.getEntity(entityId) : null;
+                if (!entity || entity.deviceId !== deviceId) {
+                    throw new Error(`Entidade da acao ${index + 1} nao pertence ao dispositivo ${deviceId}.`);
+                }
+                const switchCode = String(entity.commandSchema.switchCode || '');
+                if (!switchCode) throw new Error(`Entidade da acao ${index + 1} nao possui canal configurado.`);
+                params.entityId = entity.id;
+                params.dpsId = dpsIdFromCode(switchCode);
+            }
             if (command === 'set_position') {
                 const position = Number(params.position);
                 if (!Number.isFinite(position)) {

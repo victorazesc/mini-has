@@ -19,54 +19,70 @@ const integrationProviders = [
     {
         value: "tuya_cloud",
         name: "Tuya Cloud",
-        icon: "./providers/tuya.svg",
+        icon: "/providers/tuya.svg",
         localOnly: false,
     },
     {
         value: "smartthings_cloud",
         name: "SmartThings Cloud",
-        icon: "./providers/smartThings.svg",
+        icon: "/providers/smartThings.svg",
         localOnly: false,
     },
     {
         value: "intelbras_izy_tuya",
         name: "Intelbras Izy",
-        icon: "./providers/intelbras.svg",
+        icon: "/providers/intelbras.svg",
         localOnly: true,
     },
     {
         value: "intelbras_amt8000",
         name: "Intelbras AMT 8000",
-        icon: "./providers/intelbras.svg",
+        icon: "/providers/intelbras.svg",
+        localOnly: true,
+    },
+    {
+        value: "intelbras_solar",
+        name: "Intelbras Solar Send",
+        icon: "/providers/intelbras.svg",
+        localOnly: false,
+    },
+    {
+        value: "onvif_camera",
+        name: "Cameras ONVIF/RTSP",
+        icon: "/devices/camera.png",
         localOnly: true,
     },
     {
         value: "diy",
         name: "DIY",
-        icon: "./providers/diy.svg",
+        icon: "/providers/diy.svg",
         localOnly: true,
     },
     {
         value: "mqtt",
         name: "MQTT",
-        icon: "./providers/diy.svg",
+        icon: "/providers/diy.svg",
         localOnly: true,
     },
 ]
 
 export function NewIntegrationDialog({ children }: { children: React.ReactElement }) {
+    const [open, setOpen] = useState(false)
     const [search, setSearch] = useState("")
     const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
 
     const filteredProviders = integrationProviders.filter((provider) => provider.value.toLowerCase().includes(search.toLowerCase()))
     const handleProviderClick = (provider: string) => {
+        setOpen(false)
         setSelectedProvider(provider)
     }
 
     return (
         <>
-            <IntegrationProviderHandler provider={selectedProvider ?? "" as string} />
-            <Dialog>
+            <IntegrationProviderHandler provider={selectedProvider ?? "" as string} onOpenChange={(nextOpen) => {
+                if (!nextOpen) setSelectedProvider(null)
+            }} />
+            <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger render={children} nativeButton={true} />
                 <DialogContent>
                     <DialogHeader>

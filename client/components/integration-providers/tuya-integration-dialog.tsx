@@ -24,7 +24,7 @@ const schema = z.object({
     region: z.string().min(1, "Regiao e obrigatoria"),
 });
 
-export function TuyaIntegrationDialog({ open }: { open: boolean }) {
+export function TuyaIntegrationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const [values, setValues] = useState<z.infer<typeof schema>>({
         accessId: "",
         accessSecret: "",
@@ -71,7 +71,7 @@ export function TuyaIntegrationDialog({ open }: { open: boolean }) {
 
     return (
         <>
-            <Dialog open={open && !showScanDialog}>
+            <Dialog open={open && !showScanDialog} onOpenChange={onOpenChange}>
                 <DialogContent className="sm:max-w-sm">
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
@@ -143,7 +143,10 @@ export function TuyaIntegrationDialog({ open }: { open: boolean }) {
                     </form>
                 </DialogContent>
             </Dialog>
-            <ScanDevicesDialog open={showScanDialog} onOpenChange={setShowScanDialog} provider="tuya_cloud" integrationId={integrationId ?? undefined} />
+            <ScanDevicesDialog open={showScanDialog} onOpenChange={(nextOpen) => {
+                setShowScanDialog(nextOpen);
+                if (!nextOpen) onOpenChange(false);
+            }} provider="tuya_cloud" integrationId={integrationId ?? undefined} />
         </>
     )
-}       
+}

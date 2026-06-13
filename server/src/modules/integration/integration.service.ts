@@ -3,7 +3,10 @@ import { ProvidersService } from '../../infrastructure/providers/providers.servi
 import { StorageService } from '../../infrastructure/storage/storage.service';
 import { InboxDevice, Integration, IntegrationStatus, IntegrationType, JsonObject, StoredIntegration } from '../../types';
 import { DeviceService } from '../device/device.service';
+import { EntityService } from '../entity/entity.service';
 import { InboxService } from '../inbox/inbox.service';
+
+export const INTEGRATION_SYNC_SERVICE = 'INTEGRATION_SYNC_SERVICE';
 
 @Injectable()
 export class IntegrationService {
@@ -11,6 +14,7 @@ export class IntegrationService {
         private readonly storage: StorageService,
         private readonly providers: ProvidersService,
         private readonly devices: DeviceService,
+        private readonly entities: EntityService,
         private readonly inbox: InboxService,
     ) { }
 
@@ -103,6 +107,7 @@ export class IntegrationService {
             const [devices, details] = await this.providers.syncProvider(integration);
             const inboxIds: number[] = [];
             const inboxDevices: InboxDevice[] = [];
+            const savedDevices = this.devices.listDevices();
 
             for (const device of devices) {
                 const { secrets, ...payload } = device;
@@ -110,6 +115,14 @@ export class IntegrationService {
                 inboxIds.push(inboxId);
                 const inboxDevice = this.inbox.getInboxDevice(inboxId);
                 if (inboxDevice) inboxDevices.push(inboxDevice);
+
+                const savedDevice = savedDevices.find((item) => item.provider === device.provider && item.externalId === device.externalId);
+                if (savedDevice) {
+                    this.devices.syncAcceptedProviderDevice(savedDevice.id, device, secrets || {});
+                    if (device.entities?.length) {
+                        this.entities.createEntitiesForDevice(savedDevice.id, savedDevice.provider, savedDevice.externalId, device.entities);
+                    }
+                }
             }
 
             this.updateIntegrationStatus(integrationId, 'connected', null, new Date().toISOString());

@@ -104,6 +104,7 @@ ORDER BY floors.id
             SELECT
                 position.floor_id,
                 position.device_id,
+                NULL AS entity_id,
                 position.x,
                 position.y,
                 position.z,
@@ -114,9 +115,25 @@ ORDER BY floors.id
             INNER JOIN rooms room ON room.id = device.room_id
             WHERE position.floor_id = ?
               AND room.floor_id = ?
-            ORDER BY position.device_id
+            UNION ALL
+            SELECT
+                position.floor_id,
+                entity.device_id,
+                position.entity_id,
+                position.x,
+                position.y,
+                position.z,
+                position.created_at,
+                position.updated_at
+            FROM floor_entity_positions position
+            INNER JOIN entities entity ON entity.id = position.entity_id
+            INNER JOIN devices device ON device.id = entity.device_id
+            INNER JOIN rooms room ON room.id = device.room_id
+            WHERE position.floor_id = ?
+              AND room.floor_id = ?
+            ORDER BY device_id, entity_id
             `,
-            [floorId, floorId],
+            [floorId, floorId, floorId, floorId],
         );
 
         return rows.map((row) => this.fromDevicePositionRow(row));
@@ -132,15 +149,17 @@ ORDER BY floors.id
             throw new Error("Floor not found");
         }
 
-        const deviceIds = positions.map((position) => position.deviceId);
+        const positionKeys = positions.map((position) => position.entityId ? `entity:${position.entityId}` : `device:${position.deviceId}`);
 
-        if (new Set(deviceIds).size !== deviceIds.length) {
+        if (new Set(positionKeys).size !== positionKeys.length) {
             throw new Error("Duplicate device position");
         }
 
         for (const position of positions) {
             if (
-                !Number.isFinite(position.deviceId) ||
+                !Number.isInteger(position.deviceId) ||
+                position.deviceId <= 0 ||
+                (position.entityId !== undefined && (!Number.isInteger(position.entityId) || position.entityId <= 0)) ||
                 !Number.isFinite(position.x) ||
                 !Number.isFinite(position.y) ||
                 !Number.isFinite(position.z)
@@ -167,6 +186,12 @@ ORDER BY floors.id
             if (!allowedDeviceIds.has(position.deviceId)) {
                 throw new Error("Device does not belong to floor");
             }
+            if (position.entityId) {
+                const entity = this.storage.get<{ device_id: number }>('SELECT device_id FROM entities WHERE id = ?', [position.entityId]);
+                if (!entity || entity.device_id !== position.deviceId) {
+                    throw new Error("Entity does not belong to device");
+                }
+            }
         }
 
         const now = this.storage.utcNow();
@@ -179,8 +204,19 @@ ORDER BY floors.id
                 `,
                 [floorId],
             );
+            this.storage.run('DELETE FROM floor_entity_positions WHERE floor_id = ?', [floorId]);
 
             for (const position of positions) {
+                if (position.entityId) {
+                    this.storage.run(
+                        `
+                        INSERT INTO floor_entity_positions (floor_id, entity_id, x, y, z, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        `,
+                        [floorId, position.entityId, position.x, position.y, position.z, now, now],
+                    );
+                    continue;
+                }
                 this.storage.run(
                     `
                     INSERT INTO floor_device_positions (
@@ -226,6 +262,7 @@ ORDER BY floors.id
         return {
             floorId: row.floor_id,
             deviceId: row.device_id,
+            entityId: row.entity_id ?? null,
             x: row.x,
             y: row.y,
             z: row.z,
@@ -259,6 +296,7 @@ export type UpdateFloorDto = {
 export type FloorDevicePosition = {
     floorId: number;
     deviceId: number;
+    entityId?: number | null;
     x: number;
     y: number;
     z: number;
@@ -268,6 +306,7 @@ export type FloorDevicePosition = {
 
 export type UpsertFloorDevicePositionDto = {
     deviceId: number;
+    entityId?: number;
     x: number;
     y: number;
     z: number;

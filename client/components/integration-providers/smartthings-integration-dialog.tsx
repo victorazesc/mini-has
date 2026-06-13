@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
-export function SmartThingsIntegrationDialog({ open }: { open: boolean }) {
+export function SmartThingsIntegrationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const [isRedirecting, setIsRedirecting] = useState(false);
 
     function handleConnect() {
@@ -19,7 +19,7 @@ export function SmartThingsIntegrationDialog({ open }: { open: boolean }) {
     }
 
     return (
-        <Dialog open={open}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-sm">
                 <DialogHeader>
                     <DialogTitle>Integração SmartThings</DialogTitle>

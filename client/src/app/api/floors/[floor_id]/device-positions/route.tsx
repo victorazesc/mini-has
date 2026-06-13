@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const positionSchema = z.object({
     deviceId: z.number().int().positive(),
+    entityId: z.number().int().positive().optional(),
     x: z.number().finite(),
     y: z.number().finite(),
     z: z.number().finite(),

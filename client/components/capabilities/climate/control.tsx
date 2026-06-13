@@ -16,7 +16,7 @@ type ExpectedClimateState = Partial<{
     predefinedMode: ClimatePredefinedMode;
 }>;
 
-export function ClimateControl({ device }: { device: Device & { status: DeviceStatus } }) {
+export function ClimateControl({ device, compact = false }: { device: Device & { status: DeviceStatus }; compact?: boolean }) {
     const mainStatus = device.status?.raw?.components?.main;
     const coolingSetpoint = Number(mainStatus?.thermostatCoolingSetpoint?.coolingSetpoint?.value);
     const coolingRange = mainStatus?.thermostatCoolingSetpoint?.coolingSetpointRange?.value;
@@ -293,6 +293,7 @@ export function ClimateControl({ device }: { device: Device & { status: DeviceSt
 
     return (
         <ClimateDial
+            compact={compact}
             isLoading={false}
             value={temperature}
             currentTemperature={currentTemperature}

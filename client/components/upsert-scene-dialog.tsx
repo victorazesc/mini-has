@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCreateScene, useDeleteScene, useUpdateScene } from "@/hooks/use-scenes"
 import { useDevices } from "@/hooks/use-devices"
+import { useEntities } from "@/hooks/use-entities"
 import { useRooms } from "@/hooks/use-rooms"
+import { Entity } from "@/src/services/entities.service"
 import { Scene, UpsertScenePayload } from "@/src/services/scenes.service"
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -44,8 +46,19 @@ const schema = z.object({
 type SceneFormAction = {
     key: string;
     deviceId?: number;
+    entityId?: number;
     command: string;
     position: string;
+}
+
+type SceneTarget = {
+    key: string;
+    deviceId: number;
+    entityId?: number;
+    name: string;
+    roomId?: number | null;
+    roomName?: string | null;
+    deviceType?: string;
 }
 
 type SceneFormValues = {
@@ -70,6 +83,18 @@ function defaultCommand(deviceType: string | undefined) {
     return commandOptions[deviceGroup(deviceType)][0]?.value ?? "turn_on"
 }
 
+function entitySwitchCode(entity: Entity | undefined): string {
+    return String(entity?.commandSchema.switchCode || "")
+}
+
+function entityDpsId(entity: Entity | undefined): string | undefined {
+    const code = entitySwitchCode(entity)
+    if (!code) return undefined
+    if (code === "switch_led") return "20"
+    if (code === "switch") return "1"
+    return code.startsWith("switch_") ? code.slice("switch_".length) : code
+}
+
 function buildInitialValues(scene?: Scene): SceneFormValues {
     return {
         name: scene?.name ?? "",
@@ -79,6 +104,7 @@ function buildInitialValues(scene?: Scene): SceneFormValues {
             ? scene.actions.map((action) => ({
                 key: `action-${action.id}`,
                 deviceId: action.deviceId,
+                entityId: Number(action.params.entityId) || undefined,
                 command: action.command,
                 position: String(action.params.position ?? "50"),
             }))
@@ -94,6 +120,7 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
     const [formError, setFormError] = useState<string | null>(null)
     const [errors, setErrors] = useState<Record<string, string>>({})
     const { data: devices = [] } = useDevices()
+    const { data: entities = [] } = useEntities()
     const { data: rooms = [] } = useRooms()
     const { mutateAsync: createScene, isPending: isCreating } = useCreateScene()
     const { mutateAsync: updateScene, isPending: isUpdating } = useUpdateScene()
@@ -105,16 +132,34 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
         () => [...devices].sort((left, right) => left.name.localeCompare(right.name, "pt-BR")),
         [devices],
     )
-    const filteredDeviceOptions = useMemo(() => {
+    const targetOptions = useMemo(
+        () => deviceOptions.flatMap<SceneTarget>((device) => {
+            const deviceEntities = entities.filter((entity) => entity.deviceId === device.id && entitySwitchCode(entity))
+            if (deviceEntities.length < 2) {
+                return [{ key: `device:${device.id}`, deviceId: device.id, name: device.name, roomId: device.roomId, roomName: device.roomName, deviceType: device.deviceType }]
+            }
+            return deviceEntities.map((entity) => ({
+                key: `entity:${entity.id}`,
+                deviceId: device.id,
+                entityId: entity.id,
+                name: entity.name,
+                roomId: device.roomId,
+                roomName: device.roomName,
+                deviceType: device.deviceType,
+            }))
+        }),
+        [deviceOptions, entities],
+    )
+    const filteredTargetOptions = useMemo(() => {
         const search = deviceQuery.trim().toLowerCase()
 
-        return deviceOptions.filter((device) => {
-            const matchesRoom = !roomFilter || String(device.roomId ?? "") === roomFilter
-            const haystack = `${device.name} ${device.roomName ?? ""} ${device.deviceType ?? ""}`.toLowerCase()
+        return targetOptions.filter((target) => {
+            const matchesRoom = !roomFilter || String(target.roomId ?? "") === roomFilter
+            const haystack = `${target.name} ${target.roomName ?? ""} ${target.deviceType ?? ""}`.toLowerCase()
             const matchesSearch = !search || haystack.includes(search)
             return matchesRoom && matchesSearch
         })
-    }, [deviceOptions, deviceQuery, roomFilter])
+    }, [targetOptions, deviceQuery, roomFilter])
 
     const handleOpenChange = (nextOpen: boolean) => {
         if (nextOpen) {
@@ -171,11 +216,11 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
         })
     }
 
-    const availableDevicesForAction = (deviceId?: number) => {
-        const selectedDevice = deviceOptions.find((device) => device.id === deviceId)
-        if (!selectedDevice) return filteredDeviceOptions
-        if (filteredDeviceOptions.some((device) => device.id === selectedDevice.id)) return filteredDeviceOptions
-        return [selectedDevice, ...filteredDeviceOptions]
+    const availableTargetsForAction = (deviceId?: number, entityId?: number) => {
+        const selectedTarget = targetOptions.find((target) => target.deviceId === deviceId && target.entityId === entityId)
+        if (!selectedTarget) return filteredTargetOptions
+        if (filteredTargetOptions.some((target) => target.key === selectedTarget.key)) return filteredTargetOptions
+        return [selectedTarget, ...filteredTargetOptions]
     }
 
     const toPayload = (): UpsertScenePayload => {
@@ -187,7 +232,10 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                 deviceId: Number(action.deviceId),
                 orderIndex: index + 1,
                 command: action.command,
-                params: action.command === "set_position" ? { position: Number(action.position) } : {},
+                params: {
+                    ...(action.command === "set_position" ? { position: Number(action.position) } : {}),
+                    ...(action.entityId ? { entityId: action.entityId, dpsId: entityDpsId(entities.find((entity) => entity.id === action.entityId)) } : {}),
+                },
             })),
         })
 
@@ -347,12 +395,12 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
                             </div>
 
                             <p className="text-xs text-muted-foreground">
-                                {filteredDeviceOptions.length} dispositivo(s) visíveis para seleção.
+                                {filteredTargetOptions.length} dispositivo(s) ou canal(is) visíveis para seleção.
                             </p>
 
                             <FieldError>{errors.actions}</FieldError>
 
-                            {filteredDeviceOptions.length === 0 ? (
+                            {filteredTargetOptions.length === 0 ? (
                                 <div className="rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
                                     Nenhum dispositivo encontrado com os filtros atuais.
                                 </div>
@@ -360,15 +408,16 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
 
                             {values.actions.map((action, index) => {
                                 const selectedDevice = deviceOptions.find((device) => device.id === action.deviceId)
+                                const selectedTarget = targetOptions.find((target) => target.deviceId === action.deviceId && target.entityId === action.entityId)
                                 const commands = commandOptions[deviceGroup(selectedDevice?.deviceType)]
-                                const availableDevices = availableDevicesForAction(action.deviceId)
+                                const availableTargets = availableTargetsForAction(action.deviceId, action.entityId)
 
                                 return (
                                     <div key={action.key} className="rounded-2xl border p-4">
                                         <div className="mb-3 flex items-center justify-between gap-3">
                                             <div>
                                                 <p className="font-medium">Ação {index + 1}</p>
-                                                <p className="text-xs text-muted-foreground">{selectedDevice?.name ?? "Selecione um dispositivo"}</p>
+                                                <p className="text-xs text-muted-foreground">{selectedTarget?.name ?? "Selecione um dispositivo ou canal"}</p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Button type="button" size="sm" variant="outline" disabled={isBusy} onClick={() => duplicateAction(index)}>
@@ -388,26 +437,25 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
 
                                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                             <Field className="xl:col-span-2">
-                                                <Label>Dispositivo</Label>
+                                                <Label>Dispositivo ou canal</Label>
                                                 <select
                                                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                                                    value={action.deviceId ? String(action.deviceId) : ""}
-                                                    disabled={isBusy || availableDevices.length === 0}
+                                                    value={selectedTarget?.key ?? ""}
+                                                    disabled={isBusy || availableTargets.length === 0}
                                                     onChange={(event) => {
                                                         if (!event.target.value) {
-                                                            updateAction(index, { deviceId: undefined, command: "turn_on" })
+                                                            updateAction(index, { deviceId: undefined, entityId: undefined, command: "turn_on" })
                                                             return
                                                         }
 
-                                                        const deviceId = Number(event.target.value)
-                                                        const device = deviceOptions.find((item) => item.id === deviceId)
-                                                        updateAction(index, { deviceId, command: defaultCommand(device?.deviceType) })
+                                                        const target = targetOptions.find((item) => item.key === event.target.value)
+                                                        updateAction(index, { deviceId: target?.deviceId, entityId: target?.entityId, command: defaultCommand(target?.deviceType) })
                                                     }}
                                                 >
                                                     <option value="">Selecione</option>
-                                                    {availableDevices.map((device) => (
-                                                        <option key={device.id} value={String(device.id)}>
-                                                            {device.name} {device.roomName ? `• ${device.roomName}` : ""}
+                                                    {availableTargets.map((target) => (
+                                                        <option key={target.key} value={target.key}>
+                                                            {target.name} {target.roomName ? `• ${target.roomName}` : ""}
                                                         </option>
                                                     ))}
                                                 </select>

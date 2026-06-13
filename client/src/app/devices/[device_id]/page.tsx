@@ -1,10 +1,12 @@
 "use client"
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useDevice, useDeviceHistory, useSendCommand } from "@/hooks/use-devices";
+import { useEntities, useUpdateEntity } from "@/hooks/use-entities";
 import { cn } from "@/lib/utils";
-import { Building, Circle, Home, Power, SettingsIcon } from "lucide-react";
+import { Building, Camera, Circle, Home, Power, SettingsIcon } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Device } from "@/src/services/devices.service";
@@ -17,14 +19,21 @@ import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
 import { DeviceHistoryCard } from "@/components/device-history-card";
 import { UpsertDeviceDialog } from "@/components/upsert-device-dialog";
+import { Entity } from "@/src/services/entities.service";
+import { DeviceConnectivityBadge } from "@/components/device-connectivity-badge";
+import { LightControl } from "@/components/capabilities/light/control";
+import { AlarmControl } from "@/components/capabilities/alarm/control";
+import { CameraControl } from "@/components/capabilities/camera/control";
+import { FeederControl } from "@/components/capabilities/feeder/control";
 
 type SwitchChannel = {
     dpsId: string;
     label: string;
     value: boolean;
+    entity?: Entity;
 };
 
-function getSwitchChannels(device: Device): SwitchChannel[] {
+function getSwitchChannels(device: Device, entities: Entity[]): SwitchChannel[] {
     const statusEntries = Array.isArray(device.capabilities?.status)
         ? device.capabilities.status
         : [];
@@ -45,13 +54,14 @@ function getSwitchChannels(device: Device): SwitchChannel[] {
             );
         })
         .map((entry) => {
-            const dpsId = entry.code.replace("switch_", "");
+            const dpsId = entry.code === "switch_led" ? "20" : entry.code.replace("switch_", "");
             const runtimeValue = runtimeDps[dpsId];
 
             return {
                 dpsId,
-                label: `Switch ${dpsId}`,
+                label: entities.find((entity) => String(entity.commandSchema.switchCode || "") === entry.code)?.name ?? `Switch ${dpsId}`,
                 value: typeof runtimeValue === "boolean" ? runtimeValue : entry.value,
+                entity: entities.find((entity) => String(entity.commandSchema.switchCode || "") === entry.code),
             };
         });
 }
@@ -60,6 +70,7 @@ export default function DevicePage() {
     const { device_id } = useParams();
     const deviceId = Number(device_id);
     const { data: device } = useDevice(deviceId);
+    const { data: entities = [] } = useEntities();
     const {
         data: history = [],
         isLoading: isLoadingHistory,
@@ -92,7 +103,7 @@ export default function DevicePage() {
         });
     };
     const handlePowerToggle = () => {
-        if (!device?.id) {
+        if (!device?.id || device.deviceType.toLowerCase().includes("camera")) {
             return;
         }
 
@@ -154,14 +165,18 @@ export default function DevicePage() {
         return <div>Device not found</div>;
     }
 
-    const switchChannels = getSwitchChannels(device);
+    const isLight = device.deviceType.toLowerCase().includes("light") || device.deviceType.toLowerCase().includes("lamp");
+    const isAlarm = device.deviceType.toLowerCase().includes("alarm") || device.deviceType.toLowerCase().includes("alarme");
+    const isCamera = device.deviceType.toLowerCase().includes("camera") || device.deviceType.toLowerCase() === "cam";
+    const isFeeder = device.deviceType.toLowerCase() === "feeder";
+    const switchChannels = isLight || isAlarm || isCamera || isFeeder ? [] : getSwitchChannels(device, entities.filter((entity) => entity.deviceId === device.id));
 
     const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const DeviceTypeName = DEVICE_TYPES_NAME_BY_TYPE[device.deviceType as keyof typeof DEVICE_TYPES_NAME_BY_TYPE] ?? "Device"
     const isCover = device.deviceType === "cover";
-    const isOn = isCover ? device.status.state === "open" : device.status.state === "on";
-    const stateText = isCover ? coverStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
+    const isOn = isCover ? device.status.state === "open" : isAlarm ? ["armed", "partial"].includes(device.status.state) : isCamera ? Boolean(device.status.online) : device.status.state === "on";
+    const stateText = isCover ? coverStateText(device.status.state) : isAlarm ? alarmStateText(device.status.state) : isCamera ? cameraStateText(device.status.state, device.status.online) : isFeeder ? feederStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
     const imageSrc = deviceImageSrc(device.deviceType);
     const lastSeenAt = device.status.lastSeenAt
         ? new Date(device.status.lastSeenAt).toLocaleString("pt-BR")
@@ -173,8 +188,8 @@ export default function DevicePage() {
             <div className="@container/main flex flex-1 flex-col gap-2 space-y-4  ">
                 <div className="flex flex-row gap-2 items-center px-6 bg-transparent border-none outline-none shadow-none ">
                     <div className="flex flex-row gap-2 items-center flex-2">
-                        <div className="flex items-center justify-center rounded-full bg-secondary p-1">
-                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} />
+                        <div className="flex items-center justify-center rounded-full bg-secondary p-1 h-32 w-32">
+                            <Image src={imageSrc} alt={DeviceTypeName} objectFit="contain" width={130} height={130} />
                         </div>
                         <div className="flex flex-col gap-2">
                             <h1 className="text-2xl font-semibold">{device.name}</h1>
@@ -195,14 +210,15 @@ export default function DevicePage() {
                                     <span>{ProviderName}</span>
                                 </div></Badge>
                                 <Badge variant="outline">{DeviceTypeName} </Badge>
+                                <DeviceConnectivityBadge device={device} />
                             </div>
                             <p className="text-muted-foreground flex items-center gap-2"><Home className="size-4" /> {device.roomName}</p>
                             <p className="text-muted-foreground flex items-center gap-2"><Building className="size-4" /> {device.payload.manufacturer} • {device.payload.model}</p>
                         </div>
                     </div>
                     <Card
-                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && "cursor-pointer")}
-                        onClick={isCover ? undefined : handlePowerToggle}
+                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && !isAlarm && !isCamera && !isFeeder && "cursor-pointer")}
+                        onClick={isCover || isAlarm || isCamera || isFeeder ? undefined : handlePowerToggle}
                     >
                         <div className="flex items-center justify-between gap-6">
                             <div className="flex flex-col gap-2">
@@ -225,7 +241,7 @@ export default function DevicePage() {
                                 "flex size-12 shrink-0 items-center justify-center rounded-full",
                                 isOn ? "bg-green-500/20 text-green-500" : "bg-secondary text-muted-foreground"
                             )}>
-                                <Power className="size-6" />
+                                {isCamera ? <Camera className="size-6" /> : <Power className="size-6" />}
                             </div>
                         </div>
                     </Card>
@@ -235,20 +251,7 @@ export default function DevicePage() {
 
                 <div className="flex flex-row gap-6 w-full">
                     {switchChannels.map((channel) => (
-                        <div key={channel.dpsId} className="flex flex-col gap-2 items-center">
-                            <p className="text-lg font-medium text-center text-muted-foreground">{channel.label}</p>
-                            <Card
-                                key={channel.dpsId}
-                                className="h-90 w-115 shrink-0 cursor-pointer py-0 shadow-2xl transition-transform duration-200 ease-out transform-[scale(1)] hover:transform-[scale(1.02)] active:transform-[scale(0.985)]"
-                                onClick={() => handleToggle(device.id, channel.dpsId, channel.value)}
-                            >
-                                <CardContent className="flex flex-col h-full justify-center gap-2 px-6">
-                                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
-                                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
-                                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
-                                </CardContent>
-                            </Card>
-                        </div>
+                        <SwitchChannelCard key={channel.dpsId} channel={channel} onToggle={() => handleToggle(device.id, channel.dpsId, channel.value)} />
                     ))}
 
 
@@ -265,6 +268,26 @@ export default function DevicePage() {
                                 <CoverControl key={device.id} device={device} />
                             </section>
                         )}
+                    {isLight ? (
+                        <section className="flex-1">
+                            <LightControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
+                    {isAlarm ? (
+                        <section className="flex-1">
+                            <AlarmControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
+                    {isCamera ? (
+                        <section className="flex-1">
+                            <CameraControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
+                    {isFeeder ? (
+                        <section className="flex-1">
+                            <FeederControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
                 </div>
 
                 <DeviceHistoryCard
@@ -281,9 +304,50 @@ export default function DevicePage() {
     );
 }
 
+function SwitchChannelCard({ channel, onToggle }: { channel: SwitchChannel; onToggle: () => void }) {
+    const [name, setName] = useState(channel.label);
+    const { mutate: updateEntity, isPending } = useUpdateEntity();
+
+    useEffect(() => setName(channel.label), [channel.label]);
+
+    return (
+        <div className="flex flex-col gap-2 items-center">
+            {channel.entity ? (
+                <form
+                    className="flex items-center gap-2"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        updateEntity({ entityId: channel.entity!.id, name });
+                    }}
+                >
+                    <Input className="w-64 text-center" value={name} disabled={isPending} onChange={(event) => setName(event.target.value)} />
+                    <Button type="submit" variant="outline" size="sm" disabled={isPending || !name.trim() || name.trim() === channel.label}>
+                        Salvar
+                    </Button>
+                </form>
+            ) : (
+                <p className="text-lg font-medium text-center text-muted-foreground">{channel.label}</p>
+            )}
+            <Card
+                className="h-90 w-115 shrink-0 cursor-pointer py-0 shadow-2xl transition-transform duration-200 ease-out transform-[scale(1)] hover:transform-[scale(1.02)] active:transform-[scale(0.985)]"
+                onClick={onToggle}
+            >
+                <CardContent className="flex flex-col h-full justify-center gap-2 px-6">
+                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
+                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
+                    <Circle className={cn("size-4", channel.value ? "fill-primary text-primary" : "fill-secondary text-secondary")} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
 function deviceImageSrc(deviceType: string): string {
-    if (deviceType === "camera") return "/devices/camera.jpg";
+    console.log("Device type:", deviceType);
+    if (deviceType === "camera") return "/devices/camera.png";
     if (deviceType === "cover") return "/devices/cover.png";
+    if (deviceType === "feeder") return "/devices/feeder.png";
+    if (deviceType === "printer") return "/devices/printer.png";
     if (["climate", "feeder", "switch", "switch2ch"].includes(deviceType)) return `/devices/${deviceType}.png`;
     return "/devices/switch.png";
 }
@@ -295,4 +359,26 @@ function coverStateText(state: string): string {
     if (normalized === "opening") return "Abrindo";
     if (normalized === "closing") return "Fechando";
     return "Parada";
+}
+
+function alarmStateText(state: string): string {
+    const normalized = String(state || "").toLowerCase();
+    if (normalized === "armed") return "Armada";
+    if (normalized === "partial") return "Armada parcialmente";
+    if (normalized === "disarmed") return "Desarmada";
+    if (normalized === "firing") return "Em disparo";
+    return "Estado desconhecido";
+}
+
+function cameraStateText(state: string, online: boolean): string {
+    if (!online) return "Offline";
+    if (String(state || "").toLowerCase() === "streaming") return "Transmitindo";
+    return "Online";
+}
+
+function feederStateText(state: string): string {
+    if (state === "feeding") return "Servindo";
+    if (state === "done") return "Concluído";
+    if (state === "standby") return "Pronto";
+    return "Indisponível";
 }

@@ -21,6 +21,20 @@ export async function getEntities(): Promise<Entity[]> {
     return response.json() as Promise<Entity[]>
 }
 
+export async function updateEntity(entityId: number, data: { name: string }): Promise<Entity> {
+    const response = await fetch(`/api/entities/${entityId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao atualizar entidade"))
+    }
+
+    return response.json() as Promise<Entity>
+}
+
 async function errorMessageFrom(response: Response, fallback: string): Promise<string> {
     try {
         const data = await response.json() as { message?: string; detail?: string; error?: string }

@@ -1,5 +1,5 @@
 import { IconName } from "lucide-react/dynamic"
-import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake } from "lucide-react"
+import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake, Shield, Sun } from "lucide-react"
 
 export type SmartThingsValue<T = unknown> = {
     value: T;
@@ -92,6 +92,11 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
         label: "Climatizacao",
         value: "climate",
         icon: 'snowflake',
+    },
+    {
+        label: "Central de alarme",
+        value: "alarm",
+        icon: 'shield',
     }
 ]
 
@@ -100,17 +105,23 @@ export const DEVICE_ICON_BY_TYPE = {
     switch: Power,
     iot: Brain,
     CAM: Camera,
+    camera: Camera,
     FEEDER: PawPrint,
     CURTAIN: Blinds,
     cover: Blinds,
     climate: Snowflake,
+    alarm: Shield,
+    solar_inverter: Sun,
 }
 
 export const DEVICE_TYPES_NAME_BY_TYPE = {
     LAMP: "Lampada",
     CAM: "Camera",
+    camera: "Camera",
     FEEDER: "Alimentador de Gatos",
     CURTAIN: "Persiana",
     cover: "Persiana",
     climate: "Climatizacao",
+    alarm: "Central de alarme",
+    solar_inverter: "Microinversor solar",
 }

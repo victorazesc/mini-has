@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { CommandRequest, JsonObject } from '../../types';
 import { CommonService } from '../common/common.service';
 import { DeviceService } from './device.service';
@@ -20,9 +20,28 @@ export class DeviceController {
         return this.deviceService.autoLinkLocalDevices();
     }
 
+    @Post('reconcile-local')
+    reconcileLocalAvailability() {
+        return this.deviceService.reconcileLocalAvailability();
+    }
+
     @Post()
     createDevice(@Body() body: JsonObject) {
         return this.deviceService.createDevice(body);
+    }
+
+    @Get(':device_id/configuration')
+    getDeviceConfiguration(@Param('device_id') deviceId: string) {
+        const configuration = this.deviceService.getDeviceConfiguration(Number(deviceId));
+        if (!configuration) throw this.commonService.notFound('Device not found');
+        return configuration;
+    }
+
+    @Get(':device_id/stream.mjpeg')
+    streamCameraMjpeg(@Param('device_id') deviceId: string, @Res() response: any) {
+        if (!this.deviceService.streamCameraMjpeg(Number(deviceId), response)) {
+            throw this.commonService.notFound('Camera not found');
+        }
     }
 
     @Get(':device_id')
@@ -64,6 +83,13 @@ export class DeviceController {
     @Post(':device_id/command')
     async commandDevice(@Param('device_id') deviceId: string, @Body() body: CommandRequest) {
         const result = await this.deviceService.commandDevice(Number(deviceId), body);
+        if (!result) throw this.commonService.notFound('Device not found');
+        return result;
+    }
+
+    @Get(':device_id/status')
+    async deviceStatus(@Param('device_id') deviceId: string) {
+        const result = await this.deviceService.deviceStatus(Number(deviceId));
         if (!result) throw this.commonService.notFound('Device not found');
         return result;
     }

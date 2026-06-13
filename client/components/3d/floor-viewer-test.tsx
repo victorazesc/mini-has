@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDevices } from "@/hooks/use-devices";
+import { useEntities } from "@/hooks/use-entities";
 import { useAssetAvailability } from "@/hooks/use-asset-availability";
 import {
   useFloorDevicePositions,
@@ -50,6 +51,7 @@ import {
 import { useRooms } from "@/hooks/use-rooms";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
+import type { Entity } from "@/src/services/entities.service";
 import type { Floor, FloorDevicePosition } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import {
@@ -64,6 +66,8 @@ type DevicePosition = [number, number, number];
 
 type FloorDevice = {
   id: number;
+  deviceId: number;
+  entityId?: number;
   name: string;
   room: string;
   type: DeviceType;
@@ -74,6 +78,7 @@ type FloorDevice = {
 const EMPTY_FLOORS: Floor[] = [];
 const EMPTY_ROOMS: Room[] = [];
 const EMPTY_DEVICES: Device[] = [];
+const EMPTY_ENTITIES: Entity[] = [];
 const EMPTY_FLOOR_POSITION_ROWS: FloorDevicePosition[] = [];
 
 type Point2 = {
@@ -191,6 +196,7 @@ function getFloorRooms(rooms: Room[], selectedFloorId: number | null) {
 
 function buildFloorDevices(
   devices: Device[],
+  entities: Entity[],
   floorRooms: Room[],
   positions: DevicePositionState,
 ): FloorDevice[] {
@@ -199,26 +205,43 @@ function buildFloorDevices(
 
   return devices
     .filter((device) => device.roomId !== null && roomIds.has(device.roomId))
-    .map((device) => {
-      const positionState = positions[device.id];
+    .flatMap((device) => {
+      const room = device.roomName ?? (device.roomId ? roomById.get(device.roomId)?.name : null) ?? "Sem cômodo";
+      const deviceEntities = entities.filter((entity) => entity.deviceId === device.id && entity.commandSchema.switchCode);
 
-      return {
+      if (deviceEntities.length > 1) {
+        return deviceEntities.map((entity, index) => {
+          const positionState = positions[-entity.id] ?? (index === 0 ? positions[device.id] : undefined);
+          return {
+            id: -entity.id,
+            deviceId: device.id,
+            entityId: entity.id,
+            name: entity.name,
+            room,
+            type: "light" as const,
+            dirty: positionState?.dirty,
+            position: positionState?.position,
+          };
+        });
+      }
+
+      const positionState = positions[device.id];
+      return [{
         id: device.id,
+        deviceId: device.id,
         name: device.name,
-        room:
-          device.roomName ??
-          (device.roomId ? roomById.get(device.roomId)?.name : null) ??
-          "Sem cômodo",
+        room,
         type: getDeviceEditorType(device.deviceType),
         dirty: positionState?.dirty,
         position: positionState?.position,
-      };
+      }];
     });
 }
 
 function positionsFromRows(
   rows: {
     deviceId: number;
+    entityId?: number | null;
     x: number;
     y: number;
     z: number;
@@ -226,7 +249,7 @@ function positionsFromRows(
 ): DevicePositionState {
   return Object.fromEntries(
     rows.map((position) => [
-      position.deviceId,
+      position.entityId ? -position.entityId : position.deviceId,
       {
         dirty: false,
         position: [position.x, position.y, position.z] as DevicePosition,
@@ -442,6 +465,7 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     isError: devicesError,
     isLoading: devicesLoading,
   } = useDevices();
+  const { data: entities = EMPTY_ENTITIES } = useEntities();
   const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null);
   const [devicePositions, setDevicePositions] = useState<DevicePositionState>(
     {},
@@ -476,8 +500,8 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     [rooms, selectedFloorId],
   );
   const devices = useMemo(
-    () => buildFloorDevices(realDevices, floorRooms, devicePositions),
-    [devicePositions, floorRooms, realDevices],
+    () => buildFloorDevices(realDevices, entities, floorRooms, devicePositions),
+    [devicePositions, entities, floorRooms, realDevices],
   );
 
   const selectedDevice = useMemo(
@@ -736,7 +760,8 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
       {
         floorId: selectedFloorId,
         positions: positionedDevices.map((device) => ({
-          deviceId: device.id,
+          deviceId: device.deviceId,
+          entityId: device.entityId,
           x: device.position[0],
           y: device.position[1],
           z: device.position[2],
@@ -1105,4 +1130,3 @@ export function FloorViewerTest({ initialFloorId = null }: FloorViewerTestProps)
     </section>
   );
 }
-

@@ -36,6 +36,7 @@ export default function Devices() {
   )
 
   const { data: inboxDevices = [], isPending: isLoadingInboxDevices } = useInboxDevices({ status: "pending" })
+  const offlineReadyCount = devices.filter((device) => device.status.connectivity?.offlineReady).length
 
   // const { mutate: sendActiveCommand } = useSendCommand(deviceId, "set_active")
 
@@ -60,9 +61,7 @@ export default function Devices() {
         {/* Status and IP */}
         <section className="flex flex-row gap-2 justify-between items-center">
           <div>
-            <Badge variant="outline">LAN Ativa</Badge>
-            <Badge variant="outline">Atualizando em 30/04, 14:53</Badge>
-            <Badge variant="outline">IP 192.168.1.136</Badge>
+            <Badge variant="outline">{offlineReadyCount}/{devices.length} disponíveis offline</Badge>
           </div>
           <NewIntegrationDialog>
             <Button variant="outline"><PlusCircle className="size-4" /> Nova Integração</Button>

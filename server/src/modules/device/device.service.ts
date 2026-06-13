@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { spawn } from 'node:child_process';
+import { createDecipheriv, createHash } from 'node:crypto';
+import { createSocket } from 'node:dgram';
 import { CommandsService } from '../../infrastructure/commands/commands.service';
+import { DiscoveryService } from '../../infrastructure/discovery/discovery-runner.service';
 import { StorageService } from '../../infrastructure/storage/storage.service';
-import { CommandRequest, CommandResult, Device, DeviceEventLevel, DeviceHistoryEntry, InboxDevice, JsonObject } from '../../types';
+import { CommandRequest, CommandResult, Device, DeviceEventLevel, DeviceHistoryEntry, InboxDevice, JsonObject, ProviderDevice } from '../../types';
 import { dpsIdFromCode } from './device.utils';
 
 export const DEVICE_SERVICE = 'DEVICE_SERVICE';
@@ -11,13 +15,35 @@ type AutomationRunner = {
     triggerAutomationsForEvent(event: AutomationSourceEvent): Promise<void>;
 };
 
+type IntegrationSynchronizer = {
+    syncIntegration(integrationId: number): Promise<unknown>;
+};
+
 @Injectable()
-export class DeviceService {
+export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
+    private localReconcileTimer?: NodeJS.Timeout;
+    private localReconcileRunning = false;
+    private lastLocalDiscoveryAt = 0;
+    private lastCloudProviderSyncAt = 0;
+
     constructor(
         private readonly storage: StorageService,
         private readonly commands: CommandsService,
+        private readonly discovery: DiscoveryService,
         private readonly moduleRef: ModuleRef,
     ) { }
+
+    onApplicationBootstrap(): void {
+        const intervalMs = Math.max(15_000, Number(process.env.LOCAL_RECONCILE_INTERVAL_MS || 60_000));
+        const initialTimer = setTimeout(() => void this.reconcileLocalAvailability(), 1_500);
+        initialTimer.unref();
+        this.localReconcileTimer = setInterval(() => void this.reconcileLocalAvailability(), intervalMs);
+        this.localReconcileTimer.unref();
+    }
+
+    onModuleDestroy(): void {
+        if (this.localReconcileTimer) clearInterval(this.localReconcileTimer);
+    }
 
     listDevices(): Device[] {
         const rows = this.storage.all<JsonObject>(`
@@ -32,11 +58,22 @@ export class DeviceService {
     getDevice(deviceId: number): Device | null {
         const row = this.storage.get<JsonObject>(
             `
-      SELECT devices.*, rooms.name AS room_name
-      FROM devices
-      LEFT JOIN rooms ON rooms.id = devices.room_id
-      WHERE devices.id = ?
-      `,
+
+SELECT 
+
+  devices.*,
+
+  LOWER(devices.device_type) AS device_type,
+
+  rooms.name AS room_name
+
+FROM devices
+
+LEFT JOIN rooms ON rooms.id = devices.room_id
+
+WHERE devices.id = ?
+
+`,
             [deviceId],
         );
         return row ? this.fromDeviceRow(row) : null;
@@ -54,6 +91,86 @@ export class DeviceService {
         );
         if (!row) return null;
         return { device: this.fromDeviceRow(row), secrets: this.storage.jsonLoad(row.secrets_json, {}) };
+    }
+
+    getDeviceConfiguration(deviceId: number): JsonObject | null {
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item) return null;
+        if (item.device.provider !== 'onvif_camera') return {};
+
+        return {
+            cameraConfig: {
+                ip: String(item.device.payload.ip || ''),
+                port: Number(item.device.capabilities.rtspPort || 554),
+                username: String(item.secrets.username || ''),
+                password: String(item.secrets.password || ''),
+                rtspPath: String(item.device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0'),
+            },
+        };
+    }
+
+    streamCameraMjpeg(deviceId: number, response: any): boolean {
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item || item.device.provider !== 'onvif_camera') return false;
+
+        const ip = String(item.device.payload.ip || '').trim();
+        if (!ip) {
+            response.status(422).json({ message: 'Camera sem IP configurado.' });
+            return true;
+        }
+
+        const port = Number(item.device.capabilities.rtspPort || 554);
+        const pathValue = String(item.device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
+        const rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
+        rtspUrl.username = String(item.secrets.username || '');
+        rtspUrl.password = String(item.secrets.password || '');
+        rtspUrl.searchParams.set('subtype', '1');
+
+        const ffmpeg = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-rtsp_transport',
+            'tcp',
+            '-i',
+            rtspUrl.toString(),
+            '-an',
+            '-vf',
+            'fps=8,scale=640:-2',
+            '-q:v',
+            '5',
+            '-f',
+            'mpjpeg',
+            'pipe:1',
+        ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+        let stderr = '';
+        ffmpeg.stderr.on('data', (chunk: Buffer) => {
+            stderr = `${stderr}${chunk.toString()}`.slice(-2_000);
+        });
+
+        response.status(200);
+        response.setHeader('Content-Type', 'multipart/x-mixed-replace; boundary=ffmpeg');
+        response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        response.setHeader('Connection', 'close');
+        ffmpeg.stdout.pipe(response);
+
+        const stop = () => {
+            if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
+        };
+        response.on('close', stop);
+        ffmpeg.on('error', (error) => {
+            console.error(`Falha ao iniciar stream da camera ${deviceId}: ${error.message}`);
+            if (!response.writableEnded) response.end();
+        });
+        ffmpeg.on('exit', (code) => {
+            if (code && code !== 255) {
+                const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
+                console.warn(`Stream da camera ${deviceId} finalizado (${code}): ${safeError}`);
+            }
+            if (!response.writableEnded) response.end();
+        });
+        return true;
     }
 
     listDeviceHistory(deviceId: number, limit = 40): DeviceHistoryEntry[] {
@@ -125,8 +242,9 @@ export class DeviceService {
     }
 
     updateDevice(deviceId: number, request: JsonObject): Device | null {
-        const current = this.getDevice(deviceId);
-        if (!current) return null;
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item) return null;
+        const { device: current, secrets: currentSecrets } = item;
         const fieldMap: Record<string, string> = {
             name: 'name',
             deviceType: 'device_type',
@@ -151,6 +269,32 @@ export class DeviceService {
                 values.push(this.storage.jsonDump(request[source] || {}));
             }
         }
+        if (current.provider === 'onvif_camera' && isObject(request.cameraConfig)) {
+            const cameraConfig = request.cameraConfig;
+            const ip = String(cameraConfig.ip || current.payload.ip || '').trim();
+            const port = Math.min(65_535, Math.max(1, Number(cameraConfig.port || current.capabilities.rtspPort || 554)));
+            const pathValue = String(cameraConfig.rtspPath || current.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
+            const rtspPath = pathValue.startsWith('/') ? pathValue : `/${pathValue}`;
+            const rtspUrl = ip ? `rtsp://${ip}:${port}${rtspPath}` : '';
+            const onvifUrl = ip ? `http://${ip}/onvif/device_service` : '';
+            const secrets = {
+                ...currentSecrets,
+                ...withoutEmptyValues({
+                    username: String(cameraConfig.username || '').trim(),
+                    password: String(cameraConfig.password || ''),
+                }),
+            };
+            assignments.push('payload_json = ?', 'capabilities_json = ?', 'secrets_json = ?');
+            values.push(
+                this.storage.jsonDump({ ...current.payload, ip, rtspUrl, onvifUrl }),
+                this.storage.jsonDump({ ...current.capabilities, rtspPort: port, rtspPath, rtspUrl, onvifUrl }),
+                this.storage.jsonDump(secrets),
+            );
+            if (ip) {
+                assignments.push('local_device_key = ?');
+                values.push(`rtsp:${ip}:${port}`);
+            }
+        }
         if (!assignments.length) return current;
         assignments.push('updated_at = ?');
         values.push(this.storage.utcNow(), deviceId);
@@ -163,6 +307,37 @@ export class DeviceService {
             });
         }
         return updated;
+    }
+
+    syncAcceptedProviderDevice(deviceId: number, providerDevice: ProviderDevice, secrets: JsonObject): Device | null {
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item) return null;
+        const local = isObject(item.device.payload.local) ? item.device.payload.local : null;
+        const connectivity = isObject(item.device.status.connectivity) ? item.device.status.connectivity : null;
+        const payload = {
+            ...item.device.payload,
+            ...providerDevice.payload,
+            ...(local ? { local } : {}),
+        };
+        const status = {
+            ...item.device.status,
+            ...providerDevice.status,
+            ...(connectivity ? { connectivity } : {}),
+        };
+        const capabilities = { ...item.device.capabilities, ...providerDevice.capabilities };
+        const nextSecrets = { ...item.secrets, ...withoutEmptyValues(secrets) };
+        this.storage.run(
+            'UPDATE devices SET payload_json = ?, secrets_json = ?, capabilities_json = ?, status_json = ?, updated_at = ? WHERE id = ?',
+            [
+                this.storage.jsonDump(payload),
+                this.storage.jsonDump(nextSecrets),
+                this.storage.jsonDump(capabilities),
+                this.storage.jsonDump(status),
+                this.storage.utcNow(),
+                deviceId,
+            ],
+        );
+        return this.getDevice(deviceId);
     }
 
     deleteDevice(deviceId: number): boolean {
@@ -243,6 +418,128 @@ export class DeviceService {
         return this.listDevices().map((device) => this.autoLinkLocalDevice(device.id)).filter(Boolean) as Device[];
     }
 
+    async reconcileLocalAvailability() {
+        if (this.localReconcileRunning) return { running: true, checked: 0, local: 0, cloudOnly: 0, unavailable: 0 };
+        this.localReconcileRunning = true;
+        const summary = { running: false, checked: 0, local: 0, cloudOnly: 0, unavailable: 0, discoveryScanned: false };
+
+        try {
+            const devicesBeforeScan = this.listDevices();
+            const hasUnresolvedCloudDevice = devicesBeforeScan.some((device) =>
+                ['tuya_cloud', 'intelbras_izy_tuya'].includes(device.provider)
+                && (!isObject(device.status.connectivity) || device.status.connectivity?.offlineReady !== true),
+            );
+            const cloudSyncIntervalMs = Math.max(60_000, Number(process.env.CLOUD_PROVIDER_SYNC_INTERVAL_MS || 300_000));
+            if (hasUnresolvedCloudDevice && Date.now() - this.lastCloudProviderSyncAt >= cloudSyncIntervalMs) {
+                this.lastCloudProviderSyncAt = Date.now();
+                const synchronizer = this.moduleRef.get<IntegrationSynchronizer>('INTEGRATION_SYNC_SERVICE', { strict: false });
+                const integrationIds = Array.from(new Set(devicesBeforeScan
+                    .filter((device) => ['tuya_cloud', 'intelbras_izy_tuya'].includes(device.provider) && device.integrationId)
+                    .map((device) => Number(device.integrationId))));
+                for (const integrationId of integrationIds) {
+                    await synchronizer.syncIntegration(integrationId);
+                }
+            }
+            if (hasUnresolvedCloudDevice) {
+                await this.linkTuyaDevicesFromBroadcast();
+            }
+            const discoveryIntervalMs = Math.max(60_000, Number(process.env.LOCAL_DISCOVERY_INTERVAL_MS || 300_000));
+            if (hasUnresolvedCloudDevice && Date.now() - this.lastLocalDiscoveryAt >= discoveryIntervalMs) {
+                this.lastLocalDiscoveryAt = Date.now();
+                await this.discovery.scanNow(
+                    { scan_ports: true, timeout_seconds: 1, probeMode: 'light', ports: [1883, 6668, 9009] },
+                    { upsertInbox: false },
+                );
+                summary.discoveryScanned = true;
+            }
+
+            for (const current of this.listDevices()) {
+                const device = this.autoLinkLocalDevice(current.id) || current;
+                let item = this.getDeviceWithSecrets(device.id);
+                if (!item) continue;
+                summary.checked += 1;
+
+                if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(item.device.provider)
+                    && !privateIp(nested(item.device.payload, 'local', 'ip'))) {
+                    await this.tryLinkTuyaFromDiscovery(item.device, item.secrets);
+                    item = this.getDeviceWithSecrets(device.id);
+                    if (!item) continue;
+                }
+
+                if (isTuyaGateway(item.device) && privateIp(nested(item.device.payload, 'local', 'ip'))) {
+                    this.persistConnectivity(item.device, {
+                        controlMode: 'local',
+                        offlineReady: true,
+                        localAvailable: true,
+                        checkedAt: this.storage.utcNow(),
+                        transport: 'tuya-udp',
+                    });
+                    summary.local += 1;
+                    continue;
+                }
+
+                const target = this.localProbeTarget(item.device);
+                if (!target.probe) {
+                    this.persistConnectivity(item.device, {
+                        controlMode: target.cloudOnly ? 'cloud' : 'unavailable',
+                        offlineReady: false,
+                        localAvailable: false,
+                        checkedAt: this.storage.utcNow(),
+                        reason: target.reason,
+                    });
+                    if (target.cloudOnly) summary.cloudOnly += 1;
+                    else summary.unavailable += 1;
+                    continue;
+                }
+
+                const result = await this.commands.executeDeviceCommand(item.device, item.secrets, {
+                    command: 'query',
+                    params: target.params,
+                });
+                if (result.ok && String(result.result.transport || '') !== 'cloud') {
+                    this.updateDeviceRuntimeState(item.device.id, result);
+                    if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(item.device.provider) && result.result.version) {
+                        this.persistTuyaLocalVersion(item.device.id, String(result.result.version));
+                    }
+                    this.persistConnectivity(item.device, {
+                        controlMode: 'local',
+                        offlineReady: true,
+                        localAvailable: true,
+                        checkedAt: this.storage.utcNow(),
+                        transport: result.result.transport || target.transport,
+                    });
+                    summary.local += 1;
+                } else {
+                    if (hasLinkedTuyaLocalEndpoint(item.device)) {
+                        this.persistConnectivity(item.device, {
+                            controlMode: 'local',
+                            offlineReady: true,
+                            localAvailable: false,
+                            checkedAt: this.storage.utcNow(),
+                            transport: target.transport,
+                            reason: result.message || 'Endpoint local temporariamente indisponivel.',
+                        });
+                        summary.local += 1;
+                        continue;
+                    }
+                    this.persistConnectivity(item.device, {
+                        controlMode: item.device.integrationId ? 'cloud' : 'unavailable',
+                        offlineReady: false,
+                        localAvailable: false,
+                        checkedAt: this.storage.utcNow(),
+                        transport: target.transport,
+                        reason: result.message || 'Endpoint local nao respondeu.',
+                    });
+                    if (item.device.integrationId) summary.cloudOnly += 1;
+                    else summary.unavailable += 1;
+                }
+            }
+            return summary;
+        } finally {
+            this.localReconcileRunning = false;
+        }
+    }
+
     async commandDevice(deviceId: number, body: CommandRequest) {
         const item = this.getDeviceWithSecrets(deviceId);
         if (!item) return null;
@@ -250,12 +547,29 @@ export class DeviceService {
         const request = { command: body.command, params: body.params || {} };
         const result = await this.commands.executeDeviceCommand(item.device, item.secrets, request);
         this.updateDeviceRuntimeState(deviceId, result);
+        this.persistConnectivityFromCommandResult(deviceId, result);
         this.logDeviceCommand(deviceId, request, result);
         return result;
     }
 
+    async deviceStatus(deviceId: number) {
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item) return null;
+        const query = await this.commands.executeDeviceCommand(item.device, item.secrets, { command: 'query', params: {} });
+        let device = this.updateDeviceRuntimeState(deviceId, query) || item.device;
+        this.persistConnectivityFromCommandResult(deviceId, query);
+        device = this.getDevice(deviceId) || device;
+        this.logDeviceCommand(deviceId, { command: 'query', params: {} }, query);
+        return { device, query };
+    }
+
     updateDeviceRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
         if (!commandResult.ok) return this.getDevice(deviceId);
+        if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(String(commandResult.result.provider))
+            && commandResult.result.action === 'query'
+            && isObject(commandResult.result.statusSummary)) {
+            return this.updateTuyaQueryState(deviceId, commandResult);
+        }
         if (commandResult.result.provider === 'smartthings_cloud' && commandResult.result.action === 'query' && isObject(commandResult.result.statusSummary)) {
             return this.updateSmartthingsQueryState(deviceId, commandResult);
         }
@@ -265,10 +579,26 @@ export class DeviceService {
         if (commandResult.result.provider === 'intelbras_amt8000' && isObject(commandResult.result.statusSummary)) {
             return this.updateAmt8000RuntimeState(deviceId, commandResult);
         }
-        const dps = commandResult.result.dps;
-        if (!isObject(dps) || !Object.keys(dps).length) return this.getDevice(deviceId);
+        if (commandResult.result.provider === 'intelbras_solar' && isObject(commandResult.result.statusSummary)) {
+            return this.updateIntelbrasSolarRuntimeState(deviceId, commandResult);
+        }
+        if (commandResult.result.provider === 'onvif_camera' && isObject(commandResult.result.statusSummary)) {
+            return this.updateOnvifCameraRuntimeState(deviceId, commandResult);
+        }
+        const incomingDps = commandResult.result.dps;
+        if (!isObject(incomingDps) || !Object.keys(incomingDps).length) return this.getDevice(deviceId);
         const current = this.getDevice(deviceId);
         if (!current) return null;
+        const dps = { ...incomingDps };
+        if (
+            current.deviceType === 'FEEDER'
+            && commandResult.result.action === 'query'
+            && commandResult.result.transport === 'local'
+            && dps['1'] === 'AA=='
+        ) {
+            const currentMealPlan = feederMealPlan(current.capabilities.status);
+            if (currentMealPlan && currentMealPlan !== 'AA==') dps['1'] = currentMealPlan;
+        }
 
         const now = this.storage.utcNow();
         const eventSource = eventSourceFromCommandResult(commandResult);
@@ -278,14 +608,19 @@ export class DeviceService {
         const currentValue = mergedDps[activeDpsId];
         const status = {
             ...current.status,
-            state: stateFromValue(currentValue, current.deviceType),
+            state: current.deviceType === 'FEEDER'
+                ? String(mergedDps['4'] || mergedDps.feed_state || current.status.state || 'standby')
+                : stateFromValue(currentValue, current.deviceType),
             online: true,
             lastSeenAt: now,
             dps: mergedDps,
         };
+        const currentStatusEntries = current.capabilities.primarySwitchCode === 'switch_led' && Array.isArray(current.capabilities.status)
+            ? current.capabilities.status.filter((entry: JsonObject) => !/^switch_\d+$/.test(String(entry?.code || '')))
+            : current.capabilities.status || [];
         const capabilities = {
             ...current.capabilities,
-            status: mergeStatusEntries(current.capabilities.status || [], dps),
+            status: mergeStatusEntries(currentStatusEntries, dps),
         };
         const payload = {
             ...current.payload,
@@ -300,7 +635,10 @@ export class DeviceService {
       `,
             [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
         );
-        this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
+        if (current.deviceType !== 'FEEDER') this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
+        if (current.deviceType === 'FEEDER' && commandResult.result.transport === 'local') {
+            this.logFeederReportEvent(deviceId, currentDps, mergedDps, now);
+        }
         this.logRuntimeStatusEvent(deviceId, current.status, status, { dps, ...(eventSource || {}) });
         return this.getDevice(deviceId);
     }
@@ -403,6 +741,42 @@ export class DeviceService {
         return this.getDevice(deviceId);
     }
 
+    private updateIntelbrasSolarRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
+        const current = this.getDevice(deviceId);
+        if (!current) return null;
+        const now = this.storage.utcNow();
+        const status = { ...current.status, ...commandResult.result.statusSummary, lastSeenAt: now };
+        const metrics = Array.isArray(commandResult.result.metrics) ? commandResult.result.metrics : [];
+        const capabilities = { ...current.capabilities, metrics };
+        const payload = { ...current.payload, currentData: commandResult.result.rawStatus, lastSeenAt: now };
+        this.storage.run(
+            'UPDATE devices SET status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ? WHERE id = ?',
+            [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
+        );
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'intelbras_solar', action: 'query' });
+        return this.getDevice(deviceId);
+    }
+
+    private updateOnvifCameraRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
+        const current = this.getDevice(deviceId);
+        if (!current) return null;
+        const now = this.storage.utcNow();
+        const status = { ...current.status, ...commandResult.result.statusSummary, lastSeenAt: now };
+        const capabilities = {
+            ...current.capabilities,
+            authenticated: commandResult.result.statusSummary.authenticated,
+            streamAvailable: commandResult.result.statusSummary.streamAvailable,
+        };
+        this.storage.run('UPDATE devices SET status_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
+            this.storage.jsonDump(status),
+            this.storage.jsonDump(capabilities),
+            now,
+            deviceId,
+        ]);
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'onvif_camera', action: 'query' });
+        return this.getDevice(deviceId);
+    }
+
     private updateSmartthingsQueryState(deviceId: number, commandResult: CommandResult): Device | null {
         const current = this.getDevice(deviceId);
         if (!current) return null;
@@ -423,6 +797,34 @@ export class DeviceService {
         );
         this.updateSmartthingsEntitiesRuntimeState(deviceId, status, rawStatus, now, eventSource || {});
         this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'smartthings_cloud', ...(eventSource || {}) });
+        return this.getDevice(deviceId);
+    }
+
+    private updateTuyaQueryState(deviceId: number, commandResult: CommandResult): Device | null {
+        const current = this.getDevice(deviceId);
+        if (!current) return null;
+        const now = this.storage.utcNow();
+        const result = isObject(commandResult.result) ? commandResult.result : {};
+        const summary = isObject(result.statusSummary) ? result.statusSummary : {};
+        const statusEntries = Array.isArray(result.statusEntries) ? result.statusEntries : [];
+        const dps = isObject(result.dps) ? result.dps : {};
+        const currentDps = isObject(current.status.dps) ? current.status.dps : {};
+        const mergedDps = { ...stringifyKeys(currentDps), ...stringifyKeys(dps) };
+        const status = { ...current.status, ...summary, dps: mergedDps, lastSeenAt: now };
+        const capabilities = { ...current.capabilities, status: statusEntries };
+        const payload = { ...current.payload, status: statusEntries, lastStatus: mergedDps, lastSeenAt: now };
+        this.storage.run(
+            `
+      UPDATE devices
+      SET status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ?
+      WHERE id = ?
+      `,
+            [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
+        );
+        if (current.deviceType !== 'FEEDER') {
+            this.updateEntitiesRuntimeState(deviceId, mergedDps, now, { provider: commandResult.result.provider, action: 'query' }, summary.online !== false);
+        }
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: commandResult.result.provider, action: 'query', dps });
         return this.getDevice(deviceId);
     }
 
@@ -556,7 +958,21 @@ export class DeviceService {
         }
     }
 
-    private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string, payload: JsonObject = {}): void {
+    private logFeederReportEvent(deviceId: number, previousDps: JsonObject, nextDps: JsonObject, createdAt: string): void {
+        const previous = Number(previousDps['15']);
+        const next = Number(nextDps['15']);
+        if (!Number.isFinite(next) || next <= 0 || previous === next) return;
+        this.recordDeviceEvent(
+            deviceId,
+            'feeder_feed_report',
+            'Alimentação registrada',
+            `${next} porção(ões) servida(s).`,
+            'success',
+            { portions: next, source: 'local', createdAt },
+        );
+    }
+
+    private updateEntitiesRuntimeState(deviceId: number, dps: JsonObject, now: string, payload: JsonObject = {}, online = true): void {
         const rows = this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId]);
         for (const row of rows) {
             const commandSchema = this.storage.jsonLoad<JsonObject>(row.command_schema_json, {});
@@ -571,7 +987,7 @@ export class DeviceService {
                 ...state,
                 value,
                 state: stateFromValue(value, row.type),
-                online: true,
+                online,
                 lastSeenAt: now,
                 dps: mergedDps,
             };
@@ -685,7 +1101,172 @@ export class DeviceService {
             if (targetIp && discovery.ip === targetIp) return localPayload(device, discovery, 'ip', this.storage.utcNow());
             if (targetMac && String(discovery.mac || '').toUpperCase() === targetMac) return localPayload(device, discovery, 'mac', this.storage.utcNow());
         }
+        if (targetIp && ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
+            return localPayload(device, {
+                ip: targetIp,
+                source: ['provider_last_ip'],
+                version: firstNonEmpty(nested(device.payload, 'local', 'version'), nested(device.payload, 'payload', 'raw', 'version')),
+            }, 'provider_last_ip', this.storage.utcNow());
+        }
         return null;
+    }
+
+    private localProbeTarget(device: Device): { probe: boolean; cloudOnly?: boolean; reason?: string; transport?: string; params: JsonObject } {
+        if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
+            const ip = privateIp(firstNonEmpty(nested(device.payload, 'local', 'ip'), nested(device.payload, 'payload', 'raw', 'last_ip')));
+            return ip
+                ? { probe: true, transport: 'local', params: { transport: 'local', timeoutMs: 2_000 } }
+                : { probe: false, cloudOnly: device.provider === 'tuya_cloud', reason: 'IP local Tuya ainda nao encontrado.', params: {} };
+        }
+        if (device.provider === 'smartthings_cloud') {
+            return { probe: false, cloudOnly: true, reason: 'SmartThings nao expoe controle LAN generico.', params: {} };
+        }
+        if (device.provider === 'onvif_camera') {
+            return privateIp(device.payload.ip)
+                ? { probe: true, transport: 'rtsp-local', params: {} }
+                : { probe: false, reason: 'Camera sem IP local.', params: {} };
+        }
+        if (device.provider === 'mqtt') {
+            const integration = device.integrationId ? this.storage.get<JsonObject>('SELECT config_json FROM integrations WHERE id = ?', [device.integrationId]) : null;
+            const config = integration ? this.storage.jsonLoad<JsonObject>(integration.config_json, {}) : {};
+            const brokerUrl = String(config.brokerUrl || '');
+            return isPrivateEndpoint(brokerUrl)
+                ? { probe: true, transport: 'mqtt', params: {} }
+                : { probe: false, cloudOnly: true, reason: 'Broker MQTT nao esta na rede local.', params: {} };
+        }
+        if (device.provider === 'intelbras_amt8000') {
+            const integration = device.integrationId ? this.storage.get<JsonObject>('SELECT config_json FROM integrations WHERE id = ?', [device.integrationId]) : null;
+            const config = integration ? this.storage.jsonLoad<JsonObject>(integration.config_json, {}) : {};
+            return privateIp(config.ip)
+                ? { probe: true, transport: 'isecnet-v2', params: {} }
+                : { probe: false, reason: 'Central Intelbras sem IP local.', params: {} };
+        }
+        if (['generic_iot', 'persiana_custom'].includes(device.provider)) {
+            const baseUrl = firstNonEmpty(device.payload.baseUrl, device.capabilities.baseUrl);
+            return isPrivateEndpoint(baseUrl)
+                ? { probe: true, transport: 'http-local', params: {} }
+                : { probe: false, cloudOnly: Boolean(device.integrationId), reason: 'Endpoint HTTP local nao encontrado.', params: {} };
+        }
+        return { probe: false, cloudOnly: Boolean(device.integrationId), reason: 'Provider sem executor local disponivel.', params: {} };
+    }
+
+    private async tryLinkTuyaFromDiscovery(device: Device, secrets: JsonObject): Promise<Device> {
+        const candidates = this.storage.all<JsonObject>('SELECT device_key, payload_json FROM discovery_devices ORDER BY last_seen_at DESC, id DESC')
+            .map((row): JsonObject => ({ ...this.storage.jsonLoad<JsonObject>(row.payload_json, {}), deviceKey: row.device_key }))
+            .filter((candidate) => privateIp(candidate.ip) && Array.isArray(candidate.openPorts) && candidate.openPorts.includes(6668))
+            .slice(0, 12);
+        const attempts = candidates.flatMap((candidate) => ['3.3', '3.4', '3.5'].map(async (version) => {
+            const result = await this.commands.executeDeviceCommand(device, secrets, {
+                command: 'query',
+                params: { transport: 'local', ip: candidate.ip, port: 6668, timeoutMs: 1_000, version },
+            });
+            return { candidate, result, version };
+        }));
+        const match = (await Promise.all(attempts)).find(({ result }) => result.ok && result.result.transport === 'local');
+        if (match) {
+            const payload = localPayload(device, { ...match.candidate, version: match.version }, 'tuya_handshake', this.storage.utcNow());
+            return this.linkLocalDevice(device.id, {
+                localDeviceKey: `local:${match.candidate.ip}:${device.externalId}`,
+                payload,
+            }) || device;
+        }
+        return device;
+    }
+
+    private async linkTuyaDevicesFromBroadcast(): Promise<void> {
+        const broadcasts = await collectTuyaBroadcasts(3_000);
+        const devices = this.listDevices().filter((device) => ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider));
+        for (const broadcast of broadcasts) {
+            const gwId = String(broadcast.gwId || '').trim();
+            const ip = privateIp(broadcast.ip);
+            if (!gwId || !ip) continue;
+            const device = devices.find((candidate) => candidate.externalId === gwId);
+            if (!device) continue;
+            const local = isObject(device.payload.local) ? device.payload.local : {};
+            this.linkLocalDevice(device.id, {
+                localDeviceKey: `local:${ip}:${device.externalId}`,
+                payload: {
+                    ...local,
+                    ip,
+                    source: 'tuya_udp_discovery',
+                    matchBy: 'gwId',
+                    deviceId: device.externalId,
+                    port: 6668,
+                    version: String(local.version || broadcast.version || '3.4'),
+                    primaryDpsId: local.primaryDpsId || dpsIdFromCode(String(device.capabilities.primarySwitchCode || '1')),
+                },
+            });
+        }
+    }
+
+    private persistConnectivity(device: Device, connectivity: JsonObject): void {
+        const current = this.getDevice(device.id);
+        if (!current) return;
+        const previous = isObject(current.status.connectivity) ? current.status.connectivity : {};
+        const status = { ...current.status, connectivity };
+        this.storage.run('UPDATE devices SET status_json = ?, updated_at = ? WHERE id = ?', [
+            this.storage.jsonDump(status),
+            this.storage.utcNow(),
+            device.id,
+        ]);
+        if (previous.controlMode !== connectivity.controlMode || previous.offlineReady !== connectivity.offlineReady) {
+            this.recordDeviceEvent(
+                device.id,
+                connectivity.offlineReady ? 'local_available' : 'local_unavailable',
+                connectivity.offlineReady ? 'Controle local disponivel' : 'Controle local indisponivel',
+                connectivity.offlineReady ? 'O dispositivo pode ser controlado sem internet.' : String(connectivity.reason || 'O dispositivo depende da cloud.'),
+                connectivity.offlineReady ? 'success' : 'warning',
+                connectivity,
+            );
+        }
+    }
+
+    private persistTuyaLocalVersion(deviceId: number, version: string): void {
+        const device = this.getDevice(deviceId);
+        if (!device || !isObject(device.payload.local) || device.payload.local.version === version) return;
+        const payload = { ...device.payload, local: { ...device.payload.local, version } };
+        this.storage.run('UPDATE devices SET payload_json = ?, updated_at = ? WHERE id = ?', [
+            this.storage.jsonDump(payload),
+            this.storage.utcNow(),
+            deviceId,
+        ]);
+    }
+
+    private persistConnectivityFromCommandResult(deviceId: number, result: CommandResult): void {
+        if (!result.ok) return;
+        const device = this.getDevice(deviceId);
+        if (!device) return;
+        const transport = String(result.result.transport || '');
+        if (['local', 'mqtt', 'isecnet-v2', 'http-local'].includes(transport)) {
+            this.persistConnectivity(device, {
+                controlMode: 'local',
+                offlineReady: true,
+                localAvailable: true,
+                checkedAt: this.storage.utcNow(),
+                transport,
+            });
+        } else if (transport === 'cloud' || result.result.fallbackFrom === 'local') {
+            if (hasLinkedTuyaLocalEndpoint(device)) {
+                if (result.result.fallbackFrom !== 'local') return;
+                this.persistConnectivity(device, {
+                    controlMode: 'local',
+                    offlineReady: true,
+                    localAvailable: false,
+                    checkedAt: this.storage.utcNow(),
+                    transport: 'local',
+                    reason: result.result.localError || 'Endpoint local temporariamente indisponivel.',
+                });
+                return;
+            }
+            this.persistConnectivity(device, {
+                controlMode: 'cloud',
+                offlineReady: false,
+                localAvailable: false,
+                checkedAt: this.storage.utcNow(),
+                transport: 'cloud',
+                reason: result.result.localError || 'Comando executado pela cloud.',
+            });
+        }
     }
 
     private fromDeviceRow(row: JsonObject): Device {
@@ -832,6 +1413,84 @@ function isObject(value: unknown): value is JsonObject {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function withoutEmptyValues(value: JsonObject): JsonObject {
+    return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined && item !== null && item !== ''));
+}
+
+async function collectTuyaBroadcasts(waitMs: number): Promise<JsonObject[]> {
+    const broadcasts = new Map<string, JsonObject>();
+    const sockets = [6666, 6667, 7000].map((port) => {
+        const socket = createSocket({ type: 'udp4', reuseAddr: true });
+        socket.on('message', (message) => {
+            const payload = decodeTuyaBroadcast(message);
+            const gwId = String(payload?.gwId || '').trim();
+            if (gwId) broadcasts.set(gwId, payload as JsonObject);
+        });
+        socket.on('error', () => socket.close());
+        socket.bind(port, '0.0.0.0', () => socket.setBroadcast(true));
+        return socket;
+    });
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    for (const socket of sockets) {
+        try {
+            socket.close();
+        } catch {
+            // Socket may already be closed after a bind error.
+        }
+    }
+    return Array.from(broadcasts.values());
+}
+
+function decodeTuyaBroadcast(message: Buffer): JsonObject | null {
+    const directKey = Buffer.from('yGAdlopoPVldABfn');
+    const md5Key = createHash('md5').update(directKey).digest();
+    const candidates = [
+        message,
+        message.subarray(16, Math.max(16, message.length - 8)),
+        message.subarray(20, Math.max(20, message.length - 8)),
+    ];
+    for (const candidate of candidates) {
+        const plain = jsonObjectFromBuffer(candidate);
+        if (plain) return plain;
+        for (const key of [directKey, md5Key]) {
+            try {
+                const decipher = createDecipheriv('aes-128-ecb', key, null);
+                decipher.setAutoPadding(true);
+                const decrypted = Buffer.concat([decipher.update(candidate), decipher.final()]);
+                const decoded = jsonObjectFromBuffer(decrypted);
+                if (decoded) return decoded;
+            } catch {
+                // Try the next known Tuya UDP framing/key combination.
+            }
+        }
+    }
+    return null;
+}
+
+function jsonObjectFromBuffer(value: Buffer): JsonObject | null {
+    const text = value.toString('utf8');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    try {
+        const parsed = JSON.parse(text.slice(start, end + 1));
+        return isObject(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function isTuyaGateway(device: Device): boolean {
+    if (!['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) return false;
+    const category = String(firstNonEmpty(device.capabilities.category, nested(device.payload, 'capabilities', 'category')) || '').toLowerCase();
+    return ['wg', 'wg2', 'gateway'].includes(category);
+}
+
+function hasLinkedTuyaLocalEndpoint(device: Device): boolean {
+    return ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)
+        && Boolean(privateIp(nested(device.payload, 'local', 'ip')));
+}
+
 function stringifyKeys(value: JsonObject): JsonObject {
     return Object.fromEntries(Object.entries(value).map(([key, item]) => [String(key), item]));
 }
@@ -840,13 +1499,23 @@ function mergeStatusEntries(current: unknown, dps: JsonObject): JsonObject[] {
     const merged: JsonObject = {};
     if (Array.isArray(current)) {
         for (const item of current) {
-            if (item && typeof item === 'object' && item.code) merged[String(item.code)] = item.value;
+            if (!item || typeof item !== 'object' || !item.code) continue;
+            const code = String(item.code);
+            const dpsId = dpsIdFromCode(code);
+            merged[code] = has(dps, dpsId) ? dps[dpsId] : item.value;
         }
     }
+    if (Object.keys(merged).length) return Object.entries(merged).map(([code, value]) => ({ code, value }));
     for (const [dpsId, value] of Object.entries(dps)) {
         merged[codeFromDpsId(String(dpsId))] = value;
     }
     return Object.entries(merged).map(([code, value]) => ({ code, value }));
+}
+
+function feederMealPlan(status: unknown): string | null {
+    if (!Array.isArray(status)) return null;
+    const value = status.find((item) => item && typeof item === 'object' && item.code === 'meal_plan')?.value;
+    return typeof value === 'string' ? value : null;
 }
 
 function primaryDpsId(device: Device): string {
@@ -999,7 +1668,7 @@ function localPayload(device: Device, discovery: JsonObject, matchMethod: string
         local.cid = tuyaCid(device);
         local.port = 6668;
         local.primaryDpsId = tuyaPrimaryDpsId(device);
-        local.version = '3.4';
+        local.version = firstNonEmpty(discovery.version, nested(discovery, 'raw', 'version')) || '3.4';
     }
     return Object.fromEntries(Object.entries(local).filter(([, value]) => value !== null && value !== undefined && value !== ''));
 }
@@ -1018,6 +1687,18 @@ function privateIp(value: unknown): string | null {
     if (!text) return null;
     if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(text)) return text;
     return null;
+}
+
+function isPrivateEndpoint(value: unknown): boolean {
+    const text = String(value || '').trim();
+    if (!text) return false;
+    try {
+        const normalized = text.includes('://') ? text : `tcp://${text}`;
+        const hostname = new URL(normalized).hostname;
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || Boolean(privateIp(hostname));
+    } catch {
+        return false;
+    }
 }
 
 function nested(value: JsonObject, ...keys: string[]): any {

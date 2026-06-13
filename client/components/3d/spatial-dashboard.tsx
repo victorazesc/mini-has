@@ -21,6 +21,7 @@ import {
   ListIcon,
   Lock,
   Move3D,
+  PawPrint,
   Power,
   Rotate3D,
   Settings,
@@ -38,6 +39,9 @@ import * as THREE from "three";
 
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
+import { LightControl } from "@/components/capabilities/light/control";
+import { AlarmControl } from "@/components/capabilities/alarm/control";
+import { FeederControl } from "@/components/capabilities/feeder/control";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -48,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useDevices, useSendCommand } from "@/hooks/use-devices";
+import { useEntities } from "@/hooks/use-entities";
 import type { SendCommandVariables } from "@/hooks/use-devices";
 import { useAssetAvailability } from "@/hooks/use-asset-availability";
 import { cn } from "@/lib/utils";
@@ -56,13 +61,14 @@ import { useFloorDevicePositions, useFloors } from "@/hooks/use-floors";
 import { useRooms } from "@/hooks/use-rooms";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
 import type { Device } from "@/src/services/devices.service";
+import type { Entity } from "@/src/services/entities.service";
 import type { Floor, FloorDevicePosition } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
 import { CameraViewControls } from "./camera-view-controls";
 import { FloorModel, FloorModelErrorBoundary } from "./floor-model";
 import { SlideAlarmAction } from "../ui/slideAlarm";
 
-type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm";
+type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm" | "feeder";
 type DevicePosition = [number, number, number];
 
 type WeatherData = {
@@ -77,7 +83,9 @@ type WeatherData = {
 
 type SpatialDevice = {
   id: number;
+  deviceId: number;
   device: Device;
+  entity?: Entity;
   name: string;
   room: string;
   type: DeviceType;
@@ -89,6 +97,7 @@ type SpatialDevice = {
 const EMPTY_FLOORS: Floor[] = [];
 const EMPTY_ROOMS: Room[] = [];
 const EMPTY_DEVICES: Device[] = [];
+const EMPTY_ENTITIES: Entity[] = [];
 const EMPTY_FLOOR_POSITION_ROWS: FloorDevicePosition[] = [];
 
 const DEVICE_Y = 3.39;
@@ -99,11 +108,13 @@ const DEVICE_TYPES: Record<DeviceType, { label: string; color: string }> = {
   cover: { label: "Cortina", color: "#818cf8" },
   sensor: { label: "Sensor", color: "#facc15" },
   alarm: { label: "Central de alarme", color: "#34d399" },
+  feeder: { label: "Alimentador", color: "#2dd4bf" },
 };
 
 function getDeviceVisualState(device: SpatialDevice): "on" | "off" | "offline" {
   if (!device.online) return "offline";
   if (device.type === "sensor") return "on";
+  if (device.type === "feeder") return "on";
   if (device.type === "alarm") return ["armed", "partial"].includes(String(device.state || "").toLowerCase()) ? "on" : "off";
 
   const state = String(device.state || "").toLowerCase();
@@ -140,6 +151,10 @@ function getDeviceType(deviceType: string): DeviceType {
     return "alarm";
   }
 
+  if (normalizedType.includes("feeder") || normalizedType.includes("alimentador")) {
+    return "feeder";
+  }
+
   return "light";
 }
 
@@ -155,6 +170,7 @@ function getFloorRooms(rooms: Room[], selectedFloorId: number | null) {
 
 function buildFloorDevices(
   devices: Device[],
+  entities: Entity[],
   floorRooms: Room[],
   positions: Record<number, DevicePosition>,
 ): SpatialDevice[] {
@@ -163,28 +179,57 @@ function buildFloorDevices(
 
   return devices
     .filter((device) => device.roomId !== null && roomIds.has(device.roomId))
-    .map((device) => ({
-      id: device.id,
-      device,
-      name: device.name,
-      room:
-        device.roomName ??
-        (device.roomId ? roomById.get(device.roomId)?.name : null) ??
-        "Sem cômodo",
-      type: getDeviceType(device.deviceType),
-      online: Boolean(device.status?.online),
-      state: device.status?.state,
-      position: positions[device.id],
-    }));
+    .flatMap((device) => {
+      const room = device.roomName ?? (device.roomId ? roomById.get(device.roomId)?.name : null) ?? "Sem cômodo";
+      const deviceEntities = entities.filter((entity) => entity.deviceId === device.id && entity.commandSchema.switchCode);
+      if (deviceEntities.length > 1) {
+        return deviceEntities.map((entity, index) => ({
+          id: -entity.id,
+          deviceId: device.id,
+          device,
+          entity,
+          name: entity.name,
+          room,
+          type: "light" as const,
+          online: Boolean(device.status?.online),
+          state: entityState(entity),
+          position: positions[-entity.id] ?? (index === 0 ? positions[device.id] : undefined),
+        }));
+      }
+      return [{
+        id: device.id,
+        deviceId: device.id,
+        device,
+        name: device.name,
+        room,
+        type: getDeviceType(device.deviceType),
+        online: Boolean(device.status?.online),
+        state: device.status?.state,
+        position: positions[device.id],
+      }];
+    });
 }
 
 function positionRowsToMap(
-  rows: { deviceId: number; x: number; y: number; z: number }[],
+  rows: { deviceId: number; entityId?: number | null; x: number; y: number; z: number }[],
 ) {
   return rows.reduce<Record<number, DevicePosition>>((acc, row) => {
-    acc[row.deviceId] = [row.x, row.y || DEVICE_Y, row.z];
+    acc[row.entityId ? -row.entityId : row.deviceId] = [row.x, row.y || DEVICE_Y, row.z];
     return acc;
   }, {});
+}
+
+function entityState(entity: Entity): string {
+  const value = entity.state.value;
+  if (typeof value === "boolean") return value ? "on" : "off";
+  return String(value ?? entity.state.state ?? "off");
+}
+
+function entityDpsId(entity: Entity): string {
+  const code = String(entity.commandSchema.switchCode || "switch");
+  if (code === "switch_led") return "20";
+  if (code === "switch") return "1";
+  return code.startsWith("switch_") ? code.slice("switch_".length) : code;
 }
 
 function DeviceGlyph({
@@ -198,6 +243,7 @@ function DeviceGlyph({
   if (type === "cover") return <Blinds className={className} />;
   if (type === "sensor") return <Move3D className={className} />;
   if (type === "alarm") return <Shield className={className} />;
+  if (type === "feeder") return <PawPrint className={className} />;
   return <Lightbulb className={className} />;
 }
 
@@ -371,7 +417,9 @@ function DeviceMarker({
 
   const visualState = getDeviceVisualState(device);
   const stateLabel =
-    visualState === "on" ? "Ligado" : visualState === "off" ? "Desligado" : "Offline";
+    device.type === "feeder"
+      ? String(device.state || "").toLowerCase() === "feeding" ? "Servindo" : "Pronto"
+      : visualState === "on" ? "Ligado" : visualState === "off" ? "Desligado" : "Offline";
   const color =
     visualState === "offline"
       ? "#ef4444"
@@ -474,9 +522,32 @@ function DeviceControlPanel({
       </div>
 
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-        <RealDeviceControl device={device.device} type={device.type} />
+        {device.entity ? <EntitySwitchControl device={device.device} entity={device.entity} /> : <RealDeviceControl device={device.device} type={device.type} />}
       </div>
     </aside>
+  );
+}
+
+function EntitySwitchControl({ device, entity }: { device: Device; entity: Entity }) {
+  const { mutate: sendCommand, isPending } = useSendCommand();
+  const isOn = entityState(entity) === "on";
+
+  return (
+    <button
+      className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/8 p-3 text-left transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={isPending}
+      type="button"
+      onClick={() => sendCommand({
+        deviceId: device.id,
+        command: { command: "set", params: { dpsId: entityDpsId(entity), value: !isOn } },
+      })}
+    >
+      <span>
+        <span className="block text-sm font-medium">{entity.name}</span>
+        <span className="text-xs text-white/45">{isOn ? "Ligado" : "Desligado"}</span>
+      </span>
+      <Power className="size-5" />
+    </button>
   );
 }
 
@@ -529,10 +600,15 @@ function RealDeviceControl({
   if (type === "climate") {
     return (
       <ClimateControl
+        compact
         key={device.id}
         device={device as Device & { status: DeviceStatus }}
       />
     );
+  }
+
+  if (type === "feeder") {
+    return <FeederControl compact device={device} />;
   }
 
   if (type === "sensor") {
@@ -544,53 +620,15 @@ function RealDeviceControl({
   }
 
   if (type === "alarm") {
-    return <AlarmDeviceControl device={device} />;
+    return <AlarmControl compact device={device} />;
+  }
+
+  const normalizedType = device.deviceType.toLowerCase();
+  if (type === "light" && (normalizedType.includes("light") || normalizedType.includes("lamp"))) {
+    return <LightControl compact device={device} />;
   }
 
   return <SwitchDeviceControl device={device} />;
-}
-
-function AlarmDeviceControl({ device }: { device: Device }) {
-  const { mutate: sendCommand, isPending } = useSendCommand();
-  const state = String(device.status?.state || "unknown").toLowerCase();
-  const partitionIndexes = Array.isArray(device.capabilities?.partitionIndexes)
-    ? device.capabilities.partitionIndexes.map(Number).filter(Number.isInteger)
-    : [];
-
-  const command = (action: string, partition?: number) => {
-    if (action.startsWith("disarm") && !window.confirm("Desarmar a central de alarme?")) return;
-    sendCommand({
-      deviceId: device.id,
-      command: { command: action, params: partition ? { partition } : {} },
-    });
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-white/10 bg-white/8 p-3 text-sm">
-        <p className="text-white/45">Estado da central</p>
-        <p className="mt-1 font-medium capitalize">{state}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button disabled={isPending} onClick={() => command("arm")} variant="outline">Armar tudo</Button>
-        <Button disabled={isPending} onClick={() => command("disarm")} variant="destructive">Desarmar tudo</Button>
-      </div>
-      {partitionIndexes.length ? (
-        <div className="space-y-2">
-          <p className="text-xs text-white/45">Partições</p>
-          {partitionIndexes.map((partition) => (
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 p-2" key={partition}>
-              <span className="text-sm">Partição {partition}</span>
-              <div className="flex gap-2">
-                <Button disabled={isPending} onClick={() => command("arm_partition", partition)} size="sm" variant="outline">Armar</Button>
-                <Button disabled={isPending} onClick={() => command("disarm_partition", partition)} size="sm" variant="ghost">Desarmar</Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 function SwitchDeviceControl({ device }: { device: Device }) {
@@ -681,9 +719,16 @@ function SwitchDeviceControl({ device }: { device: Device }) {
 function getTurnOffCommands(device: SpatialDevice): SendCommandVariables[] {
   if (!device.online || getDeviceVisualState(device) !== "on") return [];
 
+  if (device.entity) {
+    return [{
+      deviceId: device.deviceId,
+      command: { command: "set", params: { dpsId: entityDpsId(device.entity), value: false } },
+    }];
+  }
+
   if (device.type === "climate") {
     return [{
-      deviceId: device.id,
+      deviceId: device.deviceId,
       command: { command: "turn_off", params: {} },
     }];
   }
@@ -694,7 +739,7 @@ function getTurnOffCommands(device: SpatialDevice): SendCommandVariables[] {
 
   if (activeChannels.length) {
     return activeChannels.map((channel) => ({
-      deviceId: device.id,
+      deviceId: device.deviceId,
       command: {
         command: "set",
         params: { dpsId: channel.dpsId, value: false },
@@ -703,7 +748,7 @@ function getTurnOffCommands(device: SpatialDevice): SendCommandVariables[] {
   }
 
   return [{
-    deviceId: device.id,
+    deviceId: device.deviceId,
     command: { command: "turn_off", params: {} },
   }];
 }
@@ -813,6 +858,7 @@ function FilterDock({
     { icon: AirVent, label: "Clima", type: "climate" as const },
     { icon: Blinds, label: "Cortinas", type: "cover" as const },
     { icon: Move3D, label: "Sensores", type: "sensor" as const },
+    { icon: PawPrint, label: "Alimentadores", type: "feeder" as const },
   ].filter((item) => availableTypes.includes(item.type));
 
   return (
@@ -843,6 +889,7 @@ export function SpatialDashboard() {
   const { data: floors = EMPTY_FLOORS } = useFloors();
   const { data: rooms = EMPTY_ROOMS } = useRooms();
   const { data: devices = EMPTY_DEVICES } = useDevices();
+  const { data: entities = EMPTY_ENTITIES } = useEntities();
   const [selectedFloorId, setSelectedFloorId] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<number | null>(null);
   const [activeDeviceType, setActiveDeviceType] = useState<DeviceType | "all">("all");
@@ -959,8 +1006,8 @@ export function SpatialDashboard() {
   );
   const positions = useMemo(() => positionRowsToMap(positionRows), [positionRows]);
   const floorDevices = useMemo(
-    () => buildFloorDevices(devices, floorRooms, positions),
-    [devices, floorRooms, positions],
+    () => buildFloorDevices(devices, entities, floorRooms, positions),
+    [devices, entities, floorRooms, positions],
   );
   const positionedDevices = useMemo(
     () => floorDevices.filter((device) => device.position),

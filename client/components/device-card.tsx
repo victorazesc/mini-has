@@ -6,6 +6,7 @@ import { Skeleton } from "./ui/skeleton"
 import { Device } from "@/src/services/devices.service"
 import { DEVICE_ICON_BY_TYPE } from "@/src/constants/devices_types"
 import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers"
+import { DeviceConnectivityBadge } from "@/components/device-connectivity-badge"
 
 export function DeviceCard({ device, isNew = false }: {
     device: Device,
@@ -45,6 +46,7 @@ export function DeviceCard({ device, isNew = false }: {
                         <span>{ProviderName}</span>
                     </div>
                 </div>
+                <DeviceConnectivityBadge device={device} />
             </CardFooter>
         </Card >
     )

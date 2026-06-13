@@ -28,6 +28,8 @@ export class CommandsService {
       if (device.provider === 'smartthings_cloud') return await this.executeSmartthingsCommand(device, request);
       if (device.provider === 'mqtt') return await this.executeMqttCommand(device, request);
       if (device.provider === 'intelbras_amt8000') return await this.executeAmt8000Command(device, secrets, request);
+      if (device.provider === 'intelbras_solar') return await this.executeIntelbrasSolarCommand(device, request);
+      if (device.provider === 'onvif_camera') return await this.executeOnvifCameraCommand(device, secrets, request);
       if (['generic_iot', 'persiana_custom'].includes(device.provider)) return await this.executeHttpCommand(device, request);
       return { ok: false, status: 'unsupported', message: `Provider ${device.provider} ainda nao tem executor.`, result: {} };
     } catch (error) {
@@ -36,7 +38,10 @@ export class CommandsService {
   }
 
   private async executeTuyaCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
-    const transport = String((request.params || {}).transport || 'local').trim();
+    const localAvailable = nested(device.status, 'connectivity', 'localAvailable');
+    const defaultTransport = device.provider === 'tuya_cloud' && (!hasTuyaLocalEndpoint(device) || localAvailable === false) ? 'cloud' : 'local';
+    const transport = String((request.params || {}).transport || defaultTransport).trim();
+    const explicitLocal = transport === 'local' && Boolean((request.params || {}).transport);
     if (transport === 'cloud') return this.executeTuyaCloudCommand(device, request);
     try {
       return await this.executeTuyaLocalCommand(device, secrets, request);
@@ -58,6 +63,7 @@ export class CommandsService {
         }
       }
 
+      if (explicitLocal) throw localError;
       if (!device.integrationId) throw localError;
       try {
         const cloudResult = await this.executeTuyaCloudCommand(device, request);
@@ -106,20 +112,59 @@ export class CommandsService {
     if (!device.integrationId) throw new Error('Device Tuya sem integrationId.');
     const integration = this.getIntegration(device.integrationId);
     if (!integration) throw new Error('Integracao Tuya nao encontrada.');
+    if (request.command === 'query') {
+      const result = await this.providers.getTuyaDeviceStatus(integration, device.externalId);
+      return {
+        ok: true,
+        status: 'ok',
+        message: 'Status Tuya consultado.',
+        result: {
+          deviceId: device.id,
+          provider: device.provider,
+          transport: 'cloud',
+          action: 'query',
+          dps: dpsFromTuyaStatus(result.statusEntries),
+          ...result,
+        },
+      };
+    }
     const commands = tuyaCommandsFromRequest(device, request);
     const result = await this.providers.sendTuyaDeviceCommands(integration, device.externalId, commands);
     return {
       ok: true,
       status: 'sent',
       message: 'Comando enviado para Tuya.',
-      result: { deviceId: device.id, provider: device.provider, commands, dps: dpsFromTuyaCommands(commands), ...result },
+      result: { deviceId: device.id, provider: device.provider, transport: 'cloud', commands, dps: dpsFromTuyaCommands(commands), ...result },
     };
   }
 
   private async executeTuyaLocalCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
     const config = tuyaLocalConfig(device, secrets, request);
+    const configuredVersion = String(config.version);
+    const versions = request.command === 'query' && !(request.params || {}).version
+      ? [configuredVersion, configuredVersion === '3.4' ? '3.5' : '3.4']
+      : [configuredVersion];
+    let lastError: unknown;
+    for (const version of versions) {
+      try {
+        return await this.executeTuyaLocalCommandWithVersion(device, request, { ...config, version });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError;
+  }
+
+  private async executeTuyaLocalCommandWithVersion(device: Device, request: CommandRequest, config: JsonObject): Promise<CommandResult> {
     const dpsId = tuyaLocalDpsId(device, request);
-    const client = new TuyaLanClient(config.ip, config.deviceId, config.localKey, config.port, config.timeoutMs);
+    const client = new TuyaLanClient(
+      String(config.ip),
+      String(config.deviceId),
+      String(config.localKey),
+      Number(config.port),
+      Number(config.timeoutMs),
+      String(config.version),
+    );
     try {
       await client.connect();
       if (request.command === 'query') {
@@ -143,7 +188,12 @@ export class CommandsService {
     const body = params.body || { command: request.command, params };
     const url = new URL(path.replace(/^\/+/, ''), `${baseUrl.replace(/\/+$/, '')}/`).toString();
     const response = await this.providers.httpJson(method, url, { 'Content-Type': 'application/json' }, JSON.stringify(body));
-    return { ok: true, status: 'sent', message: 'Comando enviado por HTTP.', result: { deviceId: device.id, provider: device.provider, response } };
+    return {
+      ok: true,
+      status: request.command === 'query' ? 'ok' : 'sent',
+      message: 'Comando enviado por HTTP.',
+      result: { deviceId: device.id, provider: device.provider, transport: 'http-local', action: request.command, response },
+    };
   }
 
   private async executeMqttCommand(device: Device, request: CommandRequest): Promise<CommandResult> {
@@ -204,6 +254,52 @@ export class CommandsService {
         transport: 'isecnet-v2',
         action: request.command,
         statusSummary: amt8000StatusSummary(status),
+      },
+    };
+  }
+
+  private async executeIntelbrasSolarCommand(device: Device, request: CommandRequest): Promise<CommandResult> {
+    if (request.command !== 'query') {
+      throw new Error('Intelbras Solar permite apenas consulta. Controle eletrico do microinversor nao esta habilitado.');
+    }
+    if (!device.integrationId) throw new Error('Device Intelbras Solar sem integrationId.');
+    const integration = this.getIntegration(device.integrationId);
+    if (!integration) throw new Error('Integracao Intelbras Solar nao encontrada.');
+    const deviceId = device.capabilities.deviceId || nested(device.payload, 'device', 'deviceId');
+    const result = await this.providers.getIntelbrasSolarDeviceStatus(integration, device.externalId, deviceId);
+    return {
+      ok: true,
+      status: 'ok',
+      message: 'Geracao Intelbras Solar atualizada.',
+      result: {
+        deviceId: device.id,
+        provider: device.provider,
+        transport: 'cloud',
+        action: 'query',
+        ...result,
+      },
+    };
+  }
+
+  private async executeOnvifCameraCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
+    if (request.command !== 'query') throw new Error('Camera ONVIF/RTSP permite apenas consulta neste momento.');
+    if (!device.integrationId) throw new Error('Camera sem integrationId.');
+    const integration = this.getIntegration(device.integrationId);
+    if (!integration) throw new Error('Integracao de cameras nao encontrada.');
+    const ip = String(request.params?.ip || device.payload.ip || '').trim();
+    const port = Number(request.params?.port || device.capabilities.rtspPort || 554);
+    const path = String(request.params?.path || device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0');
+    const result = await this.providers.getOnvifCameraStatus(integration, ip, port, path, secrets);
+    return {
+      ok: true,
+      status: 'ok',
+      message: result.probe.streamAvailable ? 'Stream RTSP da camera validado.' : 'Camera encontrada; stream ainda nao validado.',
+      result: {
+        deviceId: device.id,
+        provider: device.provider,
+        transport: 'rtsp-local',
+        action: 'query',
+        ...result,
       },
     };
   }
@@ -278,6 +374,7 @@ function tuyaLocalResult(device: Device, config: JsonObject, action: string, dps
       dpsId,
       value,
       dps: payload && typeof payload === 'object' ? payload.dps : null,
+      version: config.version,
     },
   };
 }
@@ -287,10 +384,6 @@ function tuyaLocalConfig(device: Device, secrets: JsonObject, request: CommandRe
   const ip = firstNonEmpty(
     params.ip,
     nested(device.payload, 'local', 'ip'),
-    device.payload.ip,
-    nested(device.payload, 'payload', 'ip'),
-    nested(device.payload, 'payload', 'raw', 'last_ip'),
-    nested(device.payload, 'payload', 'raw', 'ip'),
     String(device.localDeviceKey || '').startsWith('ip:') ? String(device.localDeviceKey).replace(/^ip:/, '') : null,
   );
   const localKey = firstNonEmpty(params.localKey, secrets.localKey, nested(device.payload, 'local', 'localKey'));
@@ -304,7 +397,15 @@ function tuyaLocalConfig(device: Device, secrets: JsonObject, request: CommandRe
     cid: firstNonEmpty(params.cid, nested(device.payload, 'local', 'cid'), device.payload.cid),
     port: Number(params.port || nested(device.payload, 'local', 'port') || device.payload.port || DEFAULT_PORT),
     timeoutMs: Number(params.timeoutMs || DEFAULT_TIMEOUT_MS),
+    version: String(params.version || nested(device.payload, 'local', 'version') || device.payload.version || '3.4'),
   };
+}
+
+function hasTuyaLocalEndpoint(device: Device): boolean {
+  return Boolean(firstNonEmpty(
+    nested(device.payload, 'local', 'ip'),
+    String(device.localDeviceKey || '').startsWith('ip:') ? String(device.localDeviceKey).replace(/^ip:/, '') : null,
+  ));
 }
 
 function tuyaLocalDpsId(device: Device, request: CommandRequest): string {
@@ -331,6 +432,7 @@ function tuyaLocalDpsId(device: Device, request: CommandRequest): string {
 async function tuyaLocalValue(device: Device, request: CommandRequest, dpsId: string, client: TuyaLanClient, cid?: string | null): Promise<unknown> {
   const params = request.params || {};
   const rawCommands = params.commands;
+  if ('localValue' in params) return params.localValue;
   if (Array.isArray(rawCommands) && rawCommands[0] && typeof rawCommands[0] === 'object' && 'value' in rawCommands[0]) return rawCommands[0].value;
   if (request.command === 'turn_on') return true;
   if (request.command === 'turn_off') return false;
@@ -386,6 +488,15 @@ function dpsFromTuyaCommands(commands: JsonObject[]): JsonObject {
     dps[dpsIdFromCode(code)] = command.value;
   }
   return dps;
+}
+
+function dpsFromTuyaStatus(status: unknown): JsonObject {
+  if (!Array.isArray(status)) return {};
+  return Object.fromEntries(
+    status
+      .filter((entry): entry is JsonObject => Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry) && 'code' in entry)
+      .map((entry) => [dpsIdFromCode(String(entry.code)), entry.value]),
+  );
 }
 
 function smartthingsCommandsFromRequest(device: Device, request: CommandRequest): JsonObject[] {

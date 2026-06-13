@@ -29,7 +29,6 @@ export class EntityService {
           ON CONFLICT(unique_key) DO UPDATE SET
             device_id = excluded.device_id,
             type = excluded.type,
-            name = excluded.name,
             command_schema_json = excluded.command_schema_json,
             state_json = excluded.state_json,
             capabilities_json = excluded.capabilities_json,
@@ -50,6 +49,19 @@ export class EntityService {
             }
         });
         return this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ? ORDER BY id', [deviceId]).map((row) => this.fromEntityRow(row));
+    }
+
+    updateEntity(entityId: number, body: JsonObject): Entity | null {
+        const current = this.getEntity(entityId);
+        if (!current) return null;
+
+        if (Object.prototype.hasOwnProperty.call(body, 'name')) {
+            const name = String(body.name || '').trim();
+            if (!name) throw new Error('Nome da entidade e obrigatorio.');
+            this.storage.run('UPDATE entities SET name = ?, updated_at = ? WHERE id = ?', [name, this.storage.utcNow(), entityId]);
+        }
+
+        return this.getEntity(entityId);
     }
 
     commandEntity(entityId: number, body: CommandRequest): CommandResult | null {

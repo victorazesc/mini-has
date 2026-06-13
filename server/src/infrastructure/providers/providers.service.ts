@@ -11,12 +11,15 @@ import {
 } from '../../types';
 import { MqttConnectionOptions, MqttMessage, MqttService } from '../mqtt/mqtt.service';
 import { StorageService } from '../storage/storage.service';
+import { DiscoveryService } from '../discovery/discovery-runner.service';
 import { Amt8000Client, Amt8000Status } from './amt8000.client';
+import { CameraProbeResult, OnvifCameraClient } from './onvif-camera.client';
 
 const EMPTY_BODY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 const SMARTTHINGS_API_BASE_URL = 'https://api.smartthings.com';
 const SMARTTHINGS_TOKEN_URL = `${SMARTTHINGS_API_BASE_URL}/oauth/token`;
 const SMARTTHINGS_REFRESH_SKEW_MS = 5 * 60 * 1000;
+const SOLARMAN_API_BASE_URL = 'https://globalapi.solarmanpv.com';
 const MQTT_DEFAULT_DISCOVERY_PREFIX = 'homeassistant';
 const TUYA_BOOLEAN_PRIORITY = ['switch_led', 'switch_1', 'switch', 'switch_2', 'switch_3', 'switch_4', 'switch_usb1', 'switch_usb2'];
 const TUYA_REGIONS = [
@@ -33,6 +36,8 @@ const SECRET_FIELDS: Partial<Record<IntegrationType, Set<string>>> = {
   mqtt: new Set(['username', 'password']),
   tuya_local: new Set(['localKey']),
   intelbras_amt8000: new Set(['password']),
+  intelbras_solar: new Set(['appSecret', 'password']),
+  onvif_camera: new Set(['username', 'password']),
 };
 
 @Injectable()
@@ -40,6 +45,7 @@ export class ProvidersService {
   constructor(
     private readonly storage: StorageService,
     private readonly mqtt: MqttService,
+    private readonly discovery: DiscoveryService,
   ) { }
 
   listProviderDefinitions(): ProviderDefinition[] {
@@ -82,6 +88,18 @@ export class ProvidersService {
         ],
       },
       {
+        type: 'intelbras_solar',
+        name: 'Intelbras Solar Send',
+        description: 'Importa microinversores Intelbras e leituras dos modulos pela API Solarman.',
+        fields: [
+          { key: 'appId', label: 'Solarman App ID', required: true },
+          { key: 'appSecret', label: 'Solarman App Secret', required: true, secret: true },
+          { key: 'email', label: 'E-mail da conta', required: true },
+          { key: 'password', label: 'Senha da conta', required: true, secret: true },
+          { key: 'moduleCount', label: 'Quantidade de modulos', default: 4 },
+        ],
+      },
+      {
         type: 'persiana_custom',
         name: 'Persiana Custom',
         description: 'Provider local para a persiana fabricada em casa.',
@@ -101,7 +119,14 @@ export class ProvidersService {
         ],
       },
       { type: 'esphome', name: 'ESPHome', description: 'Provider reservado para ESPHome local.', status: 'planned' },
-      { type: 'onvif_camera', name: 'ONVIF Camera', description: 'Provider reservado para cameras ONVIF/RTSP.', status: 'planned' },
+      {
+        type: 'onvif_camera',
+        name: 'Cameras ONVIF/RTSP',
+        description: 'Busca cameras IP na rede local e conecta aos streams RTSP.',
+        fields: [
+          { key: 'subnetPrefix', label: 'Sub-rede', help: 'Ex: 192.168.1' },
+        ],
+      },
       {
         type: 'mqtt',
         name: 'MQTT',
@@ -161,6 +186,26 @@ export class ProvidersService {
           },
         };
       }
+      if (integration.type === 'intelbras_solar') {
+        const token = await this.solarmanAccessToken(integration);
+        const stations = await this.solarmanRequest(integration, token, '/station/v1.0/list', {});
+        const stationList = solarmanList(stations, 'stationList');
+        return {
+          ok: true,
+          status: 'connected',
+          message: `Intelbras Solar Send conectado. ${stationList.length} planta(s) encontrada(s).`,
+          details: { stations: stationList.length },
+        };
+      }
+      if (integration.type === 'onvif_camera') {
+        const cameras = await this.discoverCameras(integration);
+        return {
+          ok: true,
+          status: 'connected',
+          message: `${cameras.length} camera(s) RTSP encontrada(s) na rede.`,
+          details: { cameras: cameras.length },
+        };
+      }
       return { ok: true, status: 'created', message: 'Provider registrado; sync ainda nao implementado.' };
     } catch (error) {
       return { ok: false, status: 'error', message: messageFrom(error) };
@@ -172,6 +217,8 @@ export class ProvidersService {
     if (integration.type === 'smartthings_cloud') return this.syncSmartthings(integration);
     if (integration.type === 'mqtt') return this.syncMqtt(integration);
     if (integration.type === 'intelbras_amt8000') return this.syncAmt8000(integration);
+    if (integration.type === 'intelbras_solar') return this.syncIntelbrasSolar(integration);
+    if (integration.type === 'onvif_camera') return this.syncOnvifCameras(integration);
     if (integration.type === 'persiana_custom' || integration.type === 'generic_iot') return [[this.deviceFromHttpLikeProvider(integration)], {}];
     if (integration.type === 'intelbras_izy_tuya') {
       return [[], { note: 'Use discovery LAN para achar Tuya 6667/6668 e Tuya Cloud para obter nomes/localKey.' }];
@@ -186,6 +233,20 @@ export class ProvidersService {
     return { region: region.key, response };
   }
 
+  async getTuyaDeviceStatus(integration: StoredIntegration, deviceId: string) {
+    const [token, region] = await this.tuyaGetTokenForIntegration(integration);
+    const response = await this.tuyaRequest(integration, region, 'GET', `/v1.0/devices/${deviceId}`, {}, undefined, token);
+    if (!response.success) throw new Error(response.msg || 'Falha ao consultar status Tuya.');
+    const rawStatus = response.result && typeof response.result === 'object' && !Array.isArray(response.result) ? response.result : {};
+    const normalized = normalizeTuyaDevice(rawStatus, region);
+    const safeRawStatus = Object.fromEntries(Object.entries(rawStatus).filter(([key]) => key !== 'local_key'));
+    return {
+      rawStatus: safeRawStatus,
+      statusEntries: Array.isArray(rawStatus.status) ? rawStatus.status : [],
+      statusSummary: normalized.status,
+    };
+  }
+
   async sendSmartthingsDeviceCommands(integration: StoredIntegration, deviceId: string, commands: JsonObject[]) {
     const response = await this.smartthingsRequest(integration, `/v1/devices/${deviceId}/commands`, 'POST', { commands });
     return { response };
@@ -194,6 +255,32 @@ export class ProvidersService {
   async getSmartthingsDeviceStatus(integration: StoredIntegration, deviceId: string) {
     const rawStatus = await this.smartthingsRequest(integration, `/v1/devices/${deviceId}/status`);
     return { rawStatus, statusSummary: smartthingsStatusSummary(rawStatus) };
+  }
+
+  async getIntelbrasSolarDeviceStatus(integration: StoredIntegration, deviceSn: string, deviceId?: number | string) {
+    const token = await this.solarmanAccessToken(integration);
+    const rawStatus = await this.solarmanRequest(integration, token, '/device/v1.0/currentData', {
+      deviceSn,
+      ...(deviceId ? { deviceId: Number(deviceId) } : {}),
+    });
+    return {
+      rawStatus,
+      statusSummary: solarmanStatusSummary(rawStatus),
+      metrics: solarmanMetrics(rawStatus),
+    };
+  }
+
+  async getOnvifCameraStatus(integration: StoredIntegration, ip: string, port: number, path: string, credentials: JsonObject = {}) {
+    const probe = await this.cameraClient(integration, ip, port, path, credentials).probe();
+    return {
+      probe,
+      statusSummary: {
+        online: probe.online,
+        state: probe.streamAvailable ? 'streaming' : probe.online ? 'idle' : 'offline',
+        authenticated: probe.authenticated,
+        streamAvailable: probe.streamAvailable,
+      },
+    };
   }
 
   async publishMqttCommand(integration: StoredIntegration, topic: string, payload: unknown, retain = false) {
@@ -337,11 +424,127 @@ export class ProvidersService {
     }];
   }
 
+  private async syncIntelbrasSolar(integration: StoredIntegration): Promise<[ProviderDevice[], JsonObject]> {
+    const token = await this.solarmanAccessToken(integration);
+    const stationResponse = await this.solarmanRequest(integration, token, '/station/v1.0/list', {});
+    const stations = solarmanList(stationResponse, 'stationList');
+    const devices: ProviderDevice[] = [];
+
+    for (const station of stations) {
+      const stationId = Number(station.id || station.stationId);
+      if (!Number.isFinite(stationId)) continue;
+      const deviceResponse = await this.solarmanRequest(integration, token, '/station/v1.0/device', { stationId, deviceType: 'INVERTER' });
+      const stationDevices = solarmanList(deviceResponse, 'deviceListItems');
+      for (const device of stationDevices) {
+        const deviceSn = String(device.deviceSn || device.sn || '').trim();
+        if (!deviceSn) continue;
+        let currentData: JsonObject = {};
+        try {
+          currentData = await this.solarmanRequest(integration, token, '/device/v1.0/currentData', {
+            deviceSn,
+            ...(device.deviceId ? { deviceId: Number(device.deviceId) } : {}),
+          });
+        } catch (error) {
+          currentData = { error: messageFrom(error) };
+        }
+        devices.push(normalizeIntelbrasSolarDevice(integration, station, device, currentData));
+      }
+    }
+
+    return [devices, { stations: stations.length, devices: devices.length, moduleCount: solarModuleCount(integration) }];
+  }
+
+  private async syncOnvifCameras(integration: StoredIntegration): Promise<[ProviderDevice[], JsonObject]> {
+    const cameras = await this.discoverCameras(integration);
+    const devices: ProviderDevice[] = [];
+    for (const camera of cameras) {
+      const ip = String(camera.ip || '').trim();
+      const port = camera.openPorts.includes(554) ? 554 : camera.openPorts.includes(8554) ? 8554 : 554;
+      const path = '/cam/realmonitor?channel=1&subtype=0';
+      const probe = await this.cameraClient(integration, ip, port, path).probe();
+      devices.push(normalizeOnvifCamera(integration, camera, port, path, probe));
+    }
+    return [devices, { cameras: devices.length, subnetPrefix: integration.config.subnetPrefix || 'auto' }];
+  }
+
+  private async discoverCameras(integration: StoredIntegration) {
+    const { result } = await this.discovery.scanNow({
+      subnet_prefix: String(integration.config.subnetPrefix || '').trim() || undefined,
+      scan_ports: true,
+      timeout_seconds: Number(integration.config.timeoutSeconds || 1),
+      probeMode: 'aggressive',
+      ports: [80, 443, 554, 8554],
+    }, { upsertInbox: false });
+    return result.filter((device) => device.deviceType === 'camera' || device.openPorts.some((port) => [554, 8554].includes(port)));
+  }
+
+  private cameraClient(integration: StoredIntegration, ip: string, port: number, path: string, credentials: JsonObject = {}): OnvifCameraClient {
+    return new OnvifCameraClient(
+      ip,
+      port,
+      String(credentials.username || ''),
+      String(credentials.password || ''),
+      path,
+      Number(integration.config.timeoutMs || 2_500),
+    );
+  }
+
   private amt8000Client(integration: StoredIntegration): Amt8000Client {
     const ip = String(integration.config.ip || '').trim();
     const port = Number(integration.config.port || 9009);
     const password = String(integration.secrets.password || '').trim();
     return new Amt8000Client(ip, port, password);
+  }
+
+  private async solarmanAccessToken(integration: StoredIntegration): Promise<string> {
+    const appId = String(integration.config.appId || '').trim();
+    const appSecret = String(integration.secrets.appSecret || '').trim();
+    const email = String(integration.config.email || '').trim();
+    const username = String(integration.config.username || '').trim();
+    const password = String(integration.secrets.password || '').trim();
+    if (!appId || !appSecret || (!email && !username) || !password) {
+      throw new Error('App ID, App Secret, conta e senha do Solarman sao obrigatorios.');
+    }
+    const response = await this.solarmanFetch(integration, `/account/v1.0/token?appId=${encodeURIComponent(appId)}`, {
+      appSecret,
+      ...(email ? { email } : { username }),
+      password: /^[a-f0-9]{64}$/i.test(password) ? password : sha256(password),
+    });
+    const token = String(response.access_token || response.accessToken || '').trim();
+    if (!token) throw new Error(solarmanErrorMessage(response, 'Falha ao autenticar na API Solarman.'));
+    return token;
+  }
+
+  private async solarmanRequest(integration: StoredIntegration, token: string, path: string, body: JsonObject): Promise<JsonObject> {
+    const response = await this.solarmanFetch(integration, path, body, token);
+    if (response.success === false || response.code && ![0, '0'].includes(response.code)) {
+      throw new Error(solarmanErrorMessage(response));
+    }
+    return response;
+  }
+
+  private async solarmanFetch(integration: StoredIntegration, path: string, body: JsonObject, token?: string): Promise<JsonObject> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const baseUrl = String(integration.config.apiBaseUrl || SOLARMAN_API_BASE_URL).replace(/\/+$/, '');
+      const response = await fetch(`${baseUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      const data = await readJsonResponse(response);
+      if (!response.ok) throw new Error(solarmanErrorMessage(data, `Solarman HTTP ${response.status}.`));
+      return data;
+    } catch (error) {
+      throw new Error(messageFrom(error));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private mqttConnectionOptions(integration: StoredIntegration): MqttConnectionOptions {
@@ -484,6 +687,182 @@ export class ProvidersService {
       entities: [{ key: 'main', type: deviceType, name: integration.name, commandSchema, capabilities: { baseUrl } }],
     };
   }
+}
+
+function normalizeIntelbrasSolarDevice(
+  integration: StoredIntegration,
+  station: JsonObject,
+  device: JsonObject,
+  currentData: JsonObject,
+): ProviderDevice {
+  const deviceSn = String(device.deviceSn || device.sn || '').trim();
+  const deviceId = Number(device.deviceId || device.id);
+  const moduleCount = solarModuleCount(integration);
+  const metrics = solarmanMetrics(currentData);
+  const status = solarmanStatusSummary(currentData, device);
+  const name = String(device.deviceName || device.name || `Microinversor ${deviceSn}`).trim();
+  const entities: ProviderEntity[] = [
+    {
+      key: 'main',
+      type: 'solar_inverter',
+      name,
+      commandSchema: { commands: ['query'], readOnly: true },
+      state: status,
+      capabilities: { readOnly: true, metrics },
+    },
+    ...Array.from({ length: moduleCount }, (_, index) => {
+      const module = index + 1;
+      const moduleMetrics = metrics.filter((metric) => solarmanMetricModule(metric) === module);
+      const power = solarmanMetricNumber(moduleMetrics, ['power', 'potencia', 'pdc']);
+      return {
+        key: `module_${module}`,
+        type: 'sensor',
+        name: `Modulo solar ${module}`,
+        commandSchema: { commands: ['query'], readOnly: true },
+        state: { online: status.online, state: power > 0 ? 'generating' : 'idle', power, metrics: moduleMetrics },
+        capabilities: { module, deviceClass: 'power', readOnly: true, metrics: moduleMetrics },
+      };
+    }),
+  ];
+
+  return {
+    externalId: deviceSn,
+    name,
+    provider: 'intelbras_solar',
+    deviceType: 'solar_inverter',
+    manufacturer: 'Intelbras',
+    model: String(device.deviceModel || device.model || 'Microinversor').trim(),
+    localDeviceKey: null,
+    capabilities: {
+      readOnly: true,
+      moduleCount,
+      stationId: station.id || station.stationId,
+      stationName: station.name || station.stationName,
+      deviceId: Number.isFinite(deviceId) ? deviceId : null,
+      metrics,
+    },
+    status,
+    payload: {
+      station,
+      device,
+      currentData,
+      platform: 'solarman',
+      cloudOnly: true,
+    },
+    entities,
+  };
+}
+
+function normalizeOnvifCamera(
+  integration: StoredIntegration,
+  camera: import('../../types').DiscoveredDevice,
+  port: number,
+  path: string,
+  probe: CameraProbeResult,
+): ProviderDevice {
+  const ip = String(camera.ip || '').trim();
+  const externalId = String(camera.mac || ip).trim();
+  const safeRtspUrl = `rtsp://${ip}:${port}${path.startsWith('/') ? path : `/${path}`}`;
+  const name = camera.name && camera.name !== 'Possível câmera IP'
+    ? camera.name
+    : `Camera ${ip.split('.').at(-1) || externalId}`;
+  const status = {
+    online: probe.online,
+    state: probe.streamAvailable ? 'streaming' : probe.online ? 'idle' : 'offline',
+    authenticated: probe.authenticated,
+    streamAvailable: probe.streamAvailable,
+    error: probe.error || null,
+  };
+  return {
+    externalId,
+    name,
+    provider: 'onvif_camera',
+    deviceType: 'camera',
+    manufacturer: camera.manufacturer || null,
+    model: camera.model || probe.server || null,
+    ip,
+    mac: camera.mac || null,
+    localDeviceKey: `rtsp:${ip}:${port}`,
+    capabilities: {
+      readOnly: true,
+      rtspUrl: safeRtspUrl,
+      rtspPort: port,
+      rtspPath: path,
+      onvifUrl: `http://${ip}/onvif/device_service`,
+      authenticated: probe.authenticated,
+      streamAvailable: probe.streamAvailable,
+    },
+    status,
+    payload: {
+      ip,
+      mac: camera.mac || null,
+      openPorts: camera.openPorts,
+      services: camera.services,
+      rtspUrl: safeRtspUrl,
+      onvifUrl: `http://${ip}/onvif/device_service`,
+      discovery: camera,
+    },
+    secrets: {},
+    entities: [{
+      key: 'main',
+      type: 'camera',
+      name,
+      commandSchema: { commands: ['query'], readOnly: true },
+      state: status,
+      capabilities: { readOnly: true, rtspUrl: safeRtspUrl, onvifUrl: `http://${ip}/onvif/device_service` },
+    }],
+  };
+}
+
+function solarModuleCount(integration: StoredIntegration): number {
+  const value = Number(integration.config.moduleCount || 4);
+  return Number.isFinite(value) ? Math.min(16, Math.max(1, value)) : 4;
+}
+
+function solarmanList(response: JsonObject, preferredKey: string): JsonObject[] {
+  const candidates = [response[preferredKey], response.list, response.items, response.data];
+  return candidates.find(Array.isArray) || [];
+}
+
+function solarmanMetrics(response: JsonObject): JsonObject[] {
+  return solarmanList(response, 'dataList').filter((item) => item && typeof item === 'object');
+}
+
+function solarmanStatusSummary(response: JsonObject, device: JsonObject = {}): JsonObject {
+  const metrics = solarmanMetrics(response);
+  const power = solarmanMetricNumber(metrics, ['pac', 'ac power', 'output power', 'potencia ativa', 'potencia de saida']);
+  const todayEnergy = solarmanMetricNumber(metrics, ['e-today', 'etoday', 'daily production', 'energia diaria', 'yield today']);
+  const totalEnergy = solarmanMetricNumber(metrics, ['e-total', 'etotal', 'total production', 'energia total', 'total yield']);
+  const rawState = device.deviceState ?? response.deviceState ?? response.state;
+  const online = rawState === undefined ? !response.error : ![3, -1, '3', '-1', 'offline'].includes(rawState);
+  return {
+    online,
+    state: online ? (power > 0 ? 'generating' : 'idle') : 'offline',
+    power,
+    todayEnergy,
+    totalEnergy,
+    collectionTime: response.collectionTime || response.collectTime || null,
+  };
+}
+
+function solarmanMetricNumber(metrics: JsonObject[], terms: string[]): number {
+  const metric = metrics.find((item) => {
+    const text = [item.key, item.name, item.i18nKey].filter(Boolean).join(' ').toLowerCase();
+    return terms.some((term) => text === term || text.includes(term));
+  });
+  const value = Number(metric?.value);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function solarmanMetricModule(metric: JsonObject): number | null {
+  const text = [metric.key, metric.name, metric.i18nKey].filter(Boolean).join(' ').toLowerCase();
+  const match = text.match(/(?:pv|mppt|module|modulo|input|entrada|dc)[ _-]*0?(\d{1,2})/i);
+  return match ? Number(match[1]) : null;
+}
+
+function solarmanErrorMessage(response: JsonObject, fallback = 'Falha na API Solarman.'): string {
+  const message = response.msg || response.message || response.error_description || response.error || response.raw;
+  return typeof message === 'string' && message.trim() ? message : fallback;
 }
 
 function normalizeAmt8000Device(integration: StoredIntegration, status: Amt8000Status): ProviderDevice {
@@ -739,22 +1118,26 @@ function mqttConfigString(config: JsonObject, key: string, shortKey: string): st
 
 function normalizeTuyaDevice(device: JsonObject, region: (typeof TUYA_REGIONS)[number]): ProviderDevice {
   const status = Array.isArray(device.status) ? device.status : [];
-  const switchCode = primarySwitchCode(status);
-  const switchCodes = switchCodesFrom(status);
-  const kind = inferTuyaKind(device, switchCode);
+  const detectedSwitchCode = primarySwitchCode(status);
+  const kind = inferTuyaKind(device, detectedSwitchCode);
+  const switchCode = kind === 'FEEDER' ? null : detectedSwitchCode;
+  const switchCodes = kind === 'FEEDER' ? [] : switchCodesFrom(status);
   const localKey = String(device.local_key || '').trim() || null;
   const ip = String(device.last_ip || device.ip || '').trim() || null;
   const externalId = String(device.id || device.dev_id || '').trim();
   const name = String(device.name || device.product_name || 'Dispositivo Tuya').trim();
   const entityType = kind === 'light' ? 'light' : kind === 'switch' ? 'switch' : kind === 'sensor' ? 'sensor' : kind;
-  const entities: ProviderEntity[] = switchCodes.map((code, index) => ({
-    key: code,
-    type: entityType,
-    name: switchCodes.length === 1 ? name : `${name} ${index + 1}`,
-    commandSchema: { commands: ['turn_on', 'turn_off', 'toggle'], switchCode: code },
-    state: { online: device.online, status },
-    capabilities: { status },
-  }));
+  const entities: ProviderEntity[] = switchCodes.map((code, index) => {
+    const value = status.find((entry) => entry.code === code)?.value;
+    return {
+      key: code,
+      type: entityType,
+      name: switchCodes.length === 1 ? name : `${name} ${index + 1}`,
+      commandSchema: { commands: ['turn_on', 'turn_off', 'toggle'], switchCode: code },
+      state: { online: device.online, status, value, state: value === true ? 'on' : 'off' },
+      capabilities: { status },
+    };
+  });
 
   return {
     externalId,
@@ -766,7 +1149,17 @@ function normalizeTuyaDevice(device: JsonObject, region: (typeof TUYA_REGIONS)[n
     ip,
     productKey: String(device.product_key || device.productKey || '').trim() || null,
     localDeviceKey: `tuya:${externalId}`,
-    capabilities: { category: device.category, primarySwitchCode: switchCode, status },
+    capabilities: {
+      category: device.category,
+      primarySwitchCode: switchCode,
+      status,
+      ...(kind === 'FEEDER' ? {
+        feeder: {
+          maxPortions: 12,
+          dps: { mealPlan: 1, manualFeed: 3, feedState: 4, factoryReset: 14, feedReport: 15 },
+        },
+      } : {}),
+    },
     status: { online: device.online, state: inferTuyaState(status, device.online, switchCode, kind) },
     payload: {
       category: device.category,
@@ -861,6 +1254,9 @@ function inferTuyaKind(device: JsonObject, switchCode: string | null): string {
 }
 
 function inferTuyaState(status: JsonObject[], online: boolean | null | undefined, switchCode: string | null, kind: string): string {
+  if (kind === 'FEEDER') {
+    return String(status.find((item) => item.code === 'feed_state')?.value || (online === false ? 'offline' : 'standby'));
+  }
   if (switchCode) {
     const entry = status.find((item) => item.code === switchCode && typeof item.value === 'boolean');
     if (entry) return entry.value ? 'on' : 'off';

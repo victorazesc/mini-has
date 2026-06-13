@@ -21,6 +21,14 @@ export type Device = {
         state: string;
         dps: Record<string, unknown>;
         lastSeenAt: string;
+        connectivity?: {
+            controlMode?: "local" | "cloud" | "unavailable";
+            offlineReady?: boolean;
+            localAvailable?: boolean;
+            checkedAt?: string;
+            transport?: string;
+            reason?: string;
+        };
     };
     capabilities: Record<string, unknown>;
     createdAt: string;
@@ -65,6 +73,26 @@ export async function getDevice(deviceId: number): Promise<Device> {
     return response.json();
 }
 
+export type DeviceConfiguration = {
+    cameraConfig?: {
+        ip: string;
+        port: number;
+        username: string;
+        password: string;
+        rtspPath: string;
+    };
+};
+
+export async function getDeviceConfiguration(deviceId: number): Promise<DeviceConfiguration> {
+    const response = await fetch(`/api/devices/${deviceId}/configuration`, { cache: "no-store" });
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao buscar configuração do dispositivo"));
+    }
+
+    return response.json();
+}
+
 export async function getDeviceHistory(deviceId: number, limit = 40): Promise<DeviceHistoryEntry[]> {
     const response = await fetch(`/api/devices/${deviceId}/history?limit=${limit}`);
 
@@ -79,6 +107,13 @@ export type UpdateDevicePayload = {
     name: string;
     deviceType: string;
     roomId: number | null;
+    cameraConfig?: {
+        ip: string;
+        port: number;
+        username: string;
+        password: string;
+        rtspPath: string;
+    };
 };
 
 export async function updateDevice(deviceId: number, data: UpdateDevicePayload): Promise<Device> {
