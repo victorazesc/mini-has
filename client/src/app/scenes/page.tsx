@@ -12,14 +12,14 @@ export default function ScenesPage() {
     const { data: scenes = [], isLoading, isError } = useScenes()
 
     return (
-        <main className="flex flex-1 flex-col gap-4 px-4 lg:px-6">
-            <section className="flex items-center justify-between">
+        <main className="flex flex-1 flex-col gap-4 px-3 sm:px-4 lg:px-6">
+            <section className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold">Scenes</h1>
                     <p className="text-sm text-muted-foreground">Agrupe comandos manuais em execuções reutilizáveis.</p>
                 </div>
                 <UpsertSceneDialog>
-                    <Button variant="outline">
+                    <Button variant="outline" className="w-full sm:w-auto">
                         <PlusCircleIcon className="size-4" />
                         Nova cena
                     </Button>

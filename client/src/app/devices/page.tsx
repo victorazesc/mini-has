@@ -55,20 +55,20 @@ export default function Devices() {
   }, [setRightAction, setTitle])
 
   return (
-    <main className="flex flex-1 flex-col px-4 lg:px-6">
+    <main className="flex flex-1 flex-col px-3 sm:px-4 lg:px-6">
       <div className="@container/main flex flex-1 flex-col gap-2 space-y-4">
 
         {/* Status and IP */}
-        <section className="flex flex-row gap-2 justify-between items-center">
+        <section className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Badge variant="outline">{offlineReadyCount}/{devices.length} disponíveis offline</Badge>
           </div>
           <NewIntegrationDialog>
-            <Button variant="outline"><PlusCircle className="size-4" /> Nova Integração</Button>
+            <Button variant="outline" className="w-full sm:w-auto"><PlusCircle className="size-4" /> Nova Integração</Button>
           </NewIntegrationDialog>
         </section>
         {/* Search and Filter */}
-        <section className="flex flex-row gap-4 justify-between">
+        <section className="flex flex-col gap-3 sm:flex-row sm:justify-between">
           <InputGroup>
             <InputGroupInput
               placeholder="Buscar dispositivos..."
@@ -80,7 +80,7 @@ export default function Devices() {
             </InputGroupAddon>
           </InputGroup>
           <Select>
-            <SelectTrigger className="w-[280px]">
+            <SelectTrigger className="w-full sm:w-[280px]">
               <SelectValue placeholder="Tipo de dispositivo" />
             </SelectTrigger>
             <SelectContent>
@@ -95,7 +95,7 @@ export default function Devices() {
           </Select>
         </section>
         {/* Total devices and active devices */}
-        <section className="flex flex-row gap-4">
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <ScanDevicesDialog integrationId={0}>
             <Card className="w-full">
               <CardHeader>

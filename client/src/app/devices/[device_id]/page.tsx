@@ -120,15 +120,15 @@ export default function DevicePage() {
     };
     useEffect(() => {
         setTitle(
-            <span className="flex items-center gap-2">
+            <span className="flex min-w-0 items-center gap-2">
                 {deviceOnline ?
                     <span className="flex items-center gap-2 text-green-500">
                         <Circle size={12} fill="green" />
                     </span> : <span className="flex items-center gap-2 text-red-500">
                         <Circle size={12} fill="red" />
                     </span>}
-                {deviceName}
-                <span className="text-muted-foreground">
+                <span className="truncate">{deviceName}</span>
+                <span className="hidden text-muted-foreground sm:inline">
                     <span className="text-muted-foreground">
                         • {deviceRoomName}
                     </span>
@@ -199,16 +199,16 @@ export default function DevicePage() {
 
 
     return (
-        <main className="flex flex-1 flex-col px-4 lg:px-6">
+        <main className="flex flex-1 flex-col px-3 sm:px-4 lg:px-6">
             <div className="@container/main flex flex-1 flex-col gap-2 space-y-4  ">
-                <div className="flex flex-row gap-2 items-center px-6 bg-transparent border-none outline-none shadow-none ">
-                    <div className="flex flex-row gap-2 items-center flex-2">
-                        <div className="flex items-center justify-center rounded-full bg-secondary p-1 h-32 w-32">
-                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} className="size-[130px] object-contain" />
+                <div className="flex flex-col gap-4 bg-transparent px-0 shadow-none outline-none lg:flex-row lg:items-center lg:px-6">
+                    <div className="flex flex-2 flex-col items-start gap-3 sm:flex-row sm:items-center">
+                        <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-secondary p-1 sm:size-32">
+                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} className="size-24 object-contain sm:size-[130px]" />
                         </div>
-                        <div className="flex flex-col gap-2">
-                            <h1 className="text-2xl font-semibold">{device.name}</h1>
-                            <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex flex-col gap-2">
+                            <h1 className="truncate text-xl font-semibold sm:text-2xl">{device.name}</h1>
+                            <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant="outline" >
                                     {device.status.online ?
                                         <span className="flex items-center gap-2 text-green-500">
@@ -228,11 +228,11 @@ export default function DevicePage() {
                                 <DeviceConnectivityBadge device={device} />
                             </div>
                             <p className="text-muted-foreground flex items-center gap-2"><Home className="size-4" /> {device.roomName}</p>
-                            <p className="text-muted-foreground flex items-center gap-2"><Building className="size-4" /> {device.payload.manufacturer} • {device.payload.model}</p>
+                            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Building className="size-4 shrink-0" /> <span className="truncate">{device.payload.manufacturer} • {device.payload.model}</span></p>
                         </div>
                     </div>
                     <Card
-                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && !isAlarm && !isCamera && !isFeeder && !isPrinter && "cursor-pointer")}
+                        className={cn("w-full rounded-3xl px-5 py-4 lg:flex-1 lg:px-6 lg:py-5", !isCover && !isAlarm && !isCamera && !isFeeder && !isPrinter && "cursor-pointer")}
                         onClick={isCover || isAlarm || isCamera || isFeeder || isPrinter ? undefined : handlePowerToggle}
                     >
                         <div className="flex items-center justify-between gap-6">
@@ -264,7 +264,7 @@ export default function DevicePage() {
 
                 <Separator />
 
-                <div className="flex flex-row gap-6 w-full">
+                <div className="flex w-full flex-col gap-4 lg:flex-row lg:gap-6">
                     {switchChannels.map((channel) => (
                         <SwitchChannelCard key={channel.dpsId} channel={channel} onToggle={() => handleToggle(device.id, channel.dpsId, channel.value)} />
                     ))}

@@ -32,15 +32,15 @@ export default function RoomsPage() {
 
     return (
         <main className="bg-background">
-            <section className="flex flex-1 flex-col gap-4 px-4 lg:px-6 pb-6">
-                <section className="flex items-center justify-between">
+            <section className="flex flex-1 flex-col gap-4 px-3 pb-6 sm:px-4 lg:px-6">
+                <section className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold">Ambientes</h1>
                         <p className="text-sm text-muted-foreground">Ambientes da casa inteligente pisos e cômodos.</p>
                     </div>
 
                     <DropdownMenu>
-                        <DropdownMenuTrigger nativeButton render={<Button variant="outline" />}>
+                        <DropdownMenuTrigger nativeButton render={<Button variant="outline" className="w-full sm:w-auto" />}>
                             <CirclePlusIcon className="size-4" />
                             Adicionar
                         </DropdownMenuTrigger>
@@ -106,7 +106,7 @@ export default function RoomsPage() {
                 </div>
             </section>
 
-            <section className="flex flex-1 flex-col gap-6 px-4 lg:px-6 py-8">
+            <section className="flex flex-1 flex-col gap-6 px-3 py-8 sm:px-4 lg:px-6">
                 <h1 className="text-xl font-semibold">Cômodos</h1>
 
                 <div className="@container/main grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

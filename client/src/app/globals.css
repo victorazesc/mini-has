@@ -129,9 +129,16 @@
 
   body {
     @apply bg-background text-foreground;
+    min-width: 0;
+    overflow-x: hidden;
   }
 
   html {
     @apply font-sans;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
   }
 }

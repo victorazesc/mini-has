@@ -325,16 +325,16 @@ function WeatherPanel() {
     .replace(/^./, (letter) => letter.toUpperCase());
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       <div>
-        <p className="text-lg text-white/70">{date}</p>
-        <div className="mt-3 flex items-center gap-4">
-          <span className="text-4xl font-light leading-none">
+        <p className="text-sm text-white/70 sm:text-lg">{date}</p>
+        <div className="mt-1 flex items-center gap-3 sm:mt-3 sm:gap-4">
+          <span className="text-3xl font-light leading-none sm:text-4xl">
             {weather ? `${Math.round(weather.temperature)}°C` : "--°C"}
           </span>
           <WeatherIcon code={weather?.weatherCode ?? -1} isDay={weather?.isDay ?? true} />
         </div>
-        <p className="mt-3 text-lg text-white">
+        <p className="mt-1 text-sm text-white sm:mt-3 sm:text-lg">
           {weather ? getWeatherDescription(weather.weatherCode) : "Atualizando clima..."}
         </p>
       </div>
@@ -348,37 +348,38 @@ function SummaryCard({ devices, alarmDevice }: { devices: SpatialDevice[]; alarm
   const alarmActive = ["armed", "partial"].includes(alarmState);
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-black/35 p-4 text-white backdrop-blur">
-      <h2 className="text-base font-semibold">Resumo da casa</h2>
-      <div className="mt-4 space-y-3 text-sm">
-        <div className="flex items-center justify-between gap-5">
+    <section className="rounded-2xl border border-white/10 bg-black/45 p-3 text-white backdrop-blur sm:p-4">
+      <h2 className="hidden text-base font-semibold sm:block">Resumo da casa</h2>
+      <div className="grid grid-cols-4 gap-2 text-xs sm:mt-4 sm:block sm:space-y-3 sm:text-sm">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-5">
           <span className="flex items-center gap-3 text-white/90">
             <ListIcon className="size-4" />
-            Dispositivos
+            <span className="hidden sm:inline">Dispositivos</span>
           </span>
           <span>{devices.length}</span>
         </div>
-        <div className="flex items-center justify-between gap-5">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-5">
           <span className="flex items-center gap-3 text-white/90">
             <Circle className="size-4 text-emerald-400" />
-            Ativos
+            <span className="hidden sm:inline">Ativos</span>
           </span>
           <span>{activeDevices}</span>
         </div>
-        <div className="flex items-center justify-between gap-5">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-5">
           <span className="flex items-center gap-3 text-white/90">
             <TriangleAlert className="size-4 text-yellow-400" />
-            Alertas
+            <span className="hidden sm:inline">Alertas</span>
           </span>
           <span>0</span>
         </div>
-        <div className="flex items-center justify-between gap-5">
+        <div className="flex flex-col items-center gap-1 sm:flex-row sm:justify-between sm:gap-5">
           <span className="flex items-center gap-3 text-white/90">
             <Shield className="size-4 text-red-500" />
-            Segurança
+            <span className="hidden sm:inline">Segurança</span>
           </span>
-          <span className={alarmActive ? "text-emerald-400" : "text-red-500"}>
-            {alarmActive ? (alarmState === "partial" ? "Parcial" : "Armada") : "Desativada"}
+          <span className={cn("max-w-full truncate", alarmActive ? "text-emerald-400" : "text-red-500")}>
+            <span className="sm:hidden">{alarmActive ? "On" : "Off"}</span>
+            <span className="hidden sm:inline">{alarmActive ? (alarmState === "partial" ? "Parcial" : "Armada") : "Desativada"}</span>
           </span>
         </div>
       </div>
@@ -506,7 +507,7 @@ function DeviceControlPanel({
     : "Sem registro";
 
   return (
-    <aside className="absolute bottom-20 right-5 top-5 z-20 flex w-[380px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/85 p-4 text-white shadow-2xl backdrop-blur">
+    <aside className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex max-h-[72dvh] w-auto flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-4 text-white shadow-2xl backdrop-blur lg:absolute lg:inset-x-auto lg:bottom-20 lg:right-5 lg:top-5 lg:max-h-none lg:w-[380px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-white/45">{device.room}</p>
@@ -844,7 +845,7 @@ function QuickActions({ devices, alarmDevice }: { devices: SpatialDevice[]; alar
     }
   }, [alarmDevice]);
   return (
-    <div className="absolute bottom-5 left-6 z-20 flex gap-3">
+    <div className="absolute bottom-5 left-6 z-20 hidden gap-3 md:flex">
       <SlideAlarmAction
         status={alarmStatus}
         onArm={activateAlarm}
@@ -890,7 +891,7 @@ function FilterDock({
   ].filter((item) => availableTypes.includes(item.type));
 
   return (
-    <div className="absolute bottom-6 right-6 z-20 flex gap-3">
+    <div className="absolute inset-x-3 bottom-3 z-20 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/45 p-1 backdrop-blur md:inset-x-auto md:bottom-6 md:right-6 md:gap-3 md:overflow-visible md:border-0 md:bg-transparent md:p-0">
       {[...items, { icon: Grid2X2, label: "Todos", type: "all" as const }].map((item) => {
         const Icon = item.icon;
         return (
@@ -931,8 +932,8 @@ export function SpatialDashboard() {
 
   useEffect(() => {
     setTitle(
-      <div className="flex items-center gap-3">
-        <span>Visão espacial</span>
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <span className="hidden sm:inline">Visão espacial</span>
         <Select
           disabled={!floors.length}
           value={selectedFloorId ? String(selectedFloorId) : null}
@@ -944,7 +945,7 @@ export function SpatialDashboard() {
         >
           <SelectTrigger
             aria-label="Selecionar piso"
-            className="w-44 border border-border bg-background/80 px-3"
+            className="w-32 border border-border bg-background/80 px-2 sm:w-44 sm:px-3"
             size="sm"
           >
             <SelectValue placeholder="Selecionar piso">
@@ -962,8 +963,8 @@ export function SpatialDashboard() {
       </div>,
     );
     setRightAction(
-      <div className="flex items-center gap-3">
-        <div className="flex rounded-full border border-border p-0.5">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden rounded-full border border-border p-0.5 sm:flex">
           <Button
             className="rounded-full px-3"
             onClick={() => cameraActions?.topView()}
@@ -983,7 +984,7 @@ export function SpatialDashboard() {
             Isométrica
           </Button>
         </div>
-        <span className="h-5 w-px bg-border" />
+        <span className="hidden h-5 w-px bg-border sm:block" />
         <Button
           aria-label="Editar piso selecionado"
           disabled={!selectedFloorId}
@@ -1094,12 +1095,14 @@ export function SpatialDashboard() {
   }
 
   return (
-    <main className="-my-4 min-h-[calc(100vh-var(--header-height))] overflow-hidden bg-background md:-my-6">
-      <div className="relative min-h-[calc(100vh-var(--header-height))]">
-        <div className="absolute left-6 top-7 z-20 w-[280px] space-y-3">
+    <main className="-my-3 min-h-[calc(100dvh-var(--header-height)-5rem)] overflow-hidden bg-background md:-my-6 md:min-h-[calc(100vh-var(--header-height))]">
+      <div className="relative min-h-[calc(100dvh-var(--header-height)-5rem)] md:min-h-[calc(100vh-var(--header-height))]">
+        <div className="absolute left-3 right-3 top-3 z-20 space-y-2 sm:left-6 sm:right-auto sm:top-7 sm:w-[280px] sm:space-y-3">
           <WeatherPanel />
           <SummaryCard alarmDevice={alarmDevice} devices={floorDevices} />
-          <EnergyCard />
+          <div className="hidden md:block">
+            <EnergyCard />
+          </div>
         </div>
 
         {selectedDevice ? (
