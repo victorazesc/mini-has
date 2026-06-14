@@ -12,12 +12,14 @@ import { IntegrationProviderModule } from './modules/integration-provider/integr
 import { IntegrationModule } from './modules/integration/integration.module';
 import { RoomModule } from './modules/room/room.module';
 import { SceneModule } from './modules/scene/scene.module';
+import { SolarModule } from './modules/solar/solar.module';
 
 @Module({
   imports: [
     HomeModule,
     HealthModule,
     SceneModule,
+    SolarModule,
     AutomationModule,
     CameraRecordingModule,
     DeviceModule,

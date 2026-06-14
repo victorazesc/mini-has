@@ -272,7 +272,45 @@ export class ProvidersService {
 
   async getOnvifCameraStatus(integration: StoredIntegration, ip: string, port: number, path: string, credentials: JsonObject = {}) {
     const client = this.cameraClient(integration, ip, port, path, credentials);
-    const probe = await client.probe();
+    let probe = await client.probe();
+    const currentRtspPath = path.startsWith('/') ? path : `/${path}`;
+    let streamConfig = {
+      rtspUrl: `rtsp://${ip}:${port}${currentRtspPath}`,
+      rtspPort: port,
+      rtspPath: currentRtspPath,
+      onvifUrl: `http://${ip}/onvif/device_service`,
+    };
+    let onvifAuthenticated = false;
+
+    if (String(credentials.username || '').trim() && String(credentials.password || '').trim()) {
+      try {
+        const discovered = await client.discoverStreamConfig();
+        onvifAuthenticated = true;
+        streamConfig = { ...streamConfig, ...discovered };
+        if (!probe.streamAvailable || discovered.rtspPort !== port || discovered.rtspPath !== currentRtspPath) {
+          const discoveredProbe = await this.cameraClient(integration, ip, discovered.rtspPort, discovered.rtspPath, credentials).probe();
+          probe = {
+            ...probe,
+            online: probe.online || discoveredProbe.online,
+            authenticated: probe.authenticated || discoveredProbe.authenticated,
+            streamAvailable: probe.streamAvailable || discoveredProbe.streamAvailable,
+            statusCode: discoveredProbe.statusCode || probe.statusCode,
+            server: discoveredProbe.server || probe.server,
+            publicMethods: discoveredProbe.publicMethods || probe.publicMethods,
+            error: discoveredProbe.streamAvailable ? null : discoveredProbe.error || probe.error || null,
+          };
+        }
+      } catch (error) {
+        if (!probe.error) probe = { ...probe, error: messageFrom(error) };
+      }
+    }
+
+    probe = {
+      ...probe,
+      online: probe.online || onvifAuthenticated,
+      authenticated: probe.authenticated || onvifAuthenticated,
+      error: probe.streamAvailable ? null : probe.error || null,
+    };
     const ptz = probe.authenticated ? await client.probePtz() : { available: false, error: 'Autenticacao obrigatoria para detectar PTZ.' };
     return {
       probe: { ...probe, ptzAvailable: ptz.available, ptzError: ptz.error || null },
@@ -281,9 +319,11 @@ export class ProvidersService {
         state: probe.streamAvailable ? 'streaming' : probe.online ? 'idle' : 'offline',
         authenticated: probe.authenticated,
         streamAvailable: probe.streamAvailable,
+        error: probe.error || null,
         ptzAvailable: ptz.available,
         ptzError: ptz.error || null,
       },
+      streamConfig,
     };
   }
 

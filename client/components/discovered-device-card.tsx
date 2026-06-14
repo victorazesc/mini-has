@@ -28,7 +28,7 @@ export function DiscoveredDeviceCard({ device, onAddDevice, addDeviceLoading, on
     const online = device.payload.status?.online
     const identification = device.payload.identification
     const DeviceIcon = DEVICE_ICON_BY_TYPE[deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
-    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
+    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "/providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const [selectedRoom, setSelectedRoom] = useState<string | undefined>(undefined)
     return (

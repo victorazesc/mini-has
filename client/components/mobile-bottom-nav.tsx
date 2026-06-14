@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { House, ListIcon, PlaySquare, Sofa, Workflow } from "lucide-react"
+import { House, ListIcon, PlaySquare, Sofa, SunIcon, Workflow } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -12,6 +12,7 @@ const items = [
   { title: "Ambientes", url: "/rooms", icon: Sofa },
   { title: "Cenas", url: "/scenes", icon: PlaySquare },
   { title: "Automações", url: "/automations", icon: Workflow },
+  { title: "Solar", url: "/solar", icon: SunIcon },
 ]
 
 export function MobileBottomNav() {
@@ -19,7 +20,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md md:hidden">
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-6">
         {items.map((item) => {
           const active = pathname === item.url || (item.url !== "/" && pathname.startsWith(`${item.url}/`))
           const Icon = item.icon

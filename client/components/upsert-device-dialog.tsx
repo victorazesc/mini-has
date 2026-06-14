@@ -179,13 +179,19 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
                         : !authenticated
                             ? "Usuário ou senha recusados pela câmera."
                             : "Credenciais aceitas, mas o caminho RTSP não respondeu.";
-                    setCameraValidationFeedback({ status: "error", message });
-                    toast.error(message);
-                    return;
+                    if (!online || !authenticated) {
+                        setCameraValidationFeedback({ status: "error", message });
+                        toast.error(message);
+                        return;
+                    }
+                    setCameraValidationFeedback({ status: "success", message });
+                    toast.success("Credenciais da câmera salvas");
                 }
 
-                setCameraValidationFeedback({ status: "success", message: "Credenciais aceitas e stream RTSP validado." });
-                toast.success("Credenciais da câmera validadas");
+                if (streamAvailable) {
+                    setCameraValidationFeedback({ status: "success", message: "Credenciais aceitas e stream RTSP validado." });
+                    toast.success("Credenciais da câmera validadas");
+                }
             }
 
             await Promise.all(solarModules

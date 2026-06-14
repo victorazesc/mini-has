@@ -13,7 +13,7 @@ import { Device } from "@/src/services/devices.service";
 import Image from "next/image";
 import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers";
 import { Badge } from "@/components/ui/badge";
-import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus, deviceImageSrc } from "@/src/constants/devices_types";
+import { DEVICE_ICON_BY_TYPE, DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus, deviceImageSrc } from "@/src/constants/devices_types";
 import { Separator } from "@/components/ui/separator";
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
@@ -27,6 +27,8 @@ import { CameraControl } from "@/components/capabilities/camera/control";
 import { FeederControl } from "@/components/capabilities/feeder/control";
 import { PrinterControl } from "@/components/capabilities/printer/control";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSolarLoggers } from "@/hooks/use-solar";
+import { SolarLogger } from "@/src/services/solar.service";
 
 type SwitchChannel = {
     dpsId: string;
@@ -80,6 +82,7 @@ export default function DevicePage() {
         refetch: refetchHistory,
     } = useDeviceHistory(deviceId, 40);
     const { mutate: sendCommand } = useSendCommand();
+    const { data: solarData } = useSolarLoggers(device?.deviceType === "solar_inverter");
     const { setTitle, setRightAction } = useHeaderTitle();
     const queriedDeviceIdRef = useRef<number | null>(null);
     const deviceName = device?.name ?? "";
@@ -184,14 +187,48 @@ export default function DevicePage() {
     const isCamera = device.deviceType.toLowerCase().includes("camera") || device.deviceType.toLowerCase() === "cam";
     const isFeeder = device.deviceType.toLowerCase() === "feeder";
     const isPrinter = device.deviceType.toLowerCase() === "printer";
-    const switchChannels = isLight || isAlarm || isCamera || isFeeder || isPrinter ? [] : getSwitchChannels(device, entities.filter((entity) => entity.deviceId === device.id));
+    const isSolar = device.deviceType.toLowerCase() === "solar_inverter";
+    const switchChannels = isLight || isAlarm || isCamera || isFeeder || isPrinter || isSolar ? [] : getSwitchChannels(device, entities.filter((entity) => entity.deviceId === device.id));
 
-    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
+    const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "/providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const DeviceTypeName = DEVICE_TYPES_NAME_BY_TYPE[device.deviceType as keyof typeof DEVICE_TYPES_NAME_BY_TYPE] ?? "Device"
+    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Power
     const isCover = device.deviceType === "cover";
-    const isOn = isCover ? device.status.state === "open" : isAlarm ? ["armed", "partial"].includes(device.status.state) : isCamera || isPrinter ? Boolean(device.status.online) : device.status.state === "on";
-    const stateText = isCover ? coverStateText(device.status.state) : isAlarm ? alarmStateText(device.status.state) : isCamera ? cameraStateText(device.status.state, device.status.online) : isPrinter ? printerStateText(device.status.state, device.status.online) : isFeeder ? feederStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
+    const solarLogger = isSolar ? matchSolarLogger(device, solarData?.loggers || []) : null;
+    const solarPowerW = solarLogger?.currentPowerW ?? firstNumber(
+        nestedNumber(device.status, "power"),
+        nestedNumber(device.status, "currentPowerW"),
+        nestedNumber(device.status, "pac"),
+        nestedNumber(device.payload, "currentPowerW"),
+        nestedNumber(device.payload, "power"),
+        nestedNumber(device.capabilities, "power"),
+    );
+    const solarTodayEnergyKwh = solarLogger?.todayEnergyKwh ?? firstNumber(
+        nestedNumber(device.status, "todayEnergyKwh"),
+        nestedNumber(device.status, "todayEnergy"),
+        nestedNumber(device.status, "yieldToday"),
+        nestedNumber(device.payload, "todayEnergyKwh"),
+        nestedNumber(device.payload, "todayEnergy"),
+    );
+    const solarTotalEnergyKwh = solarLogger?.totalEnergyKwh ?? firstNumber(
+        nestedNumber(device.status, "totalEnergyKwh"),
+        nestedNumber(device.status, "totalEnergy"),
+        nestedNumber(device.status, "yieldTotal"),
+        nestedNumber(device.payload, "totalEnergyKwh"),
+        nestedNumber(device.payload, "totalEnergy"),
+    );
+    const solarSignalPercent = solarLogger?.signalPercent ?? firstNumber(
+        nestedNumber(device.status, "signalPercent"),
+        nestedNumber(device.payload, "signalPercent"),
+    );
+    const solarOnline = solarLogger?.online ?? device.status.online;
+    const isOn = isSolar
+        ? solarOnline && (solarPowerW || 0) > 0
+        : isCover ? device.status.state === "open" : isAlarm ? ["armed", "partial"].includes(device.status.state) : isCamera || isPrinter ? Boolean(device.status.online) : device.status.state === "on";
+    const stateText = isSolar
+        ? solarStateText(device.status.state, solarOnline, solarPowerW)
+        : isCover ? coverStateText(device.status.state) : isAlarm ? alarmStateText(device.status.state) : isCamera ? cameraStateText(device.status.state, device.status.online) : isPrinter ? printerStateText(device.status.state, device.status.online) : isFeeder ? feederStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
     const imageSrc = deviceImageSrc(device.deviceType);
     const lastSeenAt = device.status.lastSeenAt
         ? new Date(device.status.lastSeenAt).toLocaleString("pt-BR")
@@ -204,7 +241,11 @@ export default function DevicePage() {
                 <div className="flex flex-col gap-4 bg-transparent px-0 shadow-none outline-none lg:flex-row lg:items-center lg:px-6">
                     <div className="flex flex-2 flex-col items-start gap-3 sm:flex-row sm:items-center">
                         <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-secondary p-1 sm:size-32">
-                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} className="size-24 object-contain sm:size-[130px]" />
+                            {isSolar ? (
+                                <DeviceIcon className="size-14 text-muted-foreground sm:size-18" />
+                            ) : (
+                                <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} className="size-24 object-contain sm:size-[130px]" />
+                            )}
                         </div>
                         <div className="min-w-0 flex flex-col gap-2">
                             <h1 className="truncate text-xl font-semibold sm:text-2xl">{device.name}</h1>
@@ -232,8 +273,8 @@ export default function DevicePage() {
                         </div>
                     </div>
                     <Card
-                        className={cn("w-full rounded-3xl px-5 py-4 lg:flex-1 lg:px-6 lg:py-5", !isCover && !isAlarm && !isCamera && !isFeeder && !isPrinter && "cursor-pointer")}
-                        onClick={isCover || isAlarm || isCamera || isFeeder || isPrinter ? undefined : handlePowerToggle}
+                        className={cn("w-full rounded-3xl px-5 py-4 lg:flex-1 lg:px-6 lg:py-5", !isCover && !isAlarm && !isCamera && !isFeeder && !isPrinter && !isSolar && "cursor-pointer")}
+                        onClick={isCover || isAlarm || isCamera || isFeeder || isPrinter || isSolar ? undefined : handlePowerToggle}
                     >
                         <div className="flex items-center justify-between gap-6">
                             <div className="flex flex-col gap-2">
@@ -256,7 +297,7 @@ export default function DevicePage() {
                                 "flex size-12 shrink-0 items-center justify-center rounded-full",
                                 isOn ? "bg-green-500/20 text-green-500" : "bg-secondary text-muted-foreground"
                             )}>
-                                {isCamera ? <Camera className="size-6" /> : isPrinter ? <Printer className="size-6" /> : <Power className="size-6" />}
+                                {isSolar ? <DeviceIcon className="size-6" /> : isCamera ? <Camera className="size-6" /> : isPrinter ? <Printer className="size-6" /> : <Power className="size-6" />}
                             </div>
                         </div>
                     </Card>
@@ -306,6 +347,18 @@ export default function DevicePage() {
                     {isPrinter ? (
                         <section className="flex-1">
                             <PrinterControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
+                    {isSolar ? (
+                        <section className="flex-1">
+                            <SolarDevicePanel
+                                device={device}
+                                logger={solarLogger}
+                                powerW={solarPowerW}
+                                todayEnergyKwh={solarTodayEnergyKwh}
+                                totalEnergyKwh={solarTotalEnergyKwh}
+                                signalPercent={solarSignalPercent}
+                            />
                         </section>
                     ) : null}
                 </div>
@@ -435,4 +488,135 @@ function printerStateText(state: string, online: boolean): string {
     if (state === "error") return "Erro no Klipper";
     if (state === "standby") return "Em espera";
     return "Online";
+}
+
+function solarStateText(state: string, online: boolean, powerW: number | null): string {
+    if (!online) return "Offline";
+    if ((powerW || 0) > 0) return "Gerando";
+    if (String(state || "").toLowerCase() === "unavailable") return "Sem leitura";
+    return "Sem geração";
+}
+
+function SolarDevicePanel({
+    device,
+    logger,
+    powerW,
+    todayEnergyKwh,
+    totalEnergyKwh,
+    signalPercent,
+}: {
+    device: Device;
+    logger: SolarLogger | null;
+    powerW: number | null;
+    todayEnergyKwh: number | null;
+    totalEnergyKwh: number | null;
+    signalPercent: number | null;
+}) {
+    return (
+        <Card className="rounded-3xl">
+            <CardContent className="space-y-4 p-6">
+                <div>
+                    <h2 className="text-lg font-semibold">Métricas solares</h2>
+                    <p className="text-sm text-muted-foreground">Leitura local do logger associada ao dispositivo.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <SolarMetric label="Potência agora" value={formatPower(powerW)} />
+                    <SolarMetric label="Energia hoje" value={formatEnergy(todayEnergyKwh)} />
+                    <SolarMetric label="Energia total" value={formatEnergy(totalEnergyKwh)} />
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                    <span>IP do logger: {logger?.ip || stringValue((device.payload as Record<string, unknown>).ip) || "—"}</span>
+                    <span>MAC: {logger?.mac || firstText(device.payload, "mac", "local", "mac") || "—"}</span>
+                    <span>Serial do logger: {logger?.loggerSerial || firstText(device.payload, "loggerSerial") || "—"}</span>
+                    <span>Serial do inversor: {logger?.serial || firstText(device.payload, "serial") || "—"}</span>
+                    <span>Sinal Wi‑Fi: {signalPercent !== null ? `${signalPercent}%` : "—"}</span>
+                    <span>Servidor remoto: {logger?.serverConnected === true ? "conectado" : logger?.serverConnected === false ? "desconectado" : "—"}</span>
+                </div>
+
+                {logger?.error ? <p className="text-sm text-destructive">{logger.error}</p> : null}
+                {logger?.alarm ? <p className="text-sm text-destructive">{logger.alarm}</p> : null}
+            </CardContent>
+        </Card>
+    );
+}
+
+function SolarMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-2xl bg-secondary/60 p-4">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">{value}</p>
+        </div>
+    );
+}
+
+function matchSolarLogger(device: Device, loggers: SolarLogger[]): SolarLogger | null {
+    const ipCandidates = uniqueStrings(
+        firstText(device.payload, "ip"),
+        firstText(device.payload, "local", "ip"),
+        firstText(device.payload, "status", "ip"),
+        firstText(device.capabilities, "ip"),
+    );
+    const macCandidates = uniqueStrings(
+        firstText(device.payload, "mac"),
+        firstText(device.payload, "local", "mac"),
+        firstText(device.payload, "status", "mac"),
+        firstText(device.capabilities, "mac"),
+    ).map(normalizeMac);
+    const serialCandidates = uniqueStrings(
+        firstText(device.payload, "serial"),
+        firstText(device.payload, "loggerSerial"),
+        firstText(device.payload, "externalId"),
+        device.external_id,
+    );
+
+    return loggers.find((logger) => (
+        ipCandidates.includes(String(logger.ip || "").trim())
+        || macCandidates.includes(normalizeMac(logger.mac))
+        || serialCandidates.includes(String(logger.serial || "").trim())
+        || serialCandidates.includes(String(logger.loggerSerial || "").trim())
+    )) || null;
+}
+
+function firstText(value: unknown, ...path: string[]): string | null {
+    let current: unknown = value;
+    for (const key of path) {
+        if (!current || typeof current !== "object" || !(key in (current as Record<string, unknown>))) return null;
+        current = (current as Record<string, unknown>)[key];
+    }
+    return stringValue(current) || null;
+}
+
+function nestedNumber(value: unknown, key: string): number | null {
+    if (!value || typeof value !== "object") return null;
+    const current = (value as Record<string, unknown>)[key];
+    return typeof current === "number" && Number.isFinite(current) ? current : null;
+}
+
+function firstNumber(...values: Array<number | null>): number | null {
+    for (const value of values) {
+        if (typeof value === "number" && Number.isFinite(value)) return value;
+    }
+    return null;
+}
+
+function uniqueStrings(...values: Array<string | null | undefined>): string[] {
+    return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function normalizeMac(value: string | null | undefined): string {
+    return String(value || "").trim().toUpperCase();
+}
+
+function stringValue(value: unknown): string {
+    return typeof value === "string" ? value.trim() : "";
+}
+
+function formatPower(value: number | null): string {
+    return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value || 0)} W`;
+}
+
+function formatEnergy(value: number | null): string {
+    return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value || 0)} kWh`;
 }

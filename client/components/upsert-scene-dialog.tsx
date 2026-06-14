@@ -304,7 +304,7 @@ export function UpsertSceneDialog({ scene, children }: UpsertSceneDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            {children ? <DialogTrigger render={children} nativeButton={false} /> : null}
+            {children ? <DialogTrigger render={children} nativeButton={true} /> : null}
             <DialogContent className="sm:max-w-3xl">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>

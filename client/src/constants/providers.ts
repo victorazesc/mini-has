@@ -49,6 +49,7 @@ export const PROVIDERS_ICON_BY_TYPE = {
     onvif_camera: "/devices/camera.png",
     smartthings_cloud: "/providers/smartThings.svg",
     generic_iot: "/providers/diy.svg",
+    discovery: "/providers/diy.svg",
     mqtt: "/providers/mqtt.svg",
 }
 
@@ -60,5 +61,6 @@ export const PROVIDERS_NAME_BY_TYPE = {
     onvif_camera: "ONVIF/RTSP",
     smartthings_cloud: "SmartThings",
     generic_iot: "DIY",
+    discovery: "Discovery",
     mqtt: "MQTT",
 }

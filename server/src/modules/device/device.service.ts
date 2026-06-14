@@ -33,6 +33,87 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         private readonly moduleRef: ModuleRef,
     ) { }
 
+    private cameraRtspUrl(
+        item: { device: Device; secrets: JsonObject },
+        highQuality = true,
+        overridePath?: string,
+    ): string {
+        const ip = String(item.device.payload.ip || '').trim();
+
+        const storedUrl = String(
+            item.device.capabilities?.rtspPlayableUrl ||
+            item.device.payload?.rtspPlayableUrl ||
+            item.device.capabilities?.rtspUrl ||
+            item.device.payload?.rtspUrl ||
+            '',
+        ).trim();
+
+        let rtspUrl: URL;
+
+        if (storedUrl) {
+            rtspUrl = new URL(storedUrl);
+
+            if (ip) {
+                rtspUrl.hostname = ip;
+            }
+        } else {
+            if (!ip) {
+                throw new Error('Camera sem IP configurado.');
+            }
+
+            const port = Number(item.device.capabilities.rtspPort || 554);
+            const pathValue = String(
+                item.device.capabilities.rtspPath ||
+                item.device.payload.rtspPath ||
+                '/cam/realmonitor?channel=1&subtype=0',
+            ).trim();
+
+            rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
+        }
+
+        if (overridePath) {
+            const path = overridePath.startsWith('/') ? overridePath : `/${overridePath}`;
+            const [pathname, query = ''] = path.split('?');
+
+            rtspUrl.pathname = pathname;
+            rtspUrl.search = query ? `?${query}` : '';
+        }
+
+        rtspUrl.username = String(item.secrets.username || rtspUrl.username || '');
+        rtspUrl.password = String(item.secrets.password || rtspUrl.password || '');
+
+        return this.normalizeRtspUrlForFfmpeg(rtspUrl.toString(), highQuality);
+    }
+
+    private cameraRtspCandidates(item: { device: Device; secrets: JsonObject }, highQuality = true): string[] {
+        const subtype = highQuality ? '0' : '1';
+
+        const paths = [
+            `/cam/realmonitor?channel=1&subtype=${subtype}`,
+            `/cam/realmonitor?channel=1&subtype=0`,
+            `/cam/realmonitor?channel=1&subtype=1`,
+
+            `/live`,
+            `/live/ch00_0`,
+            `/live/ch00_1`,
+
+            `/h264/ch1/main/av_stream`,
+            `/h264/ch1/sub/av_stream`,
+
+            `/Streaming/Channels/101`,
+            `/Streaming/Channels/102`,
+
+            `/11`,
+            `/12`,
+            `/0`,
+            `/1`,
+        ];
+
+        const urls = paths.map((path) => this.cameraRtspUrl(item, highQuality, path));
+
+        return Array.from(new Set(urls));
+    }
+
     onApplicationBootstrap(): void {
         const intervalMs = Math.max(15_000, Number(process.env.LOCAL_RECONCILE_INTERVAL_MS || 60_000));
         const initialTimer = setTimeout(() => void this.reconcileLocalAvailability(), 1_500);
@@ -102,23 +183,38 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             },
         };
     }
+    normalizeRtspUrlForFfmpeg(value: string, highQuality = true): string {
+        const parsed = new URL(value);
+
+        parsed.searchParams.delete('unicast');
+        parsed.searchParams.delete('proto');
+
+        parsed.searchParams.set('channel', parsed.searchParams.get('channel') || '1');
+
+        // Por enquanto força main stream, porque subtype=1 está retornando input inválido no ffmpeg.
+        parsed.searchParams.set('subtype', highQuality ? '0' : '0');
+
+        return parsed.toString();
+    }
 
     streamCameraMjpeg(deviceId: number, response: any, highQuality = false): boolean {
         const item = this.getDeviceWithSecrets(deviceId);
+
         if (!item || item.device.provider !== 'onvif_camera') return false;
 
-        const ip = String(item.device.payload.ip || '').trim();
-        if (!ip) {
-            response.status(422).json({ message: 'Camera sem IP configurado.' });
+        let inputUrl: string;
+
+        try {
+            inputUrl = this.cameraRtspUrl(item, highQuality);
+        } catch (error) {
+            response.status(422).json({ message: error instanceof Error ? error.message : String(error) });
             return true;
         }
 
-        const port = Number(item.device.capabilities.rtspPort || 554);
-        const pathValue = String(item.device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
-        const rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
-        rtspUrl.username = String(item.secrets.username || '');
-        rtspUrl.password = String(item.secrets.password || '');
-        rtspUrl.searchParams.set('subtype', highQuality ? '0' : '1');
+        console.log(
+            'RTSP MJPEG usado no ffmpeg:',
+            inputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//***@'),
+        );
 
         const ffmpeg = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
             '-hide_banner',
@@ -127,7 +223,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             '-rtsp_transport',
             'tcp',
             '-i',
-            rtspUrl.toString(),
+            inputUrl,
             '-an',
             '-vf',
             highQuality ? 'fps=15' : 'fps=8,scale=640:-2',
@@ -139,6 +235,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
         let stderr = '';
+
         ffmpeg.stderr.on('data', (chunk: Buffer) => {
             stderr = `${stderr}${chunk.toString()}`.slice(-2_000);
         });
@@ -147,48 +244,65 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         response.setHeader('Content-Type', 'multipart/x-mixed-replace; boundary=ffmpeg');
         response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         response.setHeader('Connection', 'close');
+
         ffmpeg.stdout.pipe(response);
 
         const stop = () => {
             if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
         };
-        const maxDurationTimer = setTimeout(stop, Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)));
+
+        const maxDurationTimer = setTimeout(
+            stop,
+            Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)),
+        );
+
         maxDurationTimer.unref();
+
         response.on('close', () => {
             clearTimeout(maxDurationTimer);
             stop();
         });
+
         ffmpeg.on('error', (error) => {
             console.error(`Falha ao iniciar stream da camera ${deviceId}: ${error.message}`);
+
             if (!response.writableEnded) response.end();
         });
+
         ffmpeg.on('exit', (code) => {
             clearTimeout(maxDurationTimer);
+
             if (code && code !== 255) {
                 const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
                 console.warn(`Stream da camera ${deviceId} finalizado (${code}): ${safeError}`);
             }
+
             if (!response.writableEnded) response.end();
         });
+
         return true;
     }
 
     streamCameraMp4(deviceId: number, response: any, highQuality = false): boolean {
         const item = this.getDeviceWithSecrets(deviceId);
+
         if (!item || item.device.provider !== 'onvif_camera') return false;
 
-        const ip = String(item.device.payload.ip || '').trim();
-        if (!ip) {
-            response.status(422).json({ message: 'Camera sem IP configurado.' });
+        let candidates: string[];
+
+        try {
+            candidates = this.cameraRtspCandidates(item, highQuality);
+        } catch (error) {
+            response.status(422).json({ message: error instanceof Error ? error.message : String(error) });
             return true;
         }
 
-        const port = Number(item.device.capabilities.rtspPort || 554);
-        const pathValue = String(item.device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
-        const rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
-        rtspUrl.username = String(item.secrets.username || '');
-        rtspUrl.password = String(item.secrets.password || '');
-        rtspUrl.searchParams.set('subtype', highQuality ? '0' : '1');
+        const inputUrl = candidates[0];
+
+        console.log(
+            'RTSP MP4 usado no ffmpeg:',
+            inputUrl.replace(/\/\/([^:@]+):([^@]+)@/, '//***@'),
+        );
 
         const ffmpeg = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
             '-hide_banner',
@@ -197,7 +311,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             '-rtsp_transport',
             'tcp',
             '-i',
-            rtspUrl.toString(),
+            inputUrl,
             '-an',
             '-vf',
             highQuality ? 'fps=15' : 'fps=10,scale=960:-2',
@@ -219,6 +333,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
         let stderr = '';
+
         ffmpeg.stderr.on('data', (chunk: Buffer) => {
             stderr = `${stderr}${chunk.toString()}`.slice(-2_000);
         });
@@ -227,29 +342,42 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         response.setHeader('Content-Type', 'video/mp4');
         response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         response.setHeader('Connection', 'close');
+
         ffmpeg.stdout.pipe(response);
 
         const stop = () => {
             if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
         };
-        const maxDurationTimer = setTimeout(stop, Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)));
+
+        const maxDurationTimer = setTimeout(
+            stop,
+            Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)),
+        );
+
         maxDurationTimer.unref();
+
         response.on('close', () => {
             clearTimeout(maxDurationTimer);
             stop();
         });
+
         ffmpeg.on('error', (error) => {
             console.error(`Falha ao iniciar stream MP4 da camera ${deviceId}: ${error.message}`);
+
             if (!response.writableEnded) response.end();
         });
+
         ffmpeg.on('exit', (code) => {
             clearTimeout(maxDurationTimer);
+
             if (code && code !== 255) {
                 const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
                 console.warn(`Stream MP4 da camera ${deviceId} finalizado (${code}): ${safeError}`);
             }
+
             if (!response.writableEnded) response.end();
         });
+
         return true;
     }
 
@@ -672,6 +800,9 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         if (commandResult.result.provider === 'intelbras_solar' && isObject(commandResult.result.statusSummary)) {
             return this.updateIntelbrasSolarRuntimeState(deviceId, commandResult);
         }
+        if (commandResult.result.provider === 'solar_logger_local' && isObject(commandResult.result.statusSummary)) {
+            return this.updateLocalSolarLoggerRuntimeState(deviceId, commandResult);
+        }
         if (commandResult.result.provider === 'onvif_camera' && isObject(commandResult.result.statusSummary)) {
             return this.updateOnvifCameraRuntimeState(deviceId, commandResult);
         }
@@ -752,7 +883,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     acceptInboxDevice(inbox: InboxDevice, secrets: JsonObject, name?: string | null, roomId?: number | null): Device {
-        const payload = inbox.payload;
+        const payload = normalizeImportedDevicePayload(inbox.payload);
         const now = this.storage.utcNow();
         const provider = String(payload.provider || inbox.sourceType);
         const externalId = String(payload.externalId || inbox.externalId);
@@ -824,7 +955,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         if (!current) return null;
         const now = this.storage.utcNow();
         const summary = commandResult.result.statusSummary as JsonObject;
-        const status = { ...current.status, ...summary, lastSeenAt: now };
+        const { error: _error, ...currentStatus } = current.status;
+        const status = { ...currentStatus, ...summary, online: true, checkedAt: now, lastSeenAt: now };
         this.storage.run('UPDATE devices SET status_json = ?, updated_at = ? WHERE id = ?', [
             this.storage.jsonDump(status),
             now,
@@ -925,26 +1057,93 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         return this.getDevice(deviceId);
     }
 
-    private updateOnvifCameraRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
+    private updateLocalSolarLoggerRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
         const current = this.getDevice(deviceId);
         if (!current) return null;
         const now = this.storage.utcNow();
-        const status = { ...current.status, ...commandResult.result.statusSummary, lastSeenAt: now };
+        const summary = isObject(commandResult.result.statusSummary) ? commandResult.result.statusSummary : {};
+        const rawStatus = isObject(commandResult.result.rawStatus) ? commandResult.result.rawStatus : {};
+        const status = { ...current.status, ...summary, online: true, lastSeenAt: now };
         const capabilities = {
             ...current.capabilities,
-            authenticated: commandResult.result.statusSummary.authenticated,
-            streamAvailable: commandResult.result.statusSummary.streamAvailable,
-            ptzAvailable: commandResult.result.statusSummary.ptzAvailable,
-            readOnly: !commandResult.result.statusSummary.ptzAvailable,
-            commands: commandResult.result.statusSummary.ptzAvailable ? ['query', 'ptz_move', 'ptz_stop'] : ['query'],
+            readOnly: true,
+            loggerType: 'local_solar_logger',
         };
-        this.storage.run('UPDATE devices SET status_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
+        const payload = {
+            ...current.payload,
+            ...pickDefined({
+                ip: firstNonEmpty(summary.ip, current.payload.ip),
+                mac: firstNonEmpty(summary.mac, current.payload.mac),
+                serial: firstNonEmpty(summary.serial, current.payload.serial),
+                loggerSerial: firstNonEmpty(summary.loggerSerial, current.payload.loggerSerial),
+                manufacturer: firstNonEmpty(current.payload.manufacturer, 'Solar logger local'),
+                model: firstNonEmpty(summary.firmware, current.payload.model),
+                deviceType: 'solar_inverter',
+            }),
+            localSolarLogger: rawStatus,
+            lastSeenAt: now,
+        };
+        this.storage.run(
+            'UPDATE devices SET device_type = ?, status_json = ?, capabilities_json = ?, payload_json = ?, updated_at = ? WHERE id = ?',
+            ['solar_inverter', this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
+        );
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'solar_logger_local', action: 'query' });
+        return this.getDevice(deviceId);
+    }
+
+    private updateOnvifCameraRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
+        const current = this.getDevice(deviceId);
+
+        if (!current) return null;
+
+        const now = this.storage.utcNow();
+        const { error: _error, ...currentStatus } = current.status;
+        const streamConfig = isObject(commandResult.result.streamConfig) ? commandResult.result.streamConfig : {};
+        const statusSummary = isObject(commandResult.result.statusSummary) ? commandResult.result.statusSummary : {};
+
+        const rtspUrl = String(streamConfig.rtspUrl || current.payload.rtspUrl || current.capabilities.rtspUrl || '');
+        const rtspPlayableUrl = String(streamConfig.rtspPlayableUrl || current.payload.rtspPlayableUrl || current.capabilities.rtspPlayableUrl || '');
+        const onvifUrl = String(streamConfig.onvifUrl || current.payload.onvifUrl || current.capabilities.onvifUrl || '');
+
+        const status = {
+            ...currentStatus,
+            ...statusSummary,
+            checkedAt: now,
+            lastSeenAt: now,
+        };
+
+        const payload = {
+            ...current.payload,
+            ip: String(rtspUrl ? new URL(rtspUrl).hostname : current.payload.ip || ''),
+            rtspUrl,
+            rtspPlayableUrl,
+            onvifUrl,
+        };
+
+        const capabilities = {
+            ...current.capabilities,
+            rtspUrl,
+            rtspPlayableUrl,
+            rtspPort: Number(streamConfig.rtspPort || current.capabilities.rtspPort || 554),
+            rtspPath: String(streamConfig.rtspPath || current.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0'),
+            onvifUrl,
+            authenticated: statusSummary.authenticated,
+            streamAvailable: statusSummary.streamAvailable,
+            ptzAvailable: statusSummary.ptzAvailable,
+            readOnly: !statusSummary.ptzAvailable,
+            commands: statusSummary.ptzAvailable ? ['query', 'ptz_move', 'ptz_stop'] : ['query'],
+        };
+
+        this.storage.run('UPDATE devices SET payload_json = ?, status_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
+            this.storage.jsonDump(payload),
             this.storage.jsonDump(status),
             this.storage.jsonDump(capabilities),
             now,
             deviceId,
         ]);
+
         this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'onvif_camera', action: 'query' });
+
         return this.getDevice(deviceId);
     }
 
@@ -1342,6 +1541,12 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
                 ? { probe: true, transport: 'isecnet-v2', params: {} }
                 : { probe: false, reason: 'Central Intelbras sem IP local.', params: {} };
         }
+        if (isDiscoverySolarLogger(device)) {
+            const ip = privateIp(firstNonEmpty(device.payload.ip, nested(device.payload, 'local', 'ip')));
+            return ip
+                ? { probe: true, transport: 'http-local', params: { ip } }
+                : { probe: false, reason: 'Logger solar sem IP local.', params: {} };
+        }
         if (['generic_iot', 'persiana_custom'].includes(device.provider)) {
             const baseUrl = firstNonEmpty(device.payload.baseUrl, device.capabilities.baseUrl);
             return isPrivateEndpoint(baseUrl)
@@ -1438,7 +1643,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         const device = this.getDevice(deviceId);
         if (!device) return;
         const transport = String(result.result.transport || '');
-        if (['local', 'mqtt', 'isecnet-v2', 'http-local', 'moonraker-local', 'onvif-local'].includes(transport)) {
+        if (['local', 'mqtt', 'isecnet-v2', 'http-local', 'moonraker-local', 'onvif-local', 'rtsp-local'].includes(transport)) {
             this.persistConnectivity(device, {
                 controlMode: 'local',
                 offlineReady: true,
@@ -1471,6 +1676,9 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     private fromDeviceRow(row: JsonObject): Device {
+        const payload = this.storage.jsonLoad(row.payload_json, {});
+        const capabilities = this.storage.jsonLoad(row.capabilities_json, {});
+        const status = this.storage.jsonLoad(row.status_json, {});
         return {
             id: row.id,
             integrationId: row.integration_id,
@@ -1478,13 +1686,13 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             externalId: row.external_id,
             localDeviceKey: row.local_device_key,
             name: row.name,
-            deviceType: row.device_type,
+            deviceType: effectiveDeviceType(String(row.device_type || ''), payload),
             provider: row.provider,
             roomId: row.room_id,
             roomName: row.room_name,
-            payload: this.storage.jsonLoad(row.payload_json, {}),
-            capabilities: this.storage.jsonLoad(row.capabilities_json, {}),
-            status: this.storage.jsonLoad(row.status_json, {}),
+            payload,
+            capabilities,
+            status,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
         };
@@ -1918,4 +2126,33 @@ function firstNonEmpty(...values: any[]): any {
         return value;
     }
     return null;
+}
+
+function normalizeImportedDevicePayload(payload: JsonObject): JsonObject {
+    if (!isObject(payload)) return payload;
+    const nextPayload = { ...payload };
+    const effectiveType = effectiveDeviceType(String(payload.deviceType || ''), payload);
+    if (effectiveType !== String(payload.deviceType || '')) nextPayload.deviceType = effectiveType;
+    return nextPayload;
+}
+
+function effectiveDeviceType(currentType: string, payload: JsonObject): string {
+    const normalizedType = String(currentType || '').trim().toLowerCase();
+    if (normalizedType && normalizedType !== 'unknown' && normalizedType !== 'device') return normalizedType;
+    if (isDiscoveryPayloadSolarLogger(payload)) return 'solar_inverter';
+    return normalizedType || 'unknown';
+}
+
+function isDiscoverySolarLogger(device: Device): boolean {
+    return isDiscoveryPayloadSolarLogger(device.payload) || String(device.deviceType || '').toLowerCase() === 'solar_inverter';
+}
+
+function isDiscoveryPayloadSolarLogger(payload: JsonObject): boolean {
+    const openPorts = Array.isArray(payload.openPorts) ? payload.openPorts : [];
+    const label = String(nested(payload, 'identification', 'label') || payload.name || '').toLowerCase();
+    return openPorts.includes(8899) || (label.includes('logger') && label.includes('solar'));
+}
+
+function pickDefined(payload: JsonObject): JsonObject {
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined && value !== null));
 }

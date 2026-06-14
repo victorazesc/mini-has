@@ -1,5 +1,5 @@
 import { IconName } from "lucide-react/dynamic"
-import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake, Shield, Sun, Printer } from "lucide-react"
+import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake, Shield, SolarPanel, Printer } from "lucide-react"
 
 export type SmartThingsValue<T = unknown> = {
     value: T;
@@ -102,6 +102,11 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName }[] = 
         label: "Impressora 3D",
         value: "printer",
         icon: 'printer',
+    },
+    {
+        label: "Microinversor solar",
+        value: "solar_inverter",
+        icon: 'solar-panel',
     }
 ]
 
@@ -116,7 +121,7 @@ export const DEVICE_ICON_BY_TYPE = {
     cover: Blinds,
     climate: Snowflake,
     alarm: Shield,
-    solar_inverter: Sun,
+    solar_inverter: SolarPanel,
     printer: Printer,
 }
 

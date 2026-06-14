@@ -21,6 +21,7 @@ import {
   ListIcon,
   PlaySquareIcon,
   SlidersHorizontalIcon,
+  SunIcon,
   WorkflowIcon,
 } from "lucide-react"
 
@@ -55,6 +56,11 @@ export const data = {
       title: "Automações",
       url: "/automations",
       icon: <WorkflowIcon />,
+    },
+    {
+      title: "Solar",
+      url: "/solar",
+      icon: <SunIcon />,
     },
   ],
   navSecondary: [

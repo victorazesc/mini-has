@@ -216,7 +216,7 @@ export function UpsertAutomationDialog({ automation, children }: UpsertAutomatio
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            {children ? <DialogTrigger render={children} nativeButton={false} /> : null}
+            {children ? <DialogTrigger render={children} nativeButton={true} /> : null}
             <DialogContent className="sm:max-w-2xl">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>

@@ -25,6 +25,9 @@ export class CommandsService {
       if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
         return await this.executeTuyaCommand(device, secrets, request);
       }
+      if (device.provider === 'discovery' && isDiscoverySolarLogger(device)) {
+        return await this.executeDiscoverySolarLoggerCommand(device, request);
+      }
       if (device.provider === 'smartthings_cloud') return await this.executeSmartthingsCommand(device, request);
       if (device.provider === 'mqtt') return await this.executeMqttCommand(device, request);
       if (device.provider === 'intelbras_amt8000') return await this.executeAmt8000Command(device, secrets, request);
@@ -36,6 +39,55 @@ export class CommandsService {
     } catch (error) {
       return { ok: false, status: 'error', message: messageFrom(error), result: { deviceId: device.id, provider: device.provider, deviceType: device.deviceType, action: request.command } };
     }
+  }
+
+  private async executeDiscoverySolarLoggerCommand(device: Device, request: CommandRequest): Promise<CommandResult> {
+    if (request.command !== 'query') {
+      throw new Error('Logger solar local suporta apenas consulta de status.');
+    }
+
+    const ip = privateIp(firstNonEmpty(request.params?.ip, device.payload.ip, nested(device.payload, 'local', 'ip')));
+    if (!ip) throw new Error('Logger solar sem IP local.');
+
+    const authorization = Buffer.from(`${process.env.LOCAL_SOLAR_LOGGER_USERNAME || 'admin'}:${process.env.LOCAL_SOLAR_LOGGER_PASSWORD || 'admin'}`).toString('base64');
+    const response = await fetch(`http://${ip}/status.html`, {
+      headers: { Authorization: `Basic ${authorization}` },
+      signal: AbortSignal.timeout(5_000),
+    });
+
+    if (!response.ok) throw new Error(`Logger solar respondeu HTTP ${response.status}.`);
+
+    const rawStatus = solarLoggerParse(await response.text());
+    if (!solarLoggerLooksValid(rawStatus)) throw new Error('Resposta do logger solar sem métricas válidas.');
+
+    return {
+      ok: true,
+      status: 'ok',
+      message: 'Status do logger solar atualizado.',
+      result: {
+        deviceId: device.id,
+        provider: 'solar_logger_local',
+        transport: 'http-local',
+        action: 'query',
+        rawStatus,
+        statusSummary: {
+          online: true,
+          state: (solarLoggerNumber(rawStatus.webdata_now_p) || 0) > 0 ? 'generating' : 'idle',
+          power: solarLoggerNumber(rawStatus.webdata_now_p),
+          currentPowerW: solarLoggerNumber(rawStatus.webdata_now_p),
+          todayEnergyKwh: solarLoggerNumber(rawStatus.webdata_today_e),
+          totalEnergyKwh: solarLoggerNumber(rawStatus.webdata_total_e),
+          signalPercent: solarLoggerNumber(rawStatus.cover_sta_rssi),
+          serial: solarLoggerClean(rawStatus.webdata_sn),
+          loggerSerial: solarLoggerClean(rawStatus.cover_mid),
+          firmware: solarLoggerClean(rawStatus.cover_ver),
+          ip,
+          mac: solarLoggerClean(rawStatus.cover_sta_mac),
+          serverConnected: rawStatus.status_a ? rawStatus.status_a === '1' : null,
+          alarm: solarLoggerClean(rawStatus.webdata_alarm),
+        },
+      },
+    };
   }
 
   private async executeTuyaCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
@@ -231,7 +283,13 @@ export class CommandsService {
 
   private async executeAmt8000Command(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
     const integration = device.integrationId ? this.getIntegration(device.integrationId) : null;
-    const ip = String(request.params?.ip || integration?.config.ip || device.payload.ip || nested(device.payload, 'payload', 'ip') || '').trim();
+    const ip = String(firstNonEmpty(
+      request.params?.ip,
+      nested(device.payload, 'local', 'ip'),
+      device.payload.ip,
+      nested(device.payload, 'payload', 'ip'),
+      integration?.config.ip,
+    ) || '').trim();
     const port = Number(request.params?.port || integration?.config.port || device.payload.port || nested(device.payload, 'payload', 'port') || 9009);
     const password = String(integration?.secrets.password || secrets.password || '').trim();
     const client = new Amt8000Client(ip, port, password);
@@ -817,6 +875,48 @@ function httpBaseUrl(device: Device): string {
   if (baseUrl) return baseUrl;
   const localKey = device.localDeviceKey || '';
   return localKey.startsWith('http:') ? localKey.replace(/^http:/, '') : '';
+}
+
+function isDiscoverySolarLogger(device: Device): boolean {
+  const openPorts = Array.isArray(device.payload.openPorts) ? device.payload.openPorts : [];
+  const label = String(nested(device.payload, 'identification', 'label') || '').toLowerCase();
+  return device.deviceType === 'solar_inverter'
+    || openPorts.includes(8899)
+    || (label.includes('logger') && label.includes('solar'));
+}
+
+function privateIp(value: unknown): string | null {
+  const normalized = String(value || '').trim();
+  if (!normalized) return null;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(normalized)) return normalized;
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(normalized)) return normalized;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(normalized)) return normalized;
+  return null;
+}
+
+function solarLoggerParse(html: string): Record<string, string> {
+  const values: Record<string, string> = {};
+  const pattern = /var\s+([A-Za-z0-9_]+)\s*=\s*"([^"]*)";/g;
+  for (const match of html.matchAll(pattern)) values[match[1]] = match[2];
+  return values;
+}
+
+function solarLoggerLooksValid(values: Record<string, string>): boolean {
+  return Boolean(
+    solarLoggerClean(values.cover_mid)
+    || solarLoggerClean(values.webdata_sn)
+    || solarLoggerNumber(values.webdata_total_e) !== null,
+  );
+}
+
+function solarLoggerClean(value: string | undefined): string | null {
+  const normalized = String(value || '').trim();
+  return normalized || null;
+}
+
+function solarLoggerNumber(value: string | undefined): number | null {
+  const parsed = Number.parseFloat(String(value || '').replace('%', '').trim());
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function nested(value: JsonObject, ...keys: string[]): any {

@@ -142,7 +142,7 @@ export class CameraRecordingService implements OnApplicationBootstrap, OnModuleD
         ]);
         const detector = spawn(ffmpeg, [
             '-hide_banner', '-loglevel', 'info', '-rtsp_transport', 'tcp', '-i', lowUrl,
-            '-an', '-vf', 'fps=2,scale=320:-2,select=gt(scene\\,0.025),metadata=print',
+            '-an', '-vf', 'fps=2,scale=320:-2,select=gt(scene\\,0.015),metadata=print',
             '-f', 'null', '-',
         ]);
         const worker: CameraWorker = { deviceId, segmentDirectory, recorder, detector, stopping: false };
