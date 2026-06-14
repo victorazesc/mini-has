@@ -47,7 +47,9 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
     listDevices(): Device[] {
         const rows = this.storage.all<JsonObject>(`
-      SELECT devices.*, rooms.name AS room_name
+      SELECT devices.*,
+      LOWER(devices.device_type) AS device_type,
+      rooms.name AS room_name
       FROM devices
       LEFT JOIN rooms ON rooms.id = devices.room_id
       ORDER BY devices.id
@@ -58,22 +60,14 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     getDevice(deviceId: number): Device | null {
         const row = this.storage.get<JsonObject>(
             `
-
-SELECT 
-
-  devices.*,
-
-  LOWER(devices.device_type) AS device_type,
-
-  rooms.name AS room_name
-
-FROM devices
-
-LEFT JOIN rooms ON rooms.id = devices.room_id
-
-WHERE devices.id = ?
-
-`,
+                SELECT
+                devices.*,
+                LOWER(devices.device_type) AS device_type,
+                rooms.name AS room_name
+                FROM devices
+                LEFT JOIN rooms ON rooms.id = devices.room_id
+                WHERE devices.id = ?
+            `,
             [deviceId],
         );
         return row ? this.fromDeviceRow(row) : null;
@@ -109,7 +103,7 @@ WHERE devices.id = ?
         };
     }
 
-    streamCameraMjpeg(deviceId: number, response: any): boolean {
+    streamCameraMjpeg(deviceId: number, response: any, highQuality = false): boolean {
         const item = this.getDeviceWithSecrets(deviceId);
         if (!item || item.device.provider !== 'onvif_camera') return false;
 
@@ -124,7 +118,7 @@ WHERE devices.id = ?
         const rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
         rtspUrl.username = String(item.secrets.username || '');
         rtspUrl.password = String(item.secrets.password || '');
-        rtspUrl.searchParams.set('subtype', '1');
+        rtspUrl.searchParams.set('subtype', highQuality ? '0' : '1');
 
         const ffmpeg = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
             '-hide_banner',
@@ -136,9 +130,9 @@ WHERE devices.id = ?
             rtspUrl.toString(),
             '-an',
             '-vf',
-            'fps=8,scale=640:-2',
+            highQuality ? 'fps=15' : 'fps=8,scale=640:-2',
             '-q:v',
-            '5',
+            highQuality ? '2' : '5',
             '-f',
             'mpjpeg',
             'pipe:1',
@@ -158,15 +152,101 @@ WHERE devices.id = ?
         const stop = () => {
             if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
         };
-        response.on('close', stop);
+        const maxDurationTimer = setTimeout(stop, Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)));
+        maxDurationTimer.unref();
+        response.on('close', () => {
+            clearTimeout(maxDurationTimer);
+            stop();
+        });
         ffmpeg.on('error', (error) => {
             console.error(`Falha ao iniciar stream da camera ${deviceId}: ${error.message}`);
             if (!response.writableEnded) response.end();
         });
         ffmpeg.on('exit', (code) => {
+            clearTimeout(maxDurationTimer);
             if (code && code !== 255) {
                 const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
                 console.warn(`Stream da camera ${deviceId} finalizado (${code}): ${safeError}`);
+            }
+            if (!response.writableEnded) response.end();
+        });
+        return true;
+    }
+
+    streamCameraMp4(deviceId: number, response: any, highQuality = false): boolean {
+        const item = this.getDeviceWithSecrets(deviceId);
+        if (!item || item.device.provider !== 'onvif_camera') return false;
+
+        const ip = String(item.device.payload.ip || '').trim();
+        if (!ip) {
+            response.status(422).json({ message: 'Camera sem IP configurado.' });
+            return true;
+        }
+
+        const port = Number(item.device.capabilities.rtspPort || 554);
+        const pathValue = String(item.device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
+        const rtspUrl = new URL(`rtsp://${ip}:${port}${pathValue.startsWith('/') ? pathValue : `/${pathValue}`}`);
+        rtspUrl.username = String(item.secrets.username || '');
+        rtspUrl.password = String(item.secrets.password || '');
+        rtspUrl.searchParams.set('subtype', highQuality ? '0' : '1');
+
+        const ffmpeg = spawn(process.env.FFMPEG_PATH || 'ffmpeg', [
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-rtsp_transport',
+            'tcp',
+            '-i',
+            rtspUrl.toString(),
+            '-an',
+            '-vf',
+            highQuality ? 'fps=15' : 'fps=10,scale=960:-2',
+            '-c:v',
+            'libx264',
+            '-preset',
+            'ultrafast',
+            '-tune',
+            'zerolatency',
+            '-pix_fmt',
+            'yuv420p',
+            '-g',
+            highQuality ? '15' : '10',
+            '-movflags',
+            'frag_keyframe+empty_moov+default_base_moof',
+            '-f',
+            'mp4',
+            'pipe:1',
+        ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+        let stderr = '';
+        ffmpeg.stderr.on('data', (chunk: Buffer) => {
+            stderr = `${stderr}${chunk.toString()}`.slice(-2_000);
+        });
+
+        response.status(200);
+        response.setHeader('Content-Type', 'video/mp4');
+        response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        response.setHeader('Connection', 'close');
+        ffmpeg.stdout.pipe(response);
+
+        const stop = () => {
+            if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
+        };
+        const maxDurationTimer = setTimeout(stop, Math.max(60_000, Number(process.env.CAMERA_STREAM_MAX_DURATION_MS || 600_000)));
+        maxDurationTimer.unref();
+        response.on('close', () => {
+            clearTimeout(maxDurationTimer);
+            stop();
+        });
+        ffmpeg.on('error', (error) => {
+            console.error(`Falha ao iniciar stream MP4 da camera ${deviceId}: ${error.message}`);
+            if (!response.writableEnded) response.end();
+        });
+        ffmpeg.on('exit', (code) => {
+            clearTimeout(maxDurationTimer);
+            if (code && code !== 255) {
+                const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
+                console.warn(`Stream MP4 da camera ${deviceId} finalizado (${code}): ${safeError}`);
             }
             if (!response.writableEnded) response.end();
         });
@@ -510,6 +590,7 @@ WHERE devices.id = ?
                     });
                     summary.local += 1;
                 } else {
+                    this.updateDeviceRuntimeState(item.device.id, result);
                     if (hasLinkedTuyaLocalEndpoint(item.device)) {
                         this.persistConnectivity(item.device, {
                             controlMode: 'local',
@@ -523,14 +604,14 @@ WHERE devices.id = ?
                         continue;
                     }
                     this.persistConnectivity(item.device, {
-                        controlMode: item.device.integrationId ? 'cloud' : 'unavailable',
+                        controlMode: target.cloudOnly ? 'cloud' : 'unavailable',
                         offlineReady: false,
                         localAvailable: false,
                         checkedAt: this.storage.utcNow(),
                         transport: target.transport,
                         reason: result.message || 'Endpoint local nao respondeu.',
                     });
-                    if (item.device.integrationId) summary.cloudOnly += 1;
+                    if (target.cloudOnly) summary.cloudOnly += 1;
                     else summary.unavailable += 1;
                 }
             }
@@ -564,7 +645,16 @@ WHERE devices.id = ?
     }
 
     updateDeviceRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
-        if (!commandResult.ok) return this.getDevice(deviceId);
+        if (!commandResult.ok) {
+            const current = this.getDevice(deviceId);
+            if (current?.deviceType === 'printer') {
+                return this.updatePrinterRuntimeState(deviceId, commandResult, false);
+            }
+            if (current?.provider === 'intelbras_amt8000') {
+                return this.updateAmt8000UnavailableState(deviceId, commandResult);
+            }
+            return current;
+        }
         if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(String(commandResult.result.provider))
             && commandResult.result.action === 'query'
             && isObject(commandResult.result.statusSummary)) {
@@ -584,6 +674,9 @@ WHERE devices.id = ?
         }
         if (commandResult.result.provider === 'onvif_camera' && isObject(commandResult.result.statusSummary)) {
             return this.updateOnvifCameraRuntimeState(deviceId, commandResult);
+        }
+        if (commandResult.result.deviceType === 'printer' || this.getDevice(deviceId)?.deviceType === 'printer') {
+            return this.updatePrinterRuntimeState(deviceId, commandResult, true);
         }
         const incomingDps = commandResult.result.dps;
         if (!isObject(incomingDps) || !Object.keys(incomingDps).length) return this.getDevice(deviceId);
@@ -737,8 +830,83 @@ WHERE devices.id = ?
             now,
             deviceId,
         ]);
+        this.updateAmt8000EntitiesRuntimeState(deviceId, summary, now);
         this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'intelbras_amt8000', action: commandResult.result.action });
         return this.getDevice(deviceId);
+    }
+
+    private updateAmt8000UnavailableState(deviceId: number, commandResult: CommandResult): Device | null {
+        const current = this.getDevice(deviceId);
+        if (!current) return null;
+        const now = this.storage.utcNow();
+        const status = { ...current.status, online: false, state: 'unavailable', error: commandResult.message, checkedAt: now };
+        this.storage.run('UPDATE devices SET status_json = ?, updated_at = ? WHERE id = ?', [
+            this.storage.jsonDump(status),
+            now,
+            deviceId,
+        ]);
+        for (const row of this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId])) {
+            const previousState = this.storage.jsonLoad<JsonObject>(row.state_json, {});
+            const nextState = { ...previousState, online: false, state: 'unavailable', checkedAt: now, error: commandResult.message };
+            this.storage.run('UPDATE entities SET state_json = ?, updated_at = ? WHERE id = ?', [
+                this.storage.jsonDump(nextState),
+                now,
+                row.id,
+            ]);
+            this.logEntityRuntimeStatusEvent(deviceId, row, previousState, nextState, { provider: 'intelbras_amt8000', action: 'query' });
+        }
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'intelbras_amt8000', action: 'query' });
+        return this.getDevice(deviceId);
+    }
+
+    private updateAmt8000EntitiesRuntimeState(deviceId: number, summary: JsonObject, now: string): void {
+        const zones = Array.isArray(summary.zones) ? summary.zones.filter(isObject) : [];
+        const partitions = Array.isArray(summary.partitions) ? summary.partitions.filter(isObject) : [];
+        for (const row of this.storage.all<JsonObject>('SELECT * FROM entities WHERE device_id = ?', [deviceId])) {
+            const previousState = this.storage.jsonLoad<JsonObject>(row.state_json, {});
+            const capabilities = this.storage.jsonLoad<JsonObject>(row.capabilities_json, {});
+            const zone = zones.find((item) => Number(item.number) === Number(capabilities.zone));
+            const partition = partitions.find((item) => Number(item.index) === Number(capabilities.partition));
+            let nextState: JsonObject;
+
+            if (zone) {
+                nextState = {
+                    ...previousState,
+                    online: true,
+                    state: zone.open ? 'open' : 'closed',
+                    open: Boolean(zone.open),
+                    violated: Boolean(zone.violated),
+                    bypassed: Boolean(zone.bypassed),
+                    tamper: Boolean(zone.tamper),
+                    lowBattery: Boolean(zone.lowBattery),
+                    lastSeenAt: now,
+                };
+            } else if (partition) {
+                nextState = {
+                    ...previousState,
+                    online: true,
+                    state: partition.armed ? 'armed' : 'disarmed',
+                    armed: Boolean(partition.armed),
+                    stay: Boolean(partition.stay),
+                    firing: Boolean(partition.firing),
+                    fired: Boolean(partition.fired),
+                    lastSeenAt: now,
+                };
+            } else if (capabilities.deviceClass === 'siren') {
+                nextState = { ...previousState, online: true, state: summary.siren ? 'on' : 'off', active: Boolean(summary.siren), lastSeenAt: now };
+            } else if (row.type === 'alarm') {
+                nextState = { ...previousState, ...summary, online: true, lastSeenAt: now };
+            } else {
+                nextState = { ...previousState, online: false, state: 'unavailable', checkedAt: now };
+            }
+
+            this.storage.run('UPDATE entities SET state_json = ?, updated_at = ? WHERE id = ?', [
+                this.storage.jsonDump(nextState),
+                now,
+                row.id,
+            ]);
+            this.logEntityRuntimeStatusEvent(deviceId, row, previousState, nextState, { provider: 'intelbras_amt8000', action: 'query' });
+        }
     }
 
     private updateIntelbrasSolarRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
@@ -766,6 +934,9 @@ WHERE devices.id = ?
             ...current.capabilities,
             authenticated: commandResult.result.statusSummary.authenticated,
             streamAvailable: commandResult.result.statusSummary.streamAvailable,
+            ptzAvailable: commandResult.result.statusSummary.ptzAvailable,
+            readOnly: !commandResult.result.statusSummary.ptzAvailable,
+            commands: commandResult.result.statusSummary.ptzAvailable ? ['query', 'ptz_move', 'ptz_stop'] : ['query'],
         };
         this.storage.run('UPDATE devices SET status_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
             this.storage.jsonDump(status),
@@ -774,6 +945,30 @@ WHERE devices.id = ?
             deviceId,
         ]);
         this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'onvif_camera', action: 'query' });
+        return this.getDevice(deviceId);
+    }
+
+    private updatePrinterRuntimeState(deviceId: number, commandResult: CommandResult, online: boolean): Device | null {
+        const current = this.getDevice(deviceId);
+        if (!current) return null;
+        const now = this.storage.utcNow();
+        const summary = isObject(commandResult.result.statusSummary) ? commandResult.result.statusSummary : {};
+        const status = online
+            ? { ...current.status, ...summary, online: true, lastSeenAt: now }
+            : { ...current.status, online: false, state: 'offline', error: commandResult.message };
+        const payload = online
+            ? { ...current.payload, baseUrl: summary.mainsailUrl, lastSeenAt: now }
+            : current.payload;
+        const capabilities = {
+            ...current.capabilities,
+            baseUrl: firstNonEmpty(summary.mainsailUrl, current.capabilities.baseUrl, current.payload.baseUrl),
+            commands: ['query', 'pause', 'resume', 'cancel'],
+        };
+        this.storage.run(
+            'UPDATE devices SET status_json = ?, payload_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?',
+            [this.storage.jsonDump(status), this.storage.jsonDump(payload), this.storage.jsonDump(capabilities), now, deviceId],
+        );
+        this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'moonraker', action: commandResult.result.action });
         return this.getDevice(deviceId);
     }
 
@@ -1126,6 +1321,12 @@ WHERE devices.id = ?
                 ? { probe: true, transport: 'rtsp-local', params: {} }
                 : { probe: false, reason: 'Camera sem IP local.', params: {} };
         }
+        if (device.deviceType === 'printer') {
+            const ip = privateIp(firstNonEmpty(device.payload.ip, nested(device.payload, 'local', 'ip')));
+            return ip
+                ? { probe: true, transport: 'moonraker-local', params: { ip } }
+                : { probe: false, reason: 'Impressora sem IP local.', params: {} };
+        }
         if (device.provider === 'mqtt') {
             const integration = device.integrationId ? this.storage.get<JsonObject>('SELECT config_json FROM integrations WHERE id = ?', [device.integrationId]) : null;
             const config = integration ? this.storage.jsonLoad<JsonObject>(integration.config_json, {}) : {};
@@ -1237,7 +1438,7 @@ WHERE devices.id = ?
         const device = this.getDevice(deviceId);
         if (!device) return;
         const transport = String(result.result.transport || '');
-        if (['local', 'mqtt', 'isecnet-v2', 'http-local'].includes(transport)) {
+        if (['local', 'mqtt', 'isecnet-v2', 'http-local', 'moonraker-local', 'onvif-local'].includes(transport)) {
             this.persistConnectivity(device, {
                 controlMode: 'local',
                 offlineReady: true,

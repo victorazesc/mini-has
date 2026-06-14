@@ -30,10 +30,11 @@ export class CommandsService {
       if (device.provider === 'intelbras_amt8000') return await this.executeAmt8000Command(device, secrets, request);
       if (device.provider === 'intelbras_solar') return await this.executeIntelbrasSolarCommand(device, request);
       if (device.provider === 'onvif_camera') return await this.executeOnvifCameraCommand(device, secrets, request);
+      if (device.deviceType === 'printer') return await this.executePrinterCommand(device, request);
       if (['generic_iot', 'persiana_custom'].includes(device.provider)) return await this.executeHttpCommand(device, request);
       return { ok: false, status: 'unsupported', message: `Provider ${device.provider} ainda nao tem executor.`, result: {} };
     } catch (error) {
-      return { ok: false, status: 'error', message: messageFrom(error), result: { deviceId: device.id, command: request.command } };
+      return { ok: false, status: 'error', message: messageFrom(error), result: { deviceId: device.id, provider: device.provider, deviceType: device.deviceType, action: request.command } };
     }
   }
 
@@ -282,13 +283,25 @@ export class CommandsService {
   }
 
   private async executeOnvifCameraCommand(device: Device, secrets: JsonObject, request: CommandRequest): Promise<CommandResult> {
-    if (request.command !== 'query') throw new Error('Camera ONVIF/RTSP permite apenas consulta neste momento.');
     if (!device.integrationId) throw new Error('Camera sem integrationId.');
     const integration = this.getIntegration(device.integrationId);
     if (!integration) throw new Error('Integracao de cameras nao encontrada.');
     const ip = String(request.params?.ip || device.payload.ip || '').trim();
     const port = Number(request.params?.port || device.capabilities.rtspPort || 554);
     const path = String(request.params?.path || device.capabilities.rtspPath || '/cam/realmonitor?channel=1&subtype=0');
+    if (request.command === 'ptz_move' || request.command === 'ptz_stop') {
+      const result = await this.providers.controlOnvifCameraPtz(integration, ip, port, path, secrets, {
+        ...(request.params || {}),
+        stop: request.command === 'ptz_stop',
+      });
+      return {
+        ok: true,
+        status: 'sent',
+        message: request.command === 'ptz_stop' ? 'Movimento PTZ interrompido.' : 'Movimento PTZ executado.',
+        result: { deviceId: device.id, provider: device.provider, transport: 'onvif-local', action: request.command, ...result },
+      };
+    }
+    if (request.command !== 'query') throw new Error('Comando de camera invalido. Use query, ptz_move ou ptz_stop.');
     const result = await this.providers.getOnvifCameraStatus(integration, ip, port, path, secrets);
     return {
       ok: true,
@@ -300,6 +313,69 @@ export class CommandsService {
         transport: 'rtsp-local',
         action: 'query',
         ...result,
+      },
+    };
+  }
+
+  private async executePrinterCommand(device: Device, request: CommandRequest): Promise<CommandResult> {
+    const ip = String(request.params?.ip || device.payload.ip || nested(device.payload, 'local', 'ip') || '').trim();
+    if (!ip) throw new Error('Impressora sem IP local.');
+    const baseUrl = `http://${ip}`;
+    const actionPaths: Record<string, string> = {
+      pause: '/printer/print/pause',
+      resume: '/printer/print/resume',
+      cancel: '/printer/print/cancel',
+    };
+    if (request.command !== 'query') {
+      const path = actionPaths[request.command];
+      if (!path) throw new Error('Comando da impressora invalido. Use query, pause, resume ou cancel.');
+      await this.providers.httpJson('POST', `${baseUrl}${path}`);
+    }
+
+    const [serverInfo, objects] = await Promise.all([
+      this.providers.httpJson('GET', `${baseUrl}/server/info`),
+      this.providers.httpJson('GET', `${baseUrl}/printer/objects/query?print_stats&virtual_sdcard&extruder&heater_bed&display_status`),
+    ]);
+    const status = nested(objects, 'result', 'status') || {};
+    const server = nested(serverInfo, 'result') || {};
+    const printStats = status.print_stats || {};
+    const virtualSdcard = status.virtual_sdcard || {};
+    const extruder = status.extruder || {};
+    const heaterBed = status.heater_bed || {};
+    const klippyState = String(server.klippy_state || 'unknown').toLowerCase();
+    const printState = String(printStats.state || 'standby').toLowerCase();
+    const state = klippyState === 'error' ? 'error' : printState;
+
+    return {
+      ok: true,
+      status: request.command === 'query' ? 'ok' : 'sent',
+      message: request.command === 'query' ? 'Status da impressora atualizado pelo Moonraker.' : 'Comando enviado para a impressora.',
+      result: {
+        deviceId: device.id,
+        provider: device.provider,
+        transport: 'moonraker-local',
+        action: request.command,
+        statusSummary: {
+          online: true,
+          state,
+          klippyConnected: Boolean(server.klippy_connected),
+          klippyState,
+          printState,
+          filename: String(printStats.filename || ''),
+          progress: Number(virtualSdcard.progress || status.display_status?.progress || 0),
+          printDuration: Number(printStats.print_duration || 0),
+          totalDuration: Number(printStats.total_duration || 0),
+          filamentUsed: Number(printStats.filament_used || 0),
+          currentLayer: printStats.info?.current_layer ?? null,
+          totalLayer: printStats.info?.total_layer ?? null,
+          message: String(printStats.message || status.display_status?.message || ''),
+          extruderTemperature: Number(extruder.temperature || 0),
+          extruderTarget: Number(extruder.target || 0),
+          bedTemperature: Number(heaterBed.temperature || 0),
+          bedTarget: Number(heaterBed.target || 0),
+          mainsailUrl: baseUrl,
+          moonrakerVersion: String(server.moonraker_version || ''),
+        },
       },
     };
   }

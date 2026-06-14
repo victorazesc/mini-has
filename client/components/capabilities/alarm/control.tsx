@@ -30,10 +30,12 @@ export function AlarmControl({ device, compact = false }: { device: Device; comp
     const siren = alarmEntities.find((entity) => entity.capabilities.deviceClass === "siren");
     const state = device.status as unknown as AlarmState;
     const alarmState = String(state.state || "unknown").toLowerCase();
+    const readingAvailable = device.status.online !== false;
     const armed = ["armed", "partial"].includes(alarmState);
-    const openZones = zones.filter((zone) => Boolean(zone.state.open));
+    const openZones = zones.filter((zone) => zone.state.online !== false && Boolean(zone.state.open));
     const alertZones = zones.filter(hasZoneAlert);
     const bypassedZones = zones.filter((zone) => Boolean(zone.state.bypassed));
+    const unavailableZones = zones.filter((zone) => zone.state.online === false);
 
     const command = (action: string, partition?: number) => {
         if (action.startsWith("disarm") && !window.confirm("Desarmar a central de alarme?")) return;
@@ -59,10 +61,10 @@ export function AlarmControl({ device, compact = false }: { device: Device; comp
                     </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Button disabled={isPending || armed || openZones.length > 0} onClick={() => command("arm")} variant="outline">
+                    <Button disabled={isPending || !readingAvailable || armed || openZones.length > 0} onClick={() => command("arm")} variant="outline">
                         <ShieldCheck className="size-4" /> Armar tudo
                     </Button>
-                    <Button disabled={isPending || !armed} onClick={() => command("disarm")} variant="destructive">
+                    <Button disabled={isPending || !readingAvailable || !armed} onClick={() => command("disarm")} variant="destructive">
                         <ShieldOff className="size-4" /> Desarmar tudo
                     </Button>
                 </div>
@@ -74,17 +76,17 @@ export function AlarmControl({ device, compact = false }: { device: Device; comp
             </div>
 
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                <StatusCard active={Boolean(siren?.state.active || state.siren)} danger icon={<Radio className="size-4" />} label="Sirene" value={Boolean(siren?.state.active || state.siren) ? "Disparada" : "Silenciosa"} />
-                <StatusCard active={openZones.length > 0} danger icon={<DoorOpen className="size-4" />} label="Zonas abertas" value={String(openZones.length)} />
-                <StatusCard active={String(state.battery || "").toLowerCase() !== "full"} danger icon={<Battery className="size-4" />} label="Bateria central" value={batteryLabel(state.battery)} />
-                <StatusCard active={Boolean(state.tamper)} danger icon={<AlertTriangle className="size-4" />} label="Tamper" value={state.tamper ? "Detectado" : "Normal"} />
+                <StatusCard active={readingAvailable && Boolean(siren?.state.active || state.siren)} danger icon={<Radio className="size-4" />} label="Sirene" value={readingAvailable ? (Boolean(siren?.state.active || state.siren) ? "Disparada" : "Silenciosa") : "Sem leitura"} />
+                <StatusCard active={readingAvailable && openZones.length > 0} danger icon={<DoorOpen className="size-4" />} label="Zonas abertas" value={readingAvailable ? String(openZones.length) : "Sem leitura"} />
+                <StatusCard active={readingAvailable && String(state.battery || "").toLowerCase() !== "full"} danger icon={<Battery className="size-4" />} label="Bateria central" value={readingAvailable ? batteryLabel(state.battery) : "Sem leitura"} />
+                <StatusCard active={readingAvailable && Boolean(state.tamper)} danger icon={<AlertTriangle className="size-4" />} label="Tamper" value={readingAvailable ? (state.tamper ? "Detectado" : "Normal") : "Sem leitura"} />
             </div>
 
             <div className="flex items-center justify-between gap-3">
                 <div>
                     <p className="font-medium">Sensores e zonas</p>
                     <p className="text-xs text-muted-foreground">
-                        {zones.length} zonas • {alertZones.length} alertas • {bypassedZones.length} ignoradas
+                        {zones.length} zonas • {alertZones.length} alertas • {unavailableZones.length} sem leitura • {bypassedZones.length} ignoradas
                     </p>
                 </div>
                 <Button disabled={isPending} onClick={() => command("query")} size="sm" variant="outline">
@@ -154,23 +156,24 @@ function StatusCard({ icon, label, value, active, danger = false }: { icon: Reac
 }
 
 function ZoneCard({ entity }: { entity: Entity }) {
-    const open = Boolean(entity.state.open);
+    const online = entity.state.online !== false;
+    const open = online && Boolean(entity.state.open);
     const alert = hasZoneAlert(entity);
     return (
         <div className={cn("rounded-2xl border p-3", alert ? "border-red-500/40 bg-red-500/10" : open ? "border-amber-500/40 bg-amber-500/10" : "bg-secondary/20")}>
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="font-medium">{entity.name}</p>
-                    <p className="text-xs text-muted-foreground">Zona {zoneNumber(entity)} • {open ? "Aberta" : "Fechada"}</p>
+                    <p className="text-xs text-muted-foreground">Zona {zoneNumber(entity)} • {!online ? "Sem leitura" : open ? "Aberta" : "Fechada"}</p>
                 </div>
-                {open ? <DoorOpen className="size-5 text-amber-500" /> : <DoorClosed className="size-5 text-emerald-500" />}
+                {!online ? <AlertTriangle className="size-5 text-muted-foreground" /> : open ? <DoorOpen className="size-5 text-amber-500" /> : <DoorClosed className="size-5 text-emerald-500" />}
             </div>
             <div className="mt-3 flex flex-wrap gap-1">
                 {entity.state.violated ? <ZoneBadge label="Violada" danger /> : null}
                 {entity.state.tamper ? <ZoneBadge label="Tamper" danger /> : null}
                 {entity.state.lowBattery ? <ZoneBadge label="Bateria baixa" danger /> : null}
                 {entity.state.bypassed ? <ZoneBadge label="Ignorada" /> : null}
-                {!alert && !entity.state.bypassed ? <ZoneBadge label="Normal" /> : null}
+                {!online ? <ZoneBadge label="Indisponível" /> : !alert && !entity.state.bypassed ? <ZoneBadge label="Normal" /> : null}
             </div>
         </div>
     );
@@ -197,7 +200,7 @@ function partitionNumber(entity: Entity): number {
 }
 
 function hasZoneAlert(entity: Entity): boolean {
-    return Boolean(entity.state.violated || entity.state.tamper || entity.state.lowBattery);
+    return entity.state.online !== false && Boolean(entity.state.violated || entity.state.tamper || entity.state.lowBattery);
 }
 
 function alarmStateLabel(state: string): string {
@@ -205,6 +208,7 @@ function alarmStateLabel(state: string): string {
     if (state === "partial") return "Armada parcialmente";
     if (state === "disarmed") return "Desarmada";
     if (state === "firing") return "Em disparo";
+    if (state === "unavailable") return "Sem leitura";
     return "Estado desconhecido";
 }
 

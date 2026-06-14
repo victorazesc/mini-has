@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardFooter, CardTitle, CardDescription } from "@/components/ui/card"
-import { Circle, Lightbulb } from "lucide-react"
+import { Circle, CircleQuestionMark } from "lucide-react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./ui/skeleton"
@@ -12,7 +12,7 @@ export function DeviceCard({ device, isNew = false }: {
     device: Device,
     isNew?: boolean,
 }) {
-    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? Lightbulb
+    const DeviceIcon = DEVICE_ICON_BY_TYPE[device.deviceType as keyof typeof DEVICE_ICON_BY_TYPE] ?? CircleQuestionMark
     const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
 

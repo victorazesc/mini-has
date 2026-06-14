@@ -113,6 +113,9 @@ Por padrão `testOnCreate` é `true`: a API testa a credencial antes de salvar.
 ### Criar Intelbras Solar Send
 
 Integra microinversores Intelbras via OpenAPI Solarman. A integracao e somente leitura.
+App ID e App Secret nao sao exibidos no aplicativo Solar Send: devem ser solicitados e aprovados pela Solarman.
+As leituras em tempo real dependem da internet. Sem conexao, o Mini HAS preserva e exibe a ultima leitura sincronizada,
+mas nao consulta o microinversor/logger localmente.
 
 ```json
 {

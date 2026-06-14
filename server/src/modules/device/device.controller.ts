@@ -38,8 +38,15 @@ export class DeviceController {
     }
 
     @Get(':device_id/stream.mjpeg')
-    streamCameraMjpeg(@Param('device_id') deviceId: string, @Res() response: any) {
-        if (!this.deviceService.streamCameraMjpeg(Number(deviceId), response)) {
+    streamCameraMjpeg(@Param('device_id') deviceId: string, @Query('quality') quality: string | undefined, @Res() response: any) {
+        if (!this.deviceService.streamCameraMjpeg(Number(deviceId), response, quality === 'high')) {
+            throw this.commonService.notFound('Camera not found');
+        }
+    }
+
+    @Get(':device_id/stream.mp4')
+    streamCameraMp4(@Param('device_id') deviceId: string, @Query('quality') quality: string | undefined, @Res() response: any) {
+        if (!this.deviceService.streamCameraMp4(Number(deviceId), response, quality === 'high')) {
             throw this.commonService.notFound('Camera not found');
         }
     }

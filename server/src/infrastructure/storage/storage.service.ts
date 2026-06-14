@@ -213,6 +213,20 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         FOREIGN KEY(device_id) REFERENCES devices(id)
       );
+      CREATE TABLE IF NOT EXISTS camera_recordings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id INTEGER NOT NULL,
+        event_type TEXT NOT NULL DEFAULT 'motion',
+        started_at TEXT NOT NULL,
+        motion_started_at TEXT NOT NULL,
+        ended_at TEXT NOT NULL,
+        duration_seconds INTEGER NOT NULL,
+        file_path TEXT NOT NULL,
+        thumbnail_path TEXT,
+        metadata_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
+      );
       CREATE TABLE IF NOT EXISTS automations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -281,6 +295,7 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_automation_runs_automation_id ON automation_runs(automation_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id);
       CREATE INDEX IF NOT EXISTS idx_device_events_device_id ON device_events(device_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_camera_recordings_device_id ON camera_recordings(device_id, started_at DESC);
       CREATE INDEX IF NOT EXISTS idx_discovery_scans_created_at ON discovery_scans(created_at);
       CREATE INDEX IF NOT EXISTS idx_discovery_devices_last_seen_at ON discovery_devices(last_seen_at);
     `);

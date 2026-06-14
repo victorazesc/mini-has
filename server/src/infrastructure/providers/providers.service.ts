@@ -271,16 +271,27 @@ export class ProvidersService {
   }
 
   async getOnvifCameraStatus(integration: StoredIntegration, ip: string, port: number, path: string, credentials: JsonObject = {}) {
-    const probe = await this.cameraClient(integration, ip, port, path, credentials).probe();
+    const client = this.cameraClient(integration, ip, port, path, credentials);
+    const probe = await client.probe();
+    const ptz = probe.authenticated ? await client.probePtz() : { available: false, error: 'Autenticacao obrigatoria para detectar PTZ.' };
     return {
-      probe,
+      probe: { ...probe, ptzAvailable: ptz.available, ptzError: ptz.error || null },
       statusSummary: {
         online: probe.online,
         state: probe.streamAvailable ? 'streaming' : probe.online ? 'idle' : 'offline',
         authenticated: probe.authenticated,
         streamAvailable: probe.streamAvailable,
+        ptzAvailable: ptz.available,
+        ptzError: ptz.error || null,
       },
     };
+  }
+
+  async controlOnvifCameraPtz(integration: StoredIntegration, ip: string, port: number, path: string, credentials: JsonObject, params: JsonObject) {
+    const client = this.cameraClient(integration, ip, port, path, credentials);
+    if (params.stop === true) await client.stopPtz();
+    else await client.movePtz(Number(params.pan || 0), Number(params.tilt || 0), Number(params.zoom || 0), Number(params.durationMs || 350));
+    return { ptzAvailable: true };
   }
 
   async publishMqttCommand(integration: StoredIntegration, topic: string, payload: unknown, retain = false) {
@@ -505,13 +516,20 @@ export class ProvidersService {
     if (!appId || !appSecret || (!email && !username) || !password) {
       throw new Error('App ID, App Secret, conta e senha do Solarman sao obrigatorios.');
     }
-    const response = await this.solarmanFetch(integration, `/account/v1.0/token?appId=${encodeURIComponent(appId)}`, {
-      appSecret,
-      ...(email ? { email } : { username }),
-      password: /^[a-f0-9]{64}$/i.test(password) ? password : sha256(password),
-    });
+    let response: JsonObject;
+    try {
+      response = await this.solarmanFetch(integration, `/account/v1.0/token?appId=${encodeURIComponent(appId)}`, {
+        appSecret,
+        ...(email ? { email } : { username }),
+        password: /^[a-f0-9]{64}$/i.test(password) ? password : sha256(password),
+      });
+    } catch (error) {
+      throw new Error(`Falha ao autenticar na OpenAPI Solarman. Verifique App ID, App Secret, e-mail, senha e se a conta está autorizada para esse App ID. ${messageFrom(error)}`);
+    }
     const token = String(response.access_token || response.accessToken || '').trim();
-    if (!token) throw new Error(solarmanErrorMessage(response, 'Falha ao autenticar na API Solarman.'));
+    if (!token) {
+      throw new Error(`Falha ao autenticar na OpenAPI Solarman. Verifique se a conta está autorizada para esse App ID. ${solarmanErrorMessage(response)}`);
+    }
     return token;
   }
 

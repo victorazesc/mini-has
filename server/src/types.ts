@@ -257,7 +257,7 @@ export interface DiscoveredDevice {
   name?: string | null;
   manufacturer?: string | null;
   model?: string | null;
-  deviceType?: string | null;
+  deviceType?: string | null | undefined;
   source: string[];
   services: DiscoveredService[];
   openPorts: number[];

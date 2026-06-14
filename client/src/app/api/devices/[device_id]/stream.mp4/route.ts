@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ device_id: string }> }
+    { params }: { params: Promise<{ device_id: string }> },
 ) {
     if (!env.SERVER_URL) {
         return NextResponse.json({ message: "SERVER_URL nao configurada no ambiente." }, { status: 500 });
@@ -14,7 +14,7 @@ export async function GET(
 
     const { device_id: deviceId } = await params;
     const quality = request.nextUrl.searchParams.get("quality");
-    const serverUrl = new URL(`${env.SERVER_URL}/devices/${deviceId}/stream.mjpeg`);
+    const serverUrl = new URL(`${env.SERVER_URL}/devices/${deviceId}/stream.mp4`);
     if (quality === "high") serverUrl.searchParams.set("quality", "high");
     const upstreamController = new AbortController();
     request.signal.addEventListener("abort", () => upstreamController.abort(), { once: true });
@@ -27,7 +27,7 @@ export async function GET(
         status: response.status,
         headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate",
-            "Content-Type": response.headers.get("content-type") || "multipart/x-mixed-replace; boundary=ffmpeg",
+            "Content-Type": response.headers.get("content-type") || "video/mp4",
         },
     });
 }

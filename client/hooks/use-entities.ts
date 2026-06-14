@@ -6,6 +6,7 @@ export function useEntities() {
     return useQuery({
         queryKey: ["entities"],
         queryFn: getEntities,
+        refetchInterval: 10_000,
     });
 }
 

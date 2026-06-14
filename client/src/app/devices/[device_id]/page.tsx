@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { useDevice, useDeviceHistory, useSendCommand } from "@/hooks/use-devices";
 import { useEntities, useUpdateEntity } from "@/hooks/use-entities";
 import { cn } from "@/lib/utils";
-import { Building, Camera, Circle, Home, Power, SettingsIcon } from "lucide-react";
+import { AlertTriangle, Building, Camera, Circle, Home, Loader2, Power, Printer, SettingsIcon } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useHeaderTitle } from "@/src/providers/header-title-provider";
@@ -13,7 +13,7 @@ import { Device } from "@/src/services/devices.service";
 import Image from "next/image";
 import { PROVIDERS_ICON_BY_TYPE, PROVIDERS_NAME_BY_TYPE } from "@/src/constants/providers";
 import { Badge } from "@/components/ui/badge";
-import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus } from "@/src/constants/devices_types";
+import { DEVICE_TYPES_NAME_BY_TYPE, DeviceStatus, deviceImageSrc } from "@/src/constants/devices_types";
 import { Separator } from "@/components/ui/separator";
 import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
@@ -25,6 +25,8 @@ import { LightControl } from "@/components/capabilities/light/control";
 import { AlarmControl } from "@/components/capabilities/alarm/control";
 import { CameraControl } from "@/components/capabilities/camera/control";
 import { FeederControl } from "@/components/capabilities/feeder/control";
+import { PrinterControl } from "@/components/capabilities/printer/control";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type SwitchChannel = {
     dpsId: string;
@@ -67,9 +69,9 @@ function getSwitchChannels(device: Device, entities: Entity[]): SwitchChannel[] 
 }
 
 export default function DevicePage() {
-    const { device_id } = useParams();
+    const { device_id } = useParams<{ device_id: string }>();
     const deviceId = Number(device_id);
-    const { data: device } = useDevice(deviceId);
+    const { data: device, error: deviceError, isError: isDeviceError, isLoading: isLoadingDevice, refetch: refetchDevice } = useDevice(deviceId);
     const { data: entities = [] } = useEntities();
     const {
         data: history = [],
@@ -103,7 +105,7 @@ export default function DevicePage() {
         });
     };
     const handlePowerToggle = () => {
-        if (!device?.id || device.deviceType.toLowerCase().includes("camera")) {
+        if (!device?.id || device.deviceType.toLowerCase().includes("camera") || device.deviceType.toLowerCase() === "printer") {
             return;
         }
 
@@ -161,22 +163,35 @@ export default function DevicePage() {
         });
     }, [device?.id, sendCommand]);
 
+    if (!Number.isFinite(deviceId) || deviceId < 1) {
+        return <DeviceLoadError message="Dispositivo inválido." onRetry={() => window.location.reload()} />;
+    }
+
+    if (isLoadingDevice) {
+        return <DevicePageSkeleton />;
+    }
+
+    if (isDeviceError) {
+        return <DeviceLoadError message={deviceError.message || "Erro ao carregar dispositivo."} onRetry={() => void refetchDevice()} />;
+    }
+
     if (!device) {
-        return <div>Device not found</div>;
+        return <DeviceLoadError message="Dispositivo não encontrado." onRetry={() => void refetchDevice()} />;
     }
 
     const isLight = device.deviceType.toLowerCase().includes("light") || device.deviceType.toLowerCase().includes("lamp");
     const isAlarm = device.deviceType.toLowerCase().includes("alarm") || device.deviceType.toLowerCase().includes("alarme");
     const isCamera = device.deviceType.toLowerCase().includes("camera") || device.deviceType.toLowerCase() === "cam";
     const isFeeder = device.deviceType.toLowerCase() === "feeder";
-    const switchChannels = isLight || isAlarm || isCamera || isFeeder ? [] : getSwitchChannels(device, entities.filter((entity) => entity.deviceId === device.id));
+    const isPrinter = device.deviceType.toLowerCase() === "printer";
+    const switchChannels = isLight || isAlarm || isCamera || isFeeder || isPrinter ? [] : getSwitchChannels(device, entities.filter((entity) => entity.deviceId === device.id));
 
     const ProviderIcon = PROVIDERS_ICON_BY_TYPE[device.provider as keyof typeof PROVIDERS_ICON_BY_TYPE] ?? "./providers/diy.svg"
     const ProviderName = PROVIDERS_NAME_BY_TYPE[device.provider as keyof typeof PROVIDERS_NAME_BY_TYPE] ?? "DIY"
     const DeviceTypeName = DEVICE_TYPES_NAME_BY_TYPE[device.deviceType as keyof typeof DEVICE_TYPES_NAME_BY_TYPE] ?? "Device"
     const isCover = device.deviceType === "cover";
-    const isOn = isCover ? device.status.state === "open" : isAlarm ? ["armed", "partial"].includes(device.status.state) : isCamera ? Boolean(device.status.online) : device.status.state === "on";
-    const stateText = isCover ? coverStateText(device.status.state) : isAlarm ? alarmStateText(device.status.state) : isCamera ? cameraStateText(device.status.state, device.status.online) : isFeeder ? feederStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
+    const isOn = isCover ? device.status.state === "open" : isAlarm ? ["armed", "partial"].includes(device.status.state) : isCamera || isPrinter ? Boolean(device.status.online) : device.status.state === "on";
+    const stateText = isCover ? coverStateText(device.status.state) : isAlarm ? alarmStateText(device.status.state) : isCamera ? cameraStateText(device.status.state, device.status.online) : isPrinter ? printerStateText(device.status.state, device.status.online) : isFeeder ? feederStateText(device.status.state) : (isOn ? "Ligado" : "Desligado");
     const imageSrc = deviceImageSrc(device.deviceType);
     const lastSeenAt = device.status.lastSeenAt
         ? new Date(device.status.lastSeenAt).toLocaleString("pt-BR")
@@ -189,7 +204,7 @@ export default function DevicePage() {
                 <div className="flex flex-row gap-2 items-center px-6 bg-transparent border-none outline-none shadow-none ">
                     <div className="flex flex-row gap-2 items-center flex-2">
                         <div className="flex items-center justify-center rounded-full bg-secondary p-1 h-32 w-32">
-                            <Image src={imageSrc} alt={DeviceTypeName} objectFit="contain" width={130} height={130} />
+                            <Image src={imageSrc} alt={DeviceTypeName} width={130} height={130} className="size-[130px] object-contain" />
                         </div>
                         <div className="flex flex-col gap-2">
                             <h1 className="text-2xl font-semibold">{device.name}</h1>
@@ -217,8 +232,8 @@ export default function DevicePage() {
                         </div>
                     </div>
                     <Card
-                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && !isAlarm && !isCamera && !isFeeder && "cursor-pointer")}
-                        onClick={isCover || isAlarm || isCamera || isFeeder ? undefined : handlePowerToggle}
+                        className={cn("flex-1 rounded-3xl px-6 py-5", !isCover && !isAlarm && !isCamera && !isFeeder && !isPrinter && "cursor-pointer")}
+                        onClick={isCover || isAlarm || isCamera || isFeeder || isPrinter ? undefined : handlePowerToggle}
                     >
                         <div className="flex items-center justify-between gap-6">
                             <div className="flex flex-col gap-2">
@@ -241,7 +256,7 @@ export default function DevicePage() {
                                 "flex size-12 shrink-0 items-center justify-center rounded-full",
                                 isOn ? "bg-green-500/20 text-green-500" : "bg-secondary text-muted-foreground"
                             )}>
-                                {isCamera ? <Camera className="size-6" /> : <Power className="size-6" />}
+                                {isCamera ? <Camera className="size-6" /> : isPrinter ? <Printer className="size-6" /> : <Power className="size-6" />}
                             </div>
                         </div>
                     </Card>
@@ -288,6 +303,11 @@ export default function DevicePage() {
                             <FeederControl key={device.id} device={device} />
                         </section>
                     ) : null}
+                    {isPrinter ? (
+                        <section className="flex-1">
+                            <PrinterControl key={device.id} device={device} />
+                        </section>
+                    ) : null}
                 </div>
 
                 <DeviceHistoryCard
@@ -300,6 +320,39 @@ export default function DevicePage() {
                 />
 
             </div>
+        </main>
+    );
+}
+
+function DevicePageSkeleton() {
+    return (
+        <main className="flex flex-1 flex-col gap-6 px-4 py-4 lg:px-6">
+            <div className="flex items-center gap-4">
+                <Skeleton className="size-32 rounded-full" />
+                <div className="space-y-3">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-6 w-80" />
+                    <Skeleton className="h-5 w-48" />
+                </div>
+            </div>
+            <Skeleton className="h-72 w-full rounded-3xl" />
+        </main>
+    );
+}
+
+function DeviceLoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+    return (
+        <main className="flex flex-1 items-center justify-center p-6">
+            <Card className="w-full max-w-md">
+                <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+                    <AlertTriangle className="size-8 text-destructive" />
+                    <div>
+                        <p className="font-medium">Não foi possível carregar o dispositivo</p>
+                        <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+                    </div>
+                    <Button onClick={onRetry} variant="outline"><Loader2 className="size-4" /> Tentar novamente</Button>
+                </CardContent>
+            </Card>
         </main>
     );
 }
@@ -342,16 +395,6 @@ function SwitchChannelCard({ channel, onToggle }: { channel: SwitchChannel; onTo
     );
 }
 
-function deviceImageSrc(deviceType: string): string {
-    console.log("Device type:", deviceType);
-    if (deviceType === "camera") return "/devices/camera.png";
-    if (deviceType === "cover") return "/devices/cover.png";
-    if (deviceType === "feeder") return "/devices/feeder.png";
-    if (deviceType === "printer") return "/devices/printer.png";
-    if (["climate", "feeder", "switch", "switch2ch"].includes(deviceType)) return `/devices/${deviceType}.png`;
-    return "/devices/switch.png";
-}
-
 function coverStateText(state: string): string {
     const normalized = String(state || "").toLowerCase();
     if (normalized === "open") return "Aberta";
@@ -367,6 +410,7 @@ function alarmStateText(state: string): string {
     if (normalized === "partial") return "Armada parcialmente";
     if (normalized === "disarmed") return "Desarmada";
     if (normalized === "firing") return "Em disparo";
+    if (normalized === "unavailable") return "Sem leitura";
     return "Estado desconhecido";
 }
 
@@ -381,4 +425,14 @@ function feederStateText(state: string): string {
     if (state === "done") return "Concluído";
     if (state === "standby") return "Pronto";
     return "Indisponível";
+}
+
+function printerStateText(state: string, online: boolean): string {
+    if (!online) return "Offline";
+    if (state === "printing") return "Imprimindo";
+    if (state === "paused") return "Pausada";
+    if (state === "complete") return "Concluída";
+    if (state === "error") return "Erro no Klipper";
+    if (state === "standby") return "Em espera";
+    return "Online";
 }

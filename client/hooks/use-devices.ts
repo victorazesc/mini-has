@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CommandResult, DeviceHistoryEntry, getDevice, getDeviceHistory, getDevices, sendCommand, updateDevice, UpdateDevicePayload } from "../src/services/devices.service";
+import { CameraRecording, CommandResult, DeviceHistoryEntry, getCameraRecordings, getDevice, getDeviceHistory, getDevices, sendCommand, updateDevice, UpdateDevicePayload } from "../src/services/devices.service";
 import { toast } from "sonner";
 
 export type CommandRequest = {
@@ -16,6 +16,7 @@ export function useDevices(filters?: { name?: string, type?: string }) {
     return useQuery({
         queryKey: ["devices", filters],
         queryFn: () => getDevices(filters),
+        refetchInterval: 10_000,
     });
 }
 
@@ -24,6 +25,10 @@ export function useDevice(deviceId: number) {
         queryKey: ["device", deviceId],
         queryFn: () => getDevice(deviceId),
         enabled: Number.isFinite(deviceId) && deviceId > 0,
+        refetchInterval: 10_000,
+        refetchOnMount: "always",
+        retry: 3,
+        retryDelay: (attempt) => Math.min(500 * 2 ** attempt, 3_000),
     });
 }
 
@@ -32,6 +37,15 @@ export function useDeviceHistory(deviceId: number, limit = 40) {
         queryKey: ["device-history", deviceId, limit],
         queryFn: () => getDeviceHistory(deviceId, limit),
         enabled: Number.isFinite(deviceId) && deviceId > 0,
+    });
+}
+
+export function useCameraRecordings(deviceId: number, date: string) {
+    return useQuery<CameraRecording[]>({
+        queryKey: ["camera-recordings", deviceId, date],
+        queryFn: () => getCameraRecordings(deviceId, date),
+        enabled: Number.isFinite(deviceId) && deviceId > 0 && Boolean(date),
+        refetchInterval: 15_000,
     });
 }
 
@@ -66,12 +80,12 @@ export function useUpdateDevice() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ deviceId, data }: { deviceId: number; data: UpdateDevicePayload }) => updateDevice(deviceId, data),
+        mutationFn: ({ deviceId, data }: { deviceId: number; data: UpdateDevicePayload; silentSuccessToast?: boolean }) => updateDevice(deviceId, data),
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["devices"] });
             queryClient.invalidateQueries({ queryKey: ["device", variables.deviceId] });
             queryClient.invalidateQueries({ queryKey: ["device-history", variables.deviceId] });
-            toast.success("Dispositivo atualizado com sucesso");
+            if (!variables.silentSuccessToast) toast.success("Dispositivo atualizado com sucesso");
         },
         onError: (error) => {
             toast.error(error instanceof Error ? error.message : "Erro ao atualizar dispositivo");

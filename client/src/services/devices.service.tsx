@@ -52,6 +52,18 @@ export type DeviceHistoryEntry = {
     createdAt: string;
 };
 
+export type CameraRecording = {
+    id: number;
+    deviceId: number;
+    eventType: "motion";
+    startedAt: string;
+    motionStartedAt: string;
+    endedAt: string;
+    durationSeconds: number;
+    hasThumbnail: boolean;
+    metadata: Record<string, unknown>;
+};
+
 export async function getDevices(filters: { name?: string; type?: string } | undefined): Promise<Device[]> {
     // await new Promise(resolve => setTimeout(resolve, 10000));
     const response = await fetch(`/api/devices?name=${filters?.name ?? ""}&type=${filters?.type ?? ""}`);
@@ -98,6 +110,16 @@ export async function getDeviceHistory(deviceId: number, limit = 40): Promise<De
 
     if (!response.ok) {
         throw new Error(await errorMessageFrom(response, "Erro ao buscar histórico do dispositivo"));
+    }
+
+    return response.json();
+}
+
+export async function getCameraRecordings(deviceId: number, date: string): Promise<CameraRecording[]> {
+    const response = await fetch(`/api/devices/${deviceId}/recordings?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, "Erro ao buscar gravações da câmera"));
     }
 
     return response.json();

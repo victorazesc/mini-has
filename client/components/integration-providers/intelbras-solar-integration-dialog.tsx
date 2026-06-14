@@ -12,6 +12,7 @@ import { Field, FieldError, FieldGroup } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useIntegrations } from "@/hooks/use-integrations"
+import { Cloud, Database, ExternalLink, Info } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -73,28 +74,45 @@ export function IntelbrasSolarIntegrationDialog({ open, onOpenChange }: { open: 
     return (
         <>
             <Dialog open={open && !showScanDialog} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-lg">
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
                             <DialogTitle>Intelbras Solar Send</DialogTitle>
                             <DialogDescription>
-                                Importe o microinversor e monitore individualmente seus modulos via API Solarman.
+                                Importe o microinversor e monitore seus módulos pela OpenAPI Solarman.
                             </DialogDescription>
                         </DialogHeader>
+                        <div className="mt-5 space-y-3 rounded-xl border bg-muted/30 p-4 text-sm">
+                            <p className="flex items-center gap-2 font-medium"><Info className="size-4" /> Antes de conectar</p>
+                            <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+                                <li>Solicite acesso à OpenAPI Solarman para receber um App ID e App Secret.</li>
+                                <li>Use o e-mail e a senha da conta onde sua planta aparece no Solar Send.</li>
+                                <li>Informe quantos módulos/painéis deseja visualizar separadamente.</li>
+                            </ol>
+                            <a
+                                className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"
+                                href="https://helpcenter.solarmanpv.com/portal/en/kb/articles/i-want-to-open-api-how-can-i-open-api"
+                                rel="noreferrer"
+                                target="_blank"
+                            >
+                                Como solicitar App ID e App Secret <ExternalLink className="size-3.5" />
+                            </a>
+                        </div>
                         <FieldGroup className="py-6">
-                            <SolarField id="solar-app-id" label="Solarman App ID" value={values.appId} disabled={isPending} onChange={(value) => setValue("appId", value)} />
-                            <SolarField id="solar-app-secret" label="Solarman App Secret" type="password" value={values.appSecret} disabled={isPending} onChange={(value) => setValue("appSecret", value)} />
-                            <SolarField id="solar-email" label="E-mail da conta Solar Send" type="email" value={values.email} disabled={isPending} onChange={(value) => setValue("email", value)} />
-                            <SolarField id="solar-password" label="Senha da conta" type="password" value={values.password} disabled={isPending} onChange={(value) => setValue("password", value)} />
-                            <SolarField id="solar-modules" label="Quantidade de modulos" value={values.moduleCount} disabled={isPending} onChange={(value) => setValue("moduleCount", value)} />
+                            <SolarField id="solar-app-id" label="App ID da OpenAPI Solarman" value={values.appId} disabled={isPending} onChange={(value) => setValue("appId", value)} />
+                            <SolarField id="solar-app-secret" label="App Secret da OpenAPI Solarman" type="password" value={values.appSecret} disabled={isPending} onChange={(value) => setValue("appSecret", value)} />
+                            <SolarField id="solar-email" label="E-mail usado no Solar Send" type="email" value={values.email} disabled={isPending} onChange={(value) => setValue("email", value)} />
+                            <SolarField id="solar-password" label="Senha usada no Solar Send" type="password" value={values.password} disabled={isPending} onChange={(value) => setValue("password", value)} />
+                            <SolarField id="solar-modules" label="Quantidade de módulos/painéis" value={values.moduleCount} disabled={isPending} onChange={(value) => setValue("moduleCount", value)} />
                         </FieldGroup>
                         <FieldError className="mb-6 w-full text-center">{formError}</FieldError>
-                        <p className="mb-6 text-xs text-muted-foreground">
-                            Integracao somente leitura. App ID e App Secret devem ser solicitados no portal OpenAPI Solarman.
-                        </p>
+                        <div className="mb-6 grid gap-2 text-xs text-muted-foreground">
+                            <p className="flex items-start gap-2"><Cloud className="mt-0.5 size-4 shrink-0" /> Leituras em tempo real dependem da internet e da nuvem Solarman.</p>
+                            <p className="flex items-start gap-2"><Database className="mt-0.5 size-4 shrink-0" /> Sem internet, o Mini HAS continua mostrando a última leitura salva localmente.</p>
+                        </div>
                         <DialogFooter>
                             <DialogClose render={<Button variant="outline" disabled={isPending}>Cancelar</Button>} />
-                            <Button type="submit" disabled={isPending}>{isPending ? "Conectando..." : "Conectar"}</Button>
+                            <Button type="submit" disabled={isPending}>{isPending ? "Validando credenciais..." : "Validar e conectar"}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

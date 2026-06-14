@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import { Socket } from 'node:net';
 import { JsonObject } from '../../types';
 
@@ -10,7 +11,11 @@ export type CameraProbeResult = {
   server?: string | null;
   publicMethods?: string | null;
   error?: string | null;
+  ptzAvailable?: boolean;
+  ptzError?: string | null;
 };
+
+type PtzContext = { ptzUrl: string; profileToken: string };
 
 export class OnvifCameraClient {
   constructor(
@@ -94,6 +99,34 @@ export class OnvifCameraClient {
     }
   }
 
+  async probePtz(): Promise<{ available: boolean; error?: string | null }> {
+    try {
+      await this.ptzContext();
+      return { available: true, error: null };
+    } catch (error) {
+      return { available: false, error: messageFrom(error) };
+    }
+  }
+
+  async movePtz(pan: number, tilt: number, zoom: number, durationMs = 350): Promise<void> {
+    const context = await this.ptzContext();
+    const velocity = [
+      pan || tilt ? `<tt:PanTilt x="${clamp(pan)}" y="${clamp(tilt)}"/>` : '',
+      zoom ? `<tt:Zoom x="${clamp(zoom)}"/>` : '',
+    ].join('');
+    await this.soapRequest(
+      context.ptzUrl,
+      'http://www.onvif.org/ver20/ptz/wsdl/ContinuousMove',
+      `<tptz:ContinuousMove><tptz:ProfileToken>${xmlEscape(context.profileToken)}</tptz:ProfileToken><tptz:Velocity>${velocity}</tptz:Velocity></tptz:ContinuousMove>`,
+    );
+    await delay(Math.min(1_500, Math.max(100, durationMs)));
+    await this.sendStopPtz(context);
+  }
+
+  async stopPtz(): Promise<void> {
+    await this.sendStopPtz(await this.ptzContext());
+  }
+
   rtspUrl(): string {
     const path = this.streamPath.startsWith('/') ? this.streamPath : `/${this.streamPath}`;
     return `rtsp://${this.ip}:${this.port}${path}`;
@@ -156,6 +189,113 @@ export class OnvifCameraClient {
       socket.write(request);
     });
   }
+
+  private async ptzContext(): Promise<PtzContext> {
+    if (!this.username || !this.password) throw new Error('Credenciais ONVIF obrigatorias para detectar PTZ.');
+    const deviceUrl = `http://${this.ip}/onvif/device_service`;
+    const capabilities = await this.soapRequest(
+      deviceUrl,
+      'http://www.onvif.org/ver10/device/wsdl/GetCapabilities',
+      '<td:GetCapabilities><td:Category>All</td:Category></td:GetCapabilities>',
+    );
+    const ptzUrl = serviceXAddr(capabilities, 'PTZ');
+    const mediaUrl = serviceXAddr(capabilities, 'Media');
+    if (!ptzUrl) throw new Error('Camera nao anunciou suporte PTZ via ONVIF.');
+    if (!mediaUrl) throw new Error('Camera ONVIF sem servico de mídia.');
+    const profiles = await this.soapRequest(mediaUrl, 'http://www.onvif.org/ver10/media/wsdl/GetProfiles', '<trt:GetProfiles/>');
+    const profileToken = profiles.match(/<(?:\w+:)?Profiles\b[^>]*\btoken="([^"]+)"/i)?.[1];
+    if (!profileToken) throw new Error('Camera ONVIF sem perfil de mídia para PTZ.');
+    return { ptzUrl, profileToken };
+  }
+
+  private async sendStopPtz(context: PtzContext): Promise<void> {
+    await this.soapRequest(
+      context.ptzUrl,
+      'http://www.onvif.org/ver20/ptz/wsdl/Stop',
+      `<tptz:Stop><tptz:ProfileToken>${xmlEscape(context.profileToken)}</tptz:ProfileToken><tptz:PanTilt>true</tptz:PanTilt><tptz:Zoom>true</tptz:Zoom></tptz:Stop>`,
+    );
+  }
+
+  private async soapRequest(url: string, action: string, body: string): Promise<string> {
+    const envelope = soapEnvelope(this.username, this.password, body);
+    const first = await postSoap(url, action, envelope, this.timeoutMs);
+    if (first.statusCode === 401 && first.authenticate) {
+      const challenge = parseDigestChallenge(first.authenticate);
+      if (!challenge) throw new Error('Autenticacao HTTP ONVIF recusada.');
+      const parsedUrl = new URL(url);
+      const authorization = digestAuthorization('POST', `${parsedUrl.pathname}${parsedUrl.search}`, this.username, this.password, challenge);
+      const authenticated = await postSoap(url, action, envelope, this.timeoutMs, authorization);
+      return validateSoapResponse(authenticated);
+    }
+    return validateSoapResponse(first);
+  }
+}
+
+function postSoap(url: string, action: string, body: string, timeoutMs: number, authorization?: string): Promise<{ statusCode: number; body: string; authenticate?: string }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const request = httpRequest({
+      hostname: parsed.hostname,
+      port: parsed.port ? Number(parsed.port) : 80,
+      path: `${parsed.pathname}${parsed.search}`,
+      method: 'POST',
+      headers: {
+        'Content-Type': `application/soap+xml; charset=utf-8; action="${action}"`,
+        'Content-Length': Buffer.byteLength(body),
+        ...(authorization ? { Authorization: authorization } : {}),
+      },
+    }, (response) => {
+      let responseBody = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { responseBody += chunk; });
+      response.on('end', () => resolve({
+        statusCode: response.statusCode || 0,
+        body: responseBody,
+        authenticate: response.headers['www-authenticate'],
+      }));
+    });
+    request.setTimeout(timeoutMs, () => request.destroy(new Error('Tempo esgotado na chamada ONVIF.')));
+    request.on('error', reject);
+    request.end(body);
+  });
+}
+
+function validateSoapResponse(response: { statusCode: number; body: string }): string {
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const fault = response.body.match(/<(?:\w+:)?Text[^>]*>([^<]+)</i)?.[1];
+    throw new Error(fault || `Camera ONVIF respondeu HTTP ${response.statusCode}.`);
+  }
+  return response.body;
+}
+
+function soapEnvelope(username: string, password: string, body: string): string {
+  const nonce = randomBytes(16);
+  const created = new Date().toISOString();
+  const digest = createHash('sha1').update(Buffer.concat([nonce, Buffer.from(created), Buffer.from(password)])).digest('base64');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:td="http://www.onvif.org/ver10/device/wsdl" xmlns:trt="http://www.onvif.org/ver10/media/wsdl" xmlns:tptz="http://www.onvif.org/ver20/ptz/wsdl" xmlns:tt="http://www.onvif.org/ver10/schema" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+<s:Header><wsse:Security s:mustUnderstand="1"><wsse:UsernameToken><wsse:Username>${xmlEscape(username)}</wsse:Username><wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${digest}</wsse:Password><wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">${nonce.toString('base64')}</wsse:Nonce><wsu:Created>${created}</wsu:Created></wsse:UsernameToken></wsse:Security></s:Header>
+<s:Body>${body}</s:Body></s:Envelope>`;
+}
+
+function serviceXAddr(xml: string, service: string): string {
+  return xml.match(new RegExp(`<(?:\\w+:)?${service}\\b[\\s\\S]*?<(?:\\w+:)?XAddr>([^<]+)`, 'i'))?.[1]?.trim() || '';
+}
+
+function xmlEscape(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[character] || character);
+}
+
+function clamp(value: number): number {
+  return Math.min(1, Math.max(-1, Number(value) || 0));
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function messageFrom(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function statusCode(response: string): number | null {

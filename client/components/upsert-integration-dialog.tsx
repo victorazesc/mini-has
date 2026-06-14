@@ -283,16 +283,21 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
 
                         {integration.type === "intelbras_solar" ? (
                             <>
+                                <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+                                    <p className="font-medium text-foreground">Integração via nuvem Solarman</p>
+                                    <p className="mt-1">App ID e App Secret são credenciais da OpenAPI Solarman, não aparecem no app Solar Send.</p>
+                                    <p className="mt-2">Sem internet, permanecem disponíveis somente as últimas leituras salvas no Mini HAS.</p>
+                                </div>
                                 <FieldInput
                                     id={`integration-${integration.id}-app-id`}
-                                    label="Solarman App ID"
+                                    label="App ID da OpenAPI Solarman"
                                     value={values.appId}
                                     disabled={isBusy}
                                     onChange={(value) => setValue("appId", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-app-secret`}
-                                    label="Solarman App Secret"
+                                    label="App Secret da OpenAPI Solarman"
                                     type="password"
                                     value={values.appSecret}
                                     placeholder="Manter atual"
@@ -301,14 +306,14 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-email`}
-                                    label="E-mail da conta"
+                                    label="E-mail usado no Solar Send"
                                     value={values.email}
                                     disabled={isBusy}
                                     onChange={(value) => setValue("email", value)}
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-password`}
-                                    label="Senha da conta"
+                                    label="Senha usada no Solar Send"
                                     type="password"
                                     value={values.password}
                                     placeholder="Manter atual"
@@ -317,7 +322,7 @@ export function UpsertIntegrationDialog({ integration, children }: UpsertIntegra
                                 />
                                 <FieldInput
                                     id={`integration-${integration.id}-module-count`}
-                                    label="Quantidade de modulos"
+                                    label="Quantidade de módulos/painéis"
                                     value={values.moduleCount}
                                     disabled={isBusy}
                                     onChange={(value) => setValue("moduleCount", value)}

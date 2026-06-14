@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger } from "@/components/ui/select"
-import { useUpdateDevice } from "@/hooks/use-devices"
+import { useSendCommand, useUpdateDevice } from "@/hooks/use-devices"
 import { useEntities, useUpdateEntity } from "@/hooks/use-entities"
 import { useRooms } from "@/hooks/use-rooms"
 import { DEVICE_TYPES, DEVICE_TYPES_NAME_BY_TYPE } from "@/src/constants/devices_types"
 import { Device, getDeviceConfiguration } from "@/src/services/devices.service"
 import { Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 
 const NO_ROOM_VALUE = "__none__";
 
@@ -37,6 +38,11 @@ type DeviceFormValues = {
 type UpsertDeviceDialogProps = {
     device: Device;
     children: React.ReactElement;
+};
+
+type CameraValidationFeedback = {
+    status: "testing" | "success" | "error";
+    message: string;
 };
 
 function initialValues(device: Device): DeviceFormValues {
@@ -61,15 +67,17 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
     const [formError, setFormError] = useState<string | null>(null);
     const [isLoadingConfiguration, setIsLoadingConfiguration] = useState(false);
     const [showCameraPassword, setShowCameraPassword] = useState(false);
+    const [cameraValidationFeedback, setCameraValidationFeedback] = useState<CameraValidationFeedback | null>(null);
     const { data: rooms } = useRooms();
     const { data: entities = [] } = useEntities();
     const { mutateAsync: updateDevice, isPending } = useUpdateDevice();
+    const { mutateAsync: validateCamera, isPending: isValidatingCamera } = useSendCommand();
     const { mutateAsync: updateEntity, isPending: isUpdatingEntity } = useUpdateEntity();
     const camera = device.provider === "onvif_camera" || device.deviceType.toLowerCase().includes("camera");
     const solarModules = entities
         .filter((entity) => entity.deviceId === device.id && Number.isInteger(Number(entity.capabilities.module)))
         .sort((left, right) => Number(left.capabilities.module) - Number(right.capabilities.module));
-    const isBusy = isPending || isUpdatingEntity || isLoadingConfiguration;
+    const isBusy = isPending || isUpdatingEntity || isLoadingConfiguration || isValidatingCamera;
 
     const deviceTypes = DEVICE_TYPES.some((item) => item.value === device.deviceType)
         ? DEVICE_TYPES
@@ -92,6 +100,7 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
             setModuleNames(Object.fromEntries(solarModules.map((entity) => [entity.id, entity.name])));
             setFormError(null);
             setShowCameraPassword(false);
+            setCameraValidationFeedback(null);
             if (camera) {
                 setIsLoadingConfiguration(true);
                 void getDeviceConfiguration(device.id)
@@ -132,29 +141,62 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
 
         setFormError(null);
 
-        await updateDevice({
-            deviceId: device.id,
-            data: {
-                name,
-                deviceType: values.deviceType,
-                roomId: values.roomId === NO_ROOM_VALUE ? null : Number(values.roomId),
-                ...(camera ? {
-                    cameraConfig: {
-                        ip: values.cameraIp.trim(),
-                        port: Number(values.cameraPort) || 554,
-                        username: values.cameraUsername.trim(),
-                        password: values.cameraPassword,
-                        rtspPath: values.cameraRtspPath.trim(),
-                    },
-                } : {}),
-            },
-        });
+        if (camera) setCameraValidationFeedback({ status: "testing", message: "Validando usuário, senha e stream RTSP..." });
 
-        await Promise.all(solarModules
-            .filter((entity) => moduleNames[entity.id]?.trim() && moduleNames[entity.id].trim() !== entity.name)
-            .map((entity) => updateEntity({ entityId: entity.id, name: moduleNames[entity.id].trim() })));
+        try {
+            await updateDevice({
+                deviceId: device.id,
+                silentSuccessToast: camera,
+                data: {
+                    name,
+                    deviceType: values.deviceType,
+                    roomId: values.roomId === NO_ROOM_VALUE ? null : Number(values.roomId),
+                    ...(camera ? {
+                        cameraConfig: {
+                            ip: values.cameraIp.trim(),
+                            port: Number(values.cameraPort) || 554,
+                            username: values.cameraUsername.trim(),
+                            password: values.cameraPassword,
+                            rtspPath: values.cameraRtspPath.trim(),
+                        },
+                    } : {}),
+                },
+            });
 
-        setOpen(false);
+            if (camera) {
+                const validation = await validateCamera({
+                    deviceId: device.id,
+                    command: { command: "query", params: {} },
+                });
+                const statusSummary = isRecord(validation.result.statusSummary) ? validation.result.statusSummary : {};
+                const authenticated = statusSummary.authenticated === true;
+                const streamAvailable = statusSummary.streamAvailable === true;
+                const online = statusSummary.online === true;
+
+                if (!authenticated || !streamAvailable) {
+                    const message = !online
+                        ? "A câmera não respondeu no IP e porta informados."
+                        : !authenticated
+                            ? "Usuário ou senha recusados pela câmera."
+                            : "Credenciais aceitas, mas o caminho RTSP não respondeu.";
+                    setCameraValidationFeedback({ status: "error", message });
+                    toast.error(message);
+                    return;
+                }
+
+                setCameraValidationFeedback({ status: "success", message: "Credenciais aceitas e stream RTSP validado." });
+                toast.success("Credenciais da câmera validadas");
+            }
+
+            await Promise.all(solarModules
+                .filter((entity) => moduleNames[entity.id]?.trim() && moduleNames[entity.id].trim() !== entity.name)
+                .map((entity) => updateEntity({ entityId: entity.id, name: moduleNames[entity.id].trim() })));
+
+            setOpen(false);
+        } catch (error) {
+            setFormError(error instanceof Error ? error.message : "Não foi possível atualizar o dispositivo.");
+            if (camera) setCameraValidationFeedback({ status: "error", message: "Não foi possível validar a conexão da câmera." });
+        }
     };
 
     return (
@@ -234,9 +276,18 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
                         {camera ? (
                             <>
                                 <p className="pt-2 text-sm font-medium">Conexão da câmera</p>
-                                <DeviceField id="camera-ip" label="IP" value={values.cameraIp} disabled={isBusy} onChange={(cameraIp) => setValues((current) => ({ ...current, cameraIp }))} />
-                                <DeviceField id="camera-port" label="Porta RTSP" value={values.cameraPort} disabled={isBusy} onChange={(cameraPort) => setValues((current) => ({ ...current, cameraPort }))} />
-                                <DeviceField id="camera-username" label="Usuário" value={values.cameraUsername} disabled={isBusy} onChange={(cameraUsername) => setValues((current) => ({ ...current, cameraUsername }))} />
+                                <DeviceField id="camera-ip" label="IP" value={values.cameraIp} disabled={isBusy} onChange={(cameraIp) => {
+                                    setValues((current) => ({ ...current, cameraIp }));
+                                    setCameraValidationFeedback(null);
+                                }} />
+                                <DeviceField id="camera-port" label="Porta RTSP" value={values.cameraPort} disabled={isBusy} onChange={(cameraPort) => {
+                                    setValues((current) => ({ ...current, cameraPort }));
+                                    setCameraValidationFeedback(null);
+                                }} />
+                                <DeviceField id="camera-username" label="Usuário" value={values.cameraUsername} disabled={isBusy} onChange={(cameraUsername) => {
+                                    setValues((current) => ({ ...current, cameraUsername }));
+                                    setCameraValidationFeedback(null);
+                                }} />
                                 <div className="grid gap-2">
                                     <Label htmlFor="camera-password">Senha</Label>
                                     <div className="relative">
@@ -246,7 +297,10 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
                                             type={showCameraPassword ? "text" : "password"}
                                             value={values.cameraPassword}
                                             disabled={isBusy}
-                                            onChange={(event) => setValues((current) => ({ ...current, cameraPassword: event.target.value }))}
+                                            onChange={(event) => {
+                                                setValues((current) => ({ ...current, cameraPassword: event.target.value }));
+                                                setCameraValidationFeedback(null);
+                                            }}
                                         />
                                         <Button
                                             aria-label={showCameraPassword ? "Ocultar senha" : "Mostrar senha"}
@@ -261,8 +315,22 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
                                         </Button>
                                     </div>
                                 </div>
-                                <DeviceField id="camera-rtsp-path" label="Caminho RTSP" value={values.cameraRtspPath} disabled={isBusy} onChange={(cameraRtspPath) => setValues((current) => ({ ...current, cameraRtspPath }))} />
+                                <DeviceField id="camera-rtsp-path" label="Caminho RTSP" value={values.cameraRtspPath} disabled={isBusy} onChange={(cameraRtspPath) => {
+                                    setValues((current) => ({ ...current, cameraRtspPath }));
+                                    setCameraValidationFeedback(null);
+                                }} />
                                 <p className="text-xs text-muted-foreground">Usuário e senha ficam salvos somente nesta câmera.</p>
+                                {cameraValidationFeedback ? (
+                                    <p className={
+                                        cameraValidationFeedback.status === "error"
+                                            ? "text-sm text-destructive"
+                                            : cameraValidationFeedback.status === "success"
+                                                ? "text-sm text-emerald-500"
+                                                : "text-sm text-muted-foreground"
+                                    }>
+                                        {cameraValidationFeedback.message}
+                                    </p>
+                                ) : null}
                             </>
                         ) : null}
 
@@ -291,7 +359,7 @@ export function UpsertDeviceDialog({ device, children }: UpsertDeviceDialogProps
                             Cancelar
                         </Button>
                         <Button type="submit" disabled={isBusy}>
-                            {isBusy ? "Salvando..." : "Salvar"}
+                            {isValidatingCamera ? "Validando câmera..." : isBusy ? "Salvando..." : camera ? "Salvar e validar" : "Salvar"}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -327,4 +395,8 @@ function DeviceField({
 
 function stringValue(value: unknown): string {
     return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

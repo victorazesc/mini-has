@@ -13,11 +13,13 @@ import {
 import {
   AirVent,
   Blinds,
+  Camera,
   Check,
   Grid2X2,
   Lightbulb,
   ListPlus,
   Move3D,
+  Printer,
   Rotate3D,
   Redo2,
   RotateCcw,
@@ -60,7 +62,7 @@ import {
 } from "@/components/3d/camera-view-controls";
 import { FloorModel, FloorModelErrorBoundary } from "@/components/3d/floor-model";
 
-type DeviceType = "light" | "climate" | "cover" | "sensor";
+type DeviceType = "light" | "climate" | "cover" | "sensor" | "camera" | "printer";
 type DeviceFilter = DeviceType | "all";
 type DevicePosition = [number, number, number];
 
@@ -119,6 +121,14 @@ const DEVICE_TYPES: Record<
     label: "Sensor",
     color: "#facc15",
   },
+  camera: {
+    label: "Câmera",
+    color: "#a78bfa",
+  },
+  printer: {
+    label: "Impressora 3D",
+    color: "#fb923c",
+  },
 };
 
 type DevicePositionState = Record<
@@ -148,6 +158,14 @@ function DeviceGlyph({
     return <Move3D className={className} />;
   }
 
+  if (type === "camera") {
+    return <Camera className={className} />;
+  }
+
+  if (type === "printer") {
+    return <Printer className={className} />;
+  }
+
   return <Lightbulb className={className} />;
 }
 
@@ -173,6 +191,14 @@ function getDeviceEditorType(deviceType: string): DeviceType {
 
   if (normalizedType.includes("sensor")) {
     return "sensor";
+  }
+
+  if (normalizedType.includes("camera") || normalizedType === "cam") {
+    return "camera";
+  }
+
+  if (normalizedType.includes("printer") || normalizedType.includes("mainsail")) {
+    return "printer";
   }
 
   return "light";

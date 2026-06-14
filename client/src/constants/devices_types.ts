@@ -1,5 +1,5 @@
 import { IconName } from "lucide-react/dynamic"
-import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake, Shield, Sun } from "lucide-react"
+import { Lightbulb, Power, Brain, Camera, PawPrint, Blinds, Snowflake, Shield, Sun, Printer } from "lucide-react"
 
 export type SmartThingsValue<T = unknown> = {
     value: T;
@@ -67,7 +67,7 @@ export type DeviceStatus = {
 };
 
 
-export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
+export const DEVICE_TYPES: { label: string, value: string, icon: IconName }[] = [
     {
         label: "Lampada",
         value: "LAMP",
@@ -97,31 +97,57 @@ export const DEVICE_TYPES: { label: string, value: string, icon: IconName}[] = [
         label: "Central de alarme",
         value: "alarm",
         icon: 'shield',
+    },
+    {
+        label: "Impressora 3D",
+        value: "printer",
+        icon: 'printer',
     }
 ]
 
 export const DEVICE_ICON_BY_TYPE = {
-    LAMP: Lightbulb,
+    light: Lightbulb,
     switch: Power,
     iot: Brain,
-    CAM: Camera,
+    cam: Camera,
     camera: Camera,
-    FEEDER: PawPrint,
-    CURTAIN: Blinds,
+    feeder: PawPrint,
+    curtain: Blinds,
     cover: Blinds,
     climate: Snowflake,
     alarm: Shield,
     solar_inverter: Sun,
+    printer: Printer,
 }
 
 export const DEVICE_TYPES_NAME_BY_TYPE = {
     LAMP: "Lampada",
-    CAM: "Camera",
+    light: "Lâmpada",
+    switch: "Interruptor",
+    switch2ch: "Interruptor duplo",
+    iot: "Hub",
+    cam: "Camera",
     camera: "Camera",
-    FEEDER: "Alimentador de Gatos",
-    CURTAIN: "Persiana",
+    feeder: "Alimentador de Gatos",
+    curtain: "Persiana",
     cover: "Persiana",
     climate: "Climatizacao",
     alarm: "Central de alarme",
     solar_inverter: "Microinversor solar",
+    printer: "Impressora 3D",
+}
+
+export function deviceImageSrc(deviceType: string): string {
+    const normalizedType = String(deviceType || "").trim().toLowerCase();
+
+    if (["lamp", "light", "lightbulb"].includes(normalizedType)) return "/devices/light.png";
+    if (["cam", "camera"].includes(normalizedType)) return "/devices/camera.png";
+    if (["curtain", "cover", "blind", "blinds"].includes(normalizedType)) return "/devices/cover.png";
+    if (["feeder"].includes(normalizedType)) return "/devices/feeder.png";
+    if (["climate", "air_conditioner", "air-conditioner"].includes(normalizedType)) return "/devices/climate.png";
+    if (["printer", "3d_printer"].includes(normalizedType)) return "/devices/printer.png";
+    if (["alarm", "alarme"].includes(normalizedType)) return "/devices/alarm.png";
+    if (["iot", "hub", "gateway"].includes(normalizedType)) return "/devices/iot.png";
+    if (["switch2ch", "switch_2ch"].includes(normalizedType)) return "/devices/switch2ch.png";
+    return "/devices/switch.png";
 }

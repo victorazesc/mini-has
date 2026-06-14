@@ -10,6 +10,7 @@ import {
 import {
   AirVent,
   Blinds,
+  Camera,
   Circle,
   Cloud,
   CloudFog,
@@ -23,6 +24,7 @@ import {
   Move3D,
   PawPrint,
   Power,
+  Printer,
   Rotate3D,
   Settings,
   Shield,
@@ -41,7 +43,9 @@ import { ClimateControl } from "@/components/capabilities/climate/control";
 import { CoverControl } from "@/components/capabilities/cover/control";
 import { LightControl } from "@/components/capabilities/light/control";
 import { AlarmControl } from "@/components/capabilities/alarm/control";
+import { CameraControl } from "@/components/capabilities/camera/control";
 import { FeederControl } from "@/components/capabilities/feeder/control";
+import { PrinterControl } from "@/components/capabilities/printer/control";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -68,7 +72,7 @@ import { CameraViewControls } from "./camera-view-controls";
 import { FloorModel, FloorModelErrorBoundary } from "./floor-model";
 import { SlideAlarmAction } from "../ui/slideAlarm";
 
-type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm" | "feeder";
+type DeviceType = "light" | "climate" | "cover" | "sensor" | "alarm" | "feeder" | "camera" | "printer";
 type DevicePosition = [number, number, number];
 
 type WeatherData = {
@@ -109,12 +113,16 @@ const DEVICE_TYPES: Record<DeviceType, { label: string; color: string }> = {
   sensor: { label: "Sensor", color: "#facc15" },
   alarm: { label: "Central de alarme", color: "#34d399" },
   feeder: { label: "Alimentador", color: "#2dd4bf" },
+  camera: { label: "Câmera", color: "#a78bfa" },
+  printer: { label: "Impressora 3D", color: "#fb923c" },
 };
 
 function getDeviceVisualState(device: SpatialDevice): "on" | "off" | "offline" {
   if (!device.online) return "offline";
   if (device.type === "sensor") return "on";
   if (device.type === "feeder") return "on";
+  if (device.type === "camera") return "on";
+  if (device.type === "printer") return "on";
   if (device.type === "alarm") return ["armed", "partial"].includes(String(device.state || "").toLowerCase()) ? "on" : "off";
 
   const state = String(device.state || "").toLowerCase();
@@ -153,6 +161,14 @@ function getDeviceType(deviceType: string): DeviceType {
 
   if (normalizedType.includes("feeder") || normalizedType.includes("alimentador")) {
     return "feeder";
+  }
+
+  if (normalizedType.includes("camera") || normalizedType === "cam") {
+    return "camera";
+  }
+
+  if (normalizedType.includes("printer") || normalizedType.includes("mainsail")) {
+    return "printer";
   }
 
   return "light";
@@ -244,6 +260,8 @@ function DeviceGlyph({
   if (type === "sensor") return <Move3D className={className} />;
   if (type === "alarm") return <Shield className={className} />;
   if (type === "feeder") return <PawPrint className={className} />;
+  if (type === "camera") return <Camera className={className} />;
+  if (type === "printer") return <Printer className={className} />;
   return <Lightbulb className={className} />;
 }
 
@@ -611,6 +629,14 @@ function RealDeviceControl({
     return <FeederControl compact device={device} />;
   }
 
+  if (type === "camera") {
+    return <CameraControl compact device={device} />;
+  }
+
+  if (type === "printer") {
+    return <PrinterControl compact device={device} />;
+  }
+
   if (type === "sensor") {
     return (
       <div className="rounded-xl border border-white/10 bg-white/8 p-3 text-sm text-white/65">
@@ -859,6 +885,8 @@ function FilterDock({
     { icon: Blinds, label: "Cortinas", type: "cover" as const },
     { icon: Move3D, label: "Sensores", type: "sensor" as const },
     { icon: PawPrint, label: "Alimentadores", type: "feeder" as const },
+    { icon: Camera, label: "Câmeras", type: "camera" as const },
+    { icon: Printer, label: "Impressoras", type: "printer" as const },
   ].filter((item) => availableTypes.includes(item.type));
 
   return (
