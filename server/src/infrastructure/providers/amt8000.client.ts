@@ -5,6 +5,7 @@ const SOURCE = Buffer.from([0x8f, 0xe0]);
 const AUTH_COMMAND = Buffer.from([0xf0, 0xf0]);
 const STATUS_COMMAND = Buffer.from([0x0b, 0x4a]);
 const ARM_COMMAND = Buffer.from([0x40, 0x1e]);
+const BYPASS_COMMAND = Buffer.from([0x40, 0x1f]);
 const DISCONNECT_COMMAND = Buffer.from([0xf0, 0xf1]);
 const ALL_PARTITIONS = 0xff;
 
@@ -62,7 +63,7 @@ export class Amt8000Client {
     private readonly port: number,
     private readonly password: string,
     private readonly timeoutMs = 5_000,
-  ) {}
+  ) { }
 
   async getStatus(): Promise<Amt8000Status> {
     this.validateConfig();
@@ -84,6 +85,29 @@ export class Amt8000Client {
 
   async disarm(partition = ALL_PARTITIONS): Promise<Amt8000Status> {
     return this.setArmed(partition, false);
+  }
+
+  async setZoneBypass(zone: number, bypassed: boolean): Promise<Amt8000Status> {
+    this.validateConfig();
+    if (!Number.isInteger(zone) || zone < 1 || zone > 56) {
+      throw new Error('Zona AMT 8000 invalida. Use 1 a 56.');
+    }
+
+    const { socket } = await this.connectAndAuthenticate();
+    try {
+      await writePacket(socket, packet(BYPASS_COMMAND, Buffer.from([zone - 1, bypassed ? 0x01 : 0x00])));
+    } finally {
+      await disconnect(socket);
+    }
+
+    await delay(300);
+    const status = await this.getStatus();
+    const updatedZone = status.zones.find((item) => item.number === zone);
+    if (!updatedZone) throw new Error(`Zona ${zone} nao encontrada no status da central AMT 8000.`);
+    if (updatedZone.bypassed !== bypassed) {
+      throw new Error(`A central AMT 8000 nao confirmou ${bypassed ? 'a anulacao' : 'a remocao da anulacao'} da zona ${zone}.`);
+    }
+    return status;
   }
 
   private async setArmed(partition: number, armed: boolean): Promise<Amt8000Status> {
@@ -169,7 +193,7 @@ class FrameReader {
   constructor(
     private readonly socket: Socket,
     private readonly timeoutMs: number,
-  ) {}
+  ) { }
 
   async readFrame(timeoutMs = this.timeoutMs): Promise<Buffer> {
     while (true) {

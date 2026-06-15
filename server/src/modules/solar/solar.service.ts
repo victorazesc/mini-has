@@ -60,7 +60,7 @@ export class SolarService {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly storage: StorageService,
-  ) {}
+  ) { }
 
   async listLoggers(options: { refreshNetwork?: boolean } = {}) {
     const candidatesByIp = new Map<string, SolarCandidate>();

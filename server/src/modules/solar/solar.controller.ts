@@ -3,7 +3,7 @@ import { SolarService } from './solar.service';
 
 @Controller('solar')
 export class SolarController {
-  constructor(private readonly solarService: SolarService) {}
+  constructor(private readonly solarService: SolarService) { }
 
   @Get('loggers')
   listLoggers() {

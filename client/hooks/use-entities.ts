@@ -14,13 +14,13 @@ export function useUpdateEntity() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ entityId, name }: { entityId: number; name: string }) => updateEntity(entityId, { name }),
+        mutationFn: ({ entityId, name, settings }: { entityId: number; name?: string; settings?: Record<string, unknown> }) => updateEntity(entityId, { name, settings }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["entities"] });
-            toast.success("Canal atualizado com sucesso");
+            toast.success("Sensor atualizado com sucesso");
         },
         onError: (error) => {
-            toast.error(error instanceof Error ? error.message : "Erro ao atualizar canal");
+            toast.error(error instanceof Error ? error.message : "Erro ao atualizar sensor");
         },
     });
 }

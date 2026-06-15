@@ -168,6 +168,7 @@ export class StorageService implements OnModuleDestroy {
         command_schema_json TEXT NOT NULL,
         state_json TEXT NOT NULL,
         capabilities_json TEXT NOT NULL,
+        settings_json TEXT NOT NULL DEFAULT '{}',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(device_id) REFERENCES devices(id)
@@ -319,6 +320,7 @@ export class StorageService implements OnModuleDestroy {
     this.ensureColumn('rooms', 'icon', 'TEXT');
     this.ensureColumn('rooms', 'floor_id', 'INTEGER');
     this.ensureColumn('floors', 'model_url', 'TEXT');
+    this.ensureColumn('entities', 'settings_json', "TEXT NOT NULL DEFAULT '{}'");
   }
 
   private ensureColumn(table: string, column: string, definition: string) {

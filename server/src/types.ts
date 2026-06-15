@@ -168,6 +168,7 @@ export interface Entity {
   commandSchema: JsonObject;
   state: JsonObject;
   capabilities: JsonObject;
+  settings: JsonObject;
   createdAt: string;
   updatedAt: string;
 }

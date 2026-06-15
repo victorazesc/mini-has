@@ -2,8 +2,25 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useSendCommand } from "@/hooks/use-devices";
-import { useEntities } from "@/hooks/use-entities";
+import { useEntities, useUpdateEntity } from "@/hooks/use-entities";
 import { cn } from "@/lib/utils";
 import type { Device } from "@/src/services/devices.service";
 import type { Entity } from "@/src/services/entities.service";
@@ -12,12 +29,15 @@ import {
     Battery,
     DoorClosed,
     DoorOpen,
+    MoreVertical,
     Radio,
     RefreshCw,
+    Settings,
     Shield,
     ShieldCheck,
     ShieldOff,
 } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 
 type AlarmState = Record<string, unknown>;
 
@@ -32,9 +52,9 @@ export function AlarmControl({ device, compact = false }: { device: Device; comp
     const alarmState = String(state.state || "unknown").toLowerCase();
     const readingAvailable = device.status.online !== false;
     const armed = ["armed", "partial"].includes(alarmState);
-    const openZones = zones.filter((zone) => zone.state.online !== false && Boolean(zone.state.open));
+    const openZones = zones.filter((zone) => !isZoneBypassed(zone) && zone.state.online !== false && Boolean(zone.state.open));
     const alertZones = zones.filter(hasZoneAlert);
-    const bypassedZones = zones.filter((zone) => Boolean(zone.state.bypassed));
+    const bypassedZones = zones.filter(isZoneBypassed);
     const unavailableZones = zones.filter((zone) => zone.state.online === false);
 
     const command = (action: string, partition?: number) => {
@@ -156,25 +176,116 @@ function StatusCard({ icon, label, value, active, danger = false }: { icon: Reac
 }
 
 function ZoneCard({ entity }: { entity: Entity }) {
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [name, setName] = useState(entity.name);
+    const [bypassed, setBypassed] = useState(isZoneBypassed(entity));
+    const updateEntity = useUpdateEntity();
+    const sendZoneCommand = useSendCommand();
     const online = entity.state.online !== false;
     const open = online && Boolean(entity.state.open);
     const alert = hasZoneAlert(entity);
+    const ignored = isZoneBypassed(entity);
+    const isSaving = updateEntity.isPending || sendZoneCommand.isPending;
+
+    useEffect(() => {
+        if (!isConfigOpen) {
+            setName(entity.name);
+            setBypassed(isZoneBypassed(entity));
+        }
+    }, [entity, isConfigOpen]);
+
+    const saveConfig = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const physicallyBypassed = Boolean(entity.state.bypassed);
+        try {
+            if (bypassed !== physicallyBypassed) {
+                await sendZoneCommand.mutateAsync({
+                    deviceId: entity.deviceId,
+                    command: {
+                        command: "set_zone_bypass",
+                        params: { zone: zoneNumber(entity), bypassed },
+                    },
+                });
+            }
+            await updateEntity.mutateAsync({ entityId: entity.id, name, settings: { bypassed } });
+            setIsConfigOpen(false);
+        } catch {
+            // Mutations already show the error toast.
+        }
+    };
+
     return (
-        <div className={cn("rounded-2xl border p-3", alert ? "border-red-500/40 bg-red-500/10" : open ? "border-amber-500/40 bg-amber-500/10" : "bg-secondary/20")}>
+        <div className={cn("rounded-2xl border p-3", alert ? "border-red-500/40 bg-red-500/10" : open && !ignored ? "border-amber-500/40 bg-amber-500/10" : "bg-secondary/20")}>
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="font-medium">{entity.name}</p>
                     <p className="text-xs text-muted-foreground">Zona {zoneNumber(entity)} • {!online ? "Sem leitura" : open ? "Aberta" : "Fechada"}</p>
                 </div>
-                {!online ? <AlertTriangle className="size-5 text-muted-foreground" /> : open ? <DoorOpen className="size-5 text-amber-500" /> : <DoorClosed className="size-5 text-emerald-500" />}
+                <div className="flex items-center gap-1">
+                    {!online ? <AlertTriangle className="size-5 text-muted-foreground" /> : open ? <DoorOpen className="size-5 text-amber-500" /> : <DoorClosed className="size-5 text-emerald-500" />}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger render={<Button aria-label={`Abrir menu da ${entity.name}`} size="icon-sm" variant="ghost" />}>
+                            <MoreVertical className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => setIsConfigOpen(true)}>
+                                <Settings className="size-4" /> Configurar
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-1">
                 {entity.state.violated ? <ZoneBadge label="Violada" danger /> : null}
                 {entity.state.tamper ? <ZoneBadge label="Tamper" danger /> : null}
                 {entity.state.lowBattery ? <ZoneBadge label="Bateria baixa" danger /> : null}
-                {entity.state.bypassed ? <ZoneBadge label="Ignorada" /> : null}
-                {!online ? <ZoneBadge label="Indisponível" /> : !alert && !entity.state.bypassed ? <ZoneBadge label="Normal" /> : null}
+                {ignored ? <ZoneBadge label="Ignorada" /> : null}
+                {!online ? <ZoneBadge label="Indisponível" /> : !alert && !ignored ? <ZoneBadge label="Normal" /> : null}
             </div>
+
+            <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+                <DialogContent>
+                    <form className="space-y-5" onSubmit={saveConfig}>
+                        <DialogHeader>
+                            <DialogTitle>Configurar {entity.name}</DialogTitle>
+                            <DialogDescription>
+                                Ajuste o nome exibido no Mini HAS e marque se este setor deve ser tratado como anulado.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-2">
+                            <Label htmlFor={`zone-name-${entity.id}`}>Nome do sensor</Label>
+                            <Input
+                                id={`zone-name-${entity.id}`}
+                                value={name}
+                                onChange={(event) => setName(event.target.value)}
+                                placeholder={`Zona ${zoneNumber(entity)}`}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 rounded-2xl bg-secondary/20 p-4">
+                            <div className="space-y-1">
+                                <Label htmlFor={`zone-bypass-${entity.id}`}>Anular setor</Label>
+                            </div>
+                            <Switch
+                                id={`zone-bypass-${entity.id}`}
+                                disabled={isSaving}
+                                checked={bypassed}
+                                onCheckedChange={setBypassed}
+                            />
+                        </div>
+
+                        <DialogFooter>
+                            <Button disabled={isSaving} type="button" variant="outline" onClick={() => setIsConfigOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button disabled={isSaving || !name.trim()} type="submit">
+                                {isSaving ? "Salvando..." : "Salvar"}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -200,7 +311,11 @@ function partitionNumber(entity: Entity): number {
 }
 
 function hasZoneAlert(entity: Entity): boolean {
-    return entity.state.online !== false && Boolean(entity.state.violated || entity.state.tamper || entity.state.lowBattery);
+    return !isZoneBypassed(entity) && entity.state.online !== false && Boolean(entity.state.violated || entity.state.tamper || entity.state.lowBattery);
+}
+
+function isZoneBypassed(entity: Entity): boolean {
+    return Boolean(entity.state.bypassed || entity.settings?.bypassed);
 }
 
 function alarmStateLabel(state: string): string {

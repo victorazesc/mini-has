@@ -7,6 +7,7 @@ export type Entity = {
     commandSchema: Record<string, unknown>;
     state: Record<string, unknown>;
     capabilities: Record<string, unknown>;
+    settings: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
 };
@@ -21,7 +22,7 @@ export async function getEntities(): Promise<Entity[]> {
     return response.json() as Promise<Entity[]>
 }
 
-export async function updateEntity(entityId: number, data: { name: string }): Promise<Entity> {
+export async function updateEntity(entityId: number, data: { name?: string; settings?: Record<string, unknown> }): Promise<Entity> {
     const response = await fetch(`/api/entities/${entityId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

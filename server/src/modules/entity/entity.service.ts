@@ -24,8 +24,8 @@ export class EntityService {
                 this.storage.run(
                     `
           INSERT INTO entities
-            (device_id, unique_key, type, name, command_schema_json, state_json, capabilities_json, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (device_id, unique_key, type, name, command_schema_json, state_json, capabilities_json, settings_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(unique_key) DO UPDATE SET
             device_id = excluded.device_id,
             type = excluded.type,
@@ -42,6 +42,7 @@ export class EntityService {
                         this.storage.jsonDump(entity.commandSchema || {}),
                         this.storage.jsonDump(entity.state || {}),
                         this.storage.jsonDump(entity.capabilities || {}),
+                        this.storage.jsonDump({}),
                         now,
                         now,
                     ],
@@ -59,6 +60,18 @@ export class EntityService {
             const name = String(body.name || '').trim();
             if (!name) throw new Error('Nome da entidade e obrigatorio.');
             this.storage.run('UPDATE entities SET name = ?, updated_at = ? WHERE id = ?', [name, this.storage.utcNow(), entityId]);
+        }
+
+        if (isObject(body.settings)) {
+            const settings = { ...current.settings };
+            if (Object.prototype.hasOwnProperty.call(body.settings, 'bypassed')) {
+                settings.bypassed = Boolean(body.settings.bypassed);
+            }
+            this.storage.run('UPDATE entities SET settings_json = ?, updated_at = ? WHERE id = ?', [
+                this.storage.jsonDump(settings),
+                this.storage.utcNow(),
+                entityId,
+            ]);
         }
 
         return this.getEntity(entityId);
@@ -94,8 +107,13 @@ export class EntityService {
             commandSchema: this.storage.jsonLoad(row.command_schema_json, {}),
             state: this.storage.jsonLoad(row.state_json, {}),
             capabilities: this.storage.jsonLoad(row.capabilities_json, {}),
+            settings: this.storage.jsonLoad(row.settings_json, {}),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
         };
     }
+}
+
+function isObject(value: unknown): value is JsonObject {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

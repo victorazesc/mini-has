@@ -294,6 +294,8 @@ export class CommandsService {
     const password = String(integration?.secrets.password || secrets.password || '').trim();
     const client = new Amt8000Client(ip, port, password);
     const partition = Number(request.params?.partition);
+    const zone = Number(request.params?.zone);
+    const bypassed = Boolean(request.params?.bypassed);
     let status: Amt8000Status;
 
     if (request.command === 'query') status = await client.getStatus();
@@ -301,7 +303,10 @@ export class CommandsService {
     else if (request.command === 'disarm' || request.command === 'disarm_all') status = await client.disarm();
     else if (request.command === 'arm_partition') status = await client.arm(partition);
     else if (request.command === 'disarm_partition') status = await client.disarm(partition);
-    else throw new Error('Comando AMT 8000 invalido. Use query, arm, disarm, arm_partition ou disarm_partition.');
+    else if (request.command === 'set_zone_bypass') status = await client.setZoneBypass(zone, bypassed);
+    else if (request.command === 'bypass_zone') status = await client.setZoneBypass(zone, true);
+    else if (request.command === 'unbypass_zone') status = await client.setZoneBypass(zone, false);
+    else throw new Error('Comando AMT 8000 invalido. Use query, arm, disarm, arm_partition, disarm_partition ou set_zone_bypass.');
 
     return {
       ok: true,
