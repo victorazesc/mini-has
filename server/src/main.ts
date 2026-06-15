@@ -5,10 +5,20 @@ import { configDotenv } from 'dotenv';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 
+type BodyParserFactory = (options: Record<string, unknown>) => any;
+
+const { json, urlencoded } = require('express') as {
+  json: BodyParserFactory;
+  urlencoded: BodyParserFactory;
+};
+
 configDotenv();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+
+  app.use(json({ limit: process.env.MINI_HAS_BODY_LIMIT || '25mb' }));
+  app.use(urlencoded({ extended: true, limit: process.env.MINI_HAS_BODY_LIMIT || '25mb' }));
 
   app.enableCors({
     origin: '*',

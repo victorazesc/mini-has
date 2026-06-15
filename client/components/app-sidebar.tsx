@@ -66,7 +66,7 @@ export const data = {
   navSecondary: [
     {
       title: "Configurações",
-      url: "#",
+      url: "/settings",
       icon: <SlidersHorizontalIcon />,
     },
     {

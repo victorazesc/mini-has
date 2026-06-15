@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AutomationModule } from './modules/automation/automation.module';
+import { BackupModule } from './modules/backup/backup.module';
 import { CameraRecordingModule } from './modules/camera-recording/camera-recording.module';
 import { DeviceModule } from './modules/device/device.module';
 import { DiscoveryModule } from './modules/discovery/discovery.module';
@@ -20,6 +21,7 @@ import { SolarModule } from './modules/solar/solar.module';
     HealthModule,
     SceneModule,
     SolarModule,
+    BackupModule,
     AutomationModule,
     CameraRecordingModule,
     DeviceModule,
