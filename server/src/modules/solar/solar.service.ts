@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { networkInterfaces } from 'node:os';
 import { DiscoveryService } from '../../infrastructure/discovery/discovery-runner.service';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { SavedDiscoveryDevice } from '../../types';
 
 type SolarLogger = {
@@ -30,8 +31,25 @@ type LoggerCacheEntry = {
   cachedAt: number;
 };
 
+type SolarHistoryBucket = 'hour' | 'day';
+
+type SolarHistoryRange = '24h' | '7d' | '30d' | '90d';
+
+type SolarHistoryRow = {
+  bucket_start: string;
+  samples: number;
+  avg_power_w: number | null;
+  max_power_w: number | null;
+  min_today_energy_kwh: number | null;
+  max_today_energy_kwh: number | null;
+  min_total_energy_kwh: number | null;
+  max_total_energy_kwh: number | null;
+  total_energy_kwh: number | null;
+};
+
 const SUBNET_SCAN_CACHE_TTL_MS = 5 * 60_000;
 const LOGGER_VALUES_CACHE_TTL_MS = 30_000;
+const SOLAR_READING_MIN_INTERVAL_MS = Number(process.env.LOCAL_SOLAR_READING_MIN_INTERVAL_MS || 60_000);
 
 @Injectable()
 export class SolarService {
@@ -39,7 +57,10 @@ export class SolarService {
   private lastSubnetScanAt = 0;
   private subnetScanPromise?: Promise<string[]>;
 
-  constructor(private readonly discovery: DiscoveryService) {}
+  constructor(
+    private readonly discovery: DiscoveryService,
+    private readonly storage: StorageService,
+  ) {}
 
   async listLoggers(options: { refreshNetwork?: boolean } = {}) {
     const candidatesByIp = new Map<string, SolarCandidate>();
@@ -131,7 +152,7 @@ export class SolarService {
 
       this.loggerCache.set(ip, { values, cachedAt: Date.now() });
 
-      return {
+      const logger = {
         ip,
         mac: clean(values.cover_sta_mac) || candidate.mac,
         serial: clean(values.webdata_sn),
@@ -146,6 +167,9 @@ export class SolarService {
         online: true,
         fetchedAt,
       };
+
+      this.recordLoggerReading(logger, values);
+      return logger;
     } catch (error) {
       return {
         ip,
@@ -156,6 +180,146 @@ export class SolarService {
       };
     }
   }
+
+  listHistory(options: { range?: string; bucket?: string; ip?: string } = {}) {
+    const range = solarHistoryRange(options.range);
+    const bucket = solarHistoryBucket(options.bucket, range);
+    const since = new Date(Date.now() - solarHistoryRangeMs(range)).toISOString();
+    const params: unknown[] = [since];
+    let ipFilter = '';
+
+    if (options.ip && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(options.ip)) {
+      ipFilter = 'AND ip = ?';
+      params.push(options.ip);
+    }
+
+    const bucketExpression = bucket === 'day'
+      ? "substr(created_at, 1, 10) || 'T00:00:00.000Z'"
+      : "substr(created_at, 1, 13) || ':00:00.000Z'";
+
+    const rows = this.storage.all<SolarHistoryRow>(`
+      SELECT
+        ${bucketExpression} AS bucket_start,
+        COUNT(*) AS samples,
+        AVG(current_power_w) AS avg_power_w,
+        MAX(current_power_w) AS max_power_w,
+        MIN(today_energy_kwh) AS min_today_energy_kwh,
+        MAX(today_energy_kwh) AS max_today_energy_kwh,
+        MIN(total_energy_kwh) AS min_total_energy_kwh,
+        MAX(total_energy_kwh) AS max_total_energy_kwh,
+        MAX(total_energy_kwh) AS total_energy_kwh
+      FROM solar_readings
+      WHERE created_at >= ? AND online = 1 ${ipFilter}
+      GROUP BY bucket_start
+      ORDER BY bucket_start ASC
+    `, params);
+
+    const points = rows.map((row) => historyPoint(row, bucket));
+
+    return {
+      range,
+      bucket,
+      points,
+      summary: {
+        samples: points.reduce((total, point) => total + point.samples, 0),
+        generatedEnergyKwh: round(points.reduce((total, point) => total + point.generatedEnergyKwh, 0), 3),
+        maxPowerW: Math.max(0, ...points.map((point) => point.maxPowerW || 0)),
+      },
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  private recordLoggerReading(logger: SolarLogger, rawValues: Record<string, string>): void {
+    if (!logger.online || !hasLoggerMetric(logger)) return;
+
+    const previous = this.storage.get<{ created_at: string }>(
+      'SELECT created_at FROM solar_readings WHERE ip = ? ORDER BY created_at DESC LIMIT 1',
+      [logger.ip],
+    );
+
+    if (previous && Date.now() - Date.parse(previous.created_at) < SOLAR_READING_MIN_INTERVAL_MS) return;
+
+    this.storage.run(
+      `
+      INSERT INTO solar_readings (
+        ip, mac, serial, logger_serial, current_power_w, today_energy_kwh,
+        total_energy_kwh, signal_percent, online, error, raw_json, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        logger.ip,
+        logger.mac,
+        logger.serial,
+        logger.loggerSerial,
+        logger.currentPowerW,
+        logger.todayEnergyKwh,
+        logger.totalEnergyKwh,
+        logger.signalPercent,
+        logger.online ? 1 : 0,
+        logger.error,
+        this.storage.jsonDump(rawValues),
+        logger.fetchedAt,
+      ],
+    );
+  }
+}
+
+function hasLoggerMetric(logger: SolarLogger): boolean {
+  return Number.isFinite(logger.currentPowerW)
+    || Number.isFinite(logger.todayEnergyKwh)
+    || Number.isFinite(logger.totalEnergyKwh);
+}
+
+function solarHistoryRange(value: string | undefined): SolarHistoryRange {
+  if (value === '24h' || value === '7d' || value === '30d' || value === '90d') return value;
+  return '7d';
+}
+
+function solarHistoryBucket(value: string | undefined, range: SolarHistoryRange): SolarHistoryBucket {
+  if (value === 'hour' || value === 'day') return value;
+  return range === '24h' || range === '7d' ? 'hour' : 'day';
+}
+
+function solarHistoryRangeMs(range: SolarHistoryRange): number {
+  if (range === '24h') return 24 * 60 * 60_000;
+  if (range === '30d') return 30 * 24 * 60 * 60_000;
+  if (range === '90d') return 90 * 24 * 60 * 60_000;
+  return 7 * 24 * 60 * 60_000;
+}
+
+function historyPoint(row: SolarHistoryRow, bucket: SolarHistoryBucket) {
+  const minTotal = nullableNumber(row.min_total_energy_kwh);
+  const maxTotal = nullableNumber(row.max_total_energy_kwh);
+  const minToday = nullableNumber(row.min_today_energy_kwh);
+  const maxToday = nullableNumber(row.max_today_energy_kwh);
+  const totalDelta = minTotal !== null && maxTotal !== null ? maxTotal - minTotal : null;
+  const todayDelta = minToday !== null && maxToday !== null ? maxToday - minToday : null;
+  const generatedEnergyKwh = bucket === 'day' && maxToday !== null
+    ? maxToday
+    : positiveOrZero(totalDelta ?? todayDelta ?? 0);
+
+  return {
+    bucketStart: row.bucket_start,
+    samples: Number(row.samples || 0),
+    avgPowerW: round(nullableNumber(row.avg_power_w) || 0, 1),
+    maxPowerW: round(nullableNumber(row.max_power_w) || 0, 1),
+    generatedEnergyKwh: round(generatedEnergyKwh, 3),
+    totalEnergyKwh: round(nullableNumber(row.total_energy_kwh) || 0, 3),
+  };
+}
+
+function nullableNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function positiveOrZero(value: number): number {
+  return value > 0 ? value : 0;
+}
+
+function round(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
 }
 
 function isSolarLogger(saved: SavedDiscoveryDevice): boolean {

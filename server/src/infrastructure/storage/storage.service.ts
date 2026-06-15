@@ -213,6 +213,21 @@ export class StorageService implements OnModuleDestroy {
         created_at TEXT NOT NULL,
         FOREIGN KEY(device_id) REFERENCES devices(id)
       );
+      CREATE TABLE IF NOT EXISTS solar_readings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip TEXT NOT NULL,
+        mac TEXT,
+        serial TEXT,
+        logger_serial TEXT,
+        current_power_w REAL,
+        today_energy_kwh REAL,
+        total_energy_kwh REAL,
+        signal_percent REAL,
+        online INTEGER NOT NULL DEFAULT 1,
+        error TEXT,
+        raw_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS camera_recordings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         device_id INTEGER NOT NULL,
@@ -295,6 +310,8 @@ export class StorageService implements OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_automation_runs_automation_id ON automation_runs(automation_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_entities_device_id ON entities(device_id);
       CREATE INDEX IF NOT EXISTS idx_device_events_device_id ON device_events(device_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_solar_readings_ip_created_at ON solar_readings(ip, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_solar_readings_created_at ON solar_readings(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_camera_recordings_device_id ON camera_recordings(device_id, started_at DESC);
       CREATE INDEX IF NOT EXISTS idx_discovery_scans_created_at ON discovery_scans(created_at);
       CREATE INDEX IF NOT EXISTS idx_discovery_devices_last_seen_at ON discovery_devices(last_seen_at);

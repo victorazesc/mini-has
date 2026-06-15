@@ -131,6 +131,15 @@ mas nao consulta o microinversor/logger localmente.
 }
 ```
 
+### Histórico solar local
+
+As leituras dos loggers solares locais sao gravadas em `solar_readings` quando `/solar/loggers` ou `/solar/scan` consulta os dispositivos.
+O historico agregado fica disponivel em `GET /solar/history`, com filtros opcionais `range`, `bucket` e `ip`.
+
+```http
+GET /solar/history?range=7d
+```
+
 ### Criar integração de câmeras ONVIF/RTSP
 
 Busca câmeras na rede local pelas portas RTSP `554` e `8554`. Usuário, senha e caminho RTSP são configurados individualmente no dispositivo após ele ser aceito.

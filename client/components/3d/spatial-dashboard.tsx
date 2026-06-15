@@ -57,6 +57,7 @@ import {
 import { useSidebar } from "@/components/ui/sidebar";
 import { useDevices, useSendCommand } from "@/hooks/use-devices";
 import { useEntities } from "@/hooks/use-entities";
+import { useSolarHistory, useSolarLoggers } from "@/hooks/use-solar";
 import type { SendCommandVariables } from "@/hooks/use-devices";
 import { useAssetAvailability } from "@/hooks/use-asset-availability";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ import type { Device } from "@/src/services/devices.service";
 import type { Entity } from "@/src/services/entities.service";
 import type { Floor, FloorDevicePosition } from "@/src/services/floors.service";
 import type { Room } from "@/src/services/rooms.service";
+import type { SolarHistoryPoint } from "@/src/services/solar.service";
 import { CameraViewControls } from "./camera-view-controls";
 import { FloorModel, FloorModelErrorBoundary } from "./floor-model";
 import { SlideAlarmAction } from "../ui/slideAlarm";
@@ -387,32 +389,53 @@ function SummaryCard({ devices, alarmDevice }: { devices: SpatialDevice[]; alarm
   );
 }
 
-function EnergyCard() {
+function EnergyCard({
+  inverterCount,
+  currentPowerW,
+  todayEnergyKwh,
+  historyPoints,
+  isLoading,
+}: {
+  inverterCount: number;
+  currentPowerW?: number | null;
+  todayEnergyKwh?: number | null;
+  historyPoints: SolarHistoryPoint[];
+  isLoading: boolean;
+}) {
+  const sparklinePath = buildEnergySparklinePath(historyPoints);
+
   return (
     <section className="rounded-2xl border border-white/10 bg-black/35 p-4 text-white backdrop-blur">
       <h2 className="text-base font-semibold">Geração de Energia</h2>
       <div className="mt-4">
-        <div className="text-2xl font-semibold">4.2 kWh</div>
+        <div className="text-2xl font-semibold">{formatEnergy(todayEnergyKwh)}</div>
         <p className="mt-3 text-xs">
-          <span className="text-emerald-400">+12%</span>{" "}
-          <span className="text-white/85">vs ontem</span>
+          <span className="text-emerald-400">{formatPower(currentPowerW)}</span>{" "}
+          <span className="text-white/85">agora em {inverterCount} {inverterCount === 1 ? "inversor" : "inversores"}</span>
         </p>
       </div>
-      <div className="mt-4 h-14 border-b border-l border-emerald-500/30 bg-[linear-gradient(to_right,rgba(16,185,129,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.18)_1px,transparent_1px)] bg-[size:33.3%_50%]">
-        <svg
-          aria-hidden="true"
-          className="h-full w-full"
-          preserveAspectRatio="none"
-          viewBox="0 0 100 100"
-        >
-          <path
-            d="M0 80 C10 92 18 86 28 70 C42 48 53 62 70 36 C82 18 90 12 100 6"
-            fill="none"
-            stroke="#10b981"
-            strokeLinecap="round"
-            strokeWidth="3"
-          />
-        </svg>
+      <div className="mt-4 h-14 border-b border-l border-emerald-500/30 bg-[linear-gradient(to_right,rgba(16,185,129,0.18)_1px,transparent_1px),linear-gradient(to_bottom,rgba(16,185,129,0.18)_1px,transparent_1px)] bg-size-[33.3%_50%]">
+        {sparklinePath ? (
+          <svg
+            aria-label="Histórico de geração solar nas últimas 24 horas"
+            className="h-full w-full"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 100"
+          >
+            <path
+              d={sparklinePath}
+              fill="none"
+              stroke="#10b981"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="3"
+            />
+          </svg>
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-white/45">
+            {isLoading ? "Atualizando histórico..." : "Coletando histórico"}
+          </div>
+        )}
       </div>
       <div className="mt-2 flex justify-between text-xs text-white/45">
         <span>00h</span>
@@ -421,6 +444,37 @@ function EnergyCard() {
       </div>
     </section>
   );
+}
+
+function buildEnergySparklinePath(points: SolarHistoryPoint[]): string | null {
+  const values = points
+    .filter((point) => Number.isFinite(point.generatedEnergyKwh))
+    .map((point) => point.generatedEnergyKwh);
+
+  if (!values.length) return null;
+
+  const maxValue = Math.max(...values, 0.001);
+  const denominator = Math.max(values.length - 1, 1);
+
+  return values
+    .map((value, index) => {
+      const x = (index / denominator) * 100;
+      const y = 92 - (Math.max(value, 0) / maxValue) * 84;
+      return `${index === 0 ? "M" : "L"}${roundSvg(x)} ${roundSvg(y)}`;
+    })
+    .join(" ");
+}
+
+function roundSvg(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function formatPower(value?: number | null) {
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }).format(value || 0)} W`;
+}
+
+function formatEnergy(value?: number | null) {
+  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(value || 0)} kWh`;
 }
 
 function DeviceMarker({
@@ -507,7 +561,7 @@ function DeviceControlPanel({
     : "Sem registro";
 
   return (
-    <aside className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex max-h-[72dvh] w-auto flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-4 text-white shadow-2xl backdrop-blur lg:absolute lg:inset-x-auto lg:bottom-20 lg:right-5 lg:top-5 lg:max-h-none lg:w-[380px]">
+    <aside className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex max-h-[72dvh] w-auto flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-4 text-white shadow-2xl backdrop-blur lg:absolute lg:inset-x-auto lg:bottom-20 lg:right-5 lg:top-5 lg:max-h-none lg:w-95">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs text-white/45">{device.room}</p>
@@ -852,7 +906,7 @@ function QuickActions({ devices, alarmDevice }: { devices: SpatialDevice[]; alar
         onDisarm={deactivateAlarm}
       />
       <button
-        className="flex h-14 w-[250px] items-center gap-3 rounded-2xl border border-white/10 bg-black/45 px-4 text-left text-white backdrop-blur disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-14 w-62.5 items-center gap-3 rounded-2xl border border-white/10 bg-black/45 px-4 text-left text-white backdrop-blur disabled:cursor-not-allowed disabled:opacity-50"
         disabled={isPending || turnOffCommands.length === 0}
         type="button"
         onClick={turnOffAll}
@@ -1060,6 +1114,13 @@ export function SpatialDashboard() {
     () => devices.find((device) => device.provider === "intelbras_amt8000"),
     [devices],
   );
+  const solarGenerationDevice = useMemo(
+    () => devices.filter((device) => device.deviceType === "solar_inverter"),
+    [devices],
+  );
+  const hasSolarGeneration = solarGenerationDevice.length > 0;
+  const { data: solarData, isLoading: isLoadingSolarData } = useSolarLoggers(hasSolarGeneration);
+  const { data: solarHistory, isLoading: isLoadingSolarHistory } = useSolarHistory({ range: "24h" }, hasSolarGeneration);
 
   useEffect(() => {
     setFailedModelUrl(null);
@@ -1097,12 +1158,20 @@ export function SpatialDashboard() {
   return (
     <main className="-my-3 min-h-[calc(100dvh-var(--header-height)-5rem)] overflow-hidden bg-background md:-my-6 md:min-h-[calc(100vh-var(--header-height))]">
       <div className="relative min-h-[calc(100dvh-var(--header-height)-5rem)] md:min-h-[calc(100vh-var(--header-height))]">
-        <div className="absolute left-3 right-3 top-3 z-20 space-y-2 sm:left-6 sm:right-auto sm:top-7 sm:w-[280px] sm:space-y-3">
+        <div className="absolute left-3 right-3 top-3 z-20 space-y-2 sm:left-6 sm:right-auto sm:top-7 sm:w-70 sm:space-y-3">
           <WeatherPanel />
           <SummaryCard alarmDevice={alarmDevice} devices={floorDevices} />
-          <div className="hidden md:block">
-            <EnergyCard />
-          </div>
+          {hasSolarGeneration ? (
+            <div className="hidden md:block">
+              <EnergyCard
+                currentPowerW={solarData?.summary.currentPowerW}
+                historyPoints={solarHistory?.points ?? []}
+                inverterCount={solarGenerationDevice.length}
+                isLoading={isLoadingSolarData || isLoadingSolarHistory}
+                todayEnergyKwh={solarData?.summary.todayEnergyKwh}
+              />
+            </div>
+          ) : null}
         </div>
 
         {selectedDevice ? (
@@ -1114,9 +1183,9 @@ export function SpatialDashboard() {
 
         <div
           className={cn(
-            "absolute inset-y-0 left-0 right-0 overflow-hidden transition-[right] duration-200 lg:left-[320px]",
+            "absolute inset-y-0 left-0 right-0 overflow-hidden transition-[right] duration-200 lg:left-80",
             "bg-background",
-            selectedDevice && "lg:right-[420px]",
+            selectedDevice && "lg:right-105",
           )}
         >
 
@@ -1126,10 +1195,10 @@ export function SpatialDashboard() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,color-mix(in_oklch,var(--sidebar)_92%,transparent)_0%,color-mix(in_oklch,var(--sidebar)_48%,transparent)_34%,transparent_72%)]" />
 
           {/* Grid grande com fade no centro */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(circle_at_center,transparent_0%,black_38%,black_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_70%,transparent)_1px,transparent_1px)] bg-size-[80px_80px] mask-[radial-gradient(circle_at_center,transparent_0%,black_38%,black_100%)]" />
 
           {/* Grid fino mais sutil */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(circle_at_center,transparent_0%,black_42%,black_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklch,var(--border)_32%,transparent)_1px,transparent_1px)] bg-size-[20px_20px] mask-[radial-gradient(circle_at_center,transparent_0%,black_42%,black_100%)]" />
 
           {/* Vignette nas bordas */}
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,transparent_48%,color-mix(in_oklch,var(--background)_92%,transparent)_100%)]" />
