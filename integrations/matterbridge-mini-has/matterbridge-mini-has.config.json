@@ -1,0 +1,17 @@
+{
+  "name": "matterbridge-mini-has",
+  "type": "DynamicPlatform",
+  "baseUrl": "http://127.0.0.1:8000",
+  "pollIntervalSeconds": 3,
+  "inventoryTimeoutMs": 3000,
+  "commandTimeoutMs": 12000,
+  "lightEntityIds": [
+    1
+  ],
+  "excludedDeviceIds": [],
+  "excludedEntityIds": [],
+  "whiteList": [],
+  "blackList": [],
+  "debug": false,
+  "unregisterOnShutdown": false
+}

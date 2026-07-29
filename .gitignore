@@ -56,6 +56,10 @@ pnpm-debug.log*
 # env files
 .env*
 **/.env*
+config/printer.env
+config/cloudflared/config.yml
+config/cloudflared/config.native.yml
+config/cloudflared/*.json
 
 # vercel
 .vercel/

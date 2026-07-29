@@ -7,6 +7,7 @@ import { NavSecondary } from "@/components/nav-secondary"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -19,6 +20,7 @@ import {
   HomeIcon,
   HouseWifiIcon,
   ListIcon,
+  LogOutIcon,
   PlaySquareIcon,
   SlidersHorizontalIcon,
   SunIcon,
@@ -78,6 +80,11 @@ export const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null)
+    window.location.assign("/login")
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader className="px-4 py-5">
@@ -97,6 +104,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={data.navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
+      <SidebarFooter className="px-4 pb-4">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={handleLogout}>
+              <LogOutIcon />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

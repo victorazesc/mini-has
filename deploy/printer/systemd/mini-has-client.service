@@ -1,0 +1,43 @@
+[Unit]
+Description=Mini-HAS web
+After=network-online.target mini-has-server.service
+Wants=network-online.target
+Requires=mini-has-server.service
+
+[Service]
+Type=simple
+User=mini-has-client
+Group=mini-has-client
+WorkingDirectory=/opt/mini-has/current/client
+EnvironmentFile=-/etc/mini-has/client.env
+ExecStart=/usr/bin/env NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 SERVER_URL=http://127.0.0.1:8000 FLOOR_MODEL_UPLOAD_DIR=/var/lib/mini-has/client/uploads/floors /opt/mini-has/runtime/node/bin/node /opt/mini-has/current/client/node_modules/next/dist/bin/next start --hostname 192.168.1.57 --port 3000
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0027
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/opt/mini-has/current/client/.next/cache /var/lib/mini-has/client
+
+CPUQuota=100%
+MemoryHigh=640M
+MemoryMax=768M
+TasksMax=256
+Nice=5
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

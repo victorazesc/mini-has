@@ -1,0 +1,25 @@
+{
+  "name": "matterbridge-mini-has",
+  "version": "1.0.5",
+  "description": "Ponte Matter local para dispositivos do Mini-HAS",
+  "author": "Victor Azevedo",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "src/module.js",
+  "exports": {
+    ".": "./src/module.js"
+  },
+  "engines": {
+    "node": ">=20.19.0 <21.0.0 || >=22.13.0 <23.0.0 || >=24.0.0 <25.0.0 || >=26.0.0 <27.0.0"
+  },
+  "files": [
+    "src",
+    "*.config.json",
+    "*.schema.json",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  }
+}

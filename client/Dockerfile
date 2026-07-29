@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build && npm prune --omit=dev
+RUN npm run build && npm prune --omit=dev --omit=optional
 
 FROM node:22-bookworm-slim AS production
 

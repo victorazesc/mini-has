@@ -6,6 +6,10 @@ import path from "path";
 const root = dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  images: {
+    unoptimized: true,
+  },
   turbopack: {
     root: path.resolve(__dirname),
   },

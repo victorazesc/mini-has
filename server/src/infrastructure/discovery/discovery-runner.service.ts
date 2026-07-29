@@ -194,6 +194,45 @@ export class DiscoveryService {
     }
   }
 
+  rememberNetworkObservations(rawObservations: JsonObject[]): DiscoveredDevice[] {
+    const observations = rawObservations.flatMap((raw): DiscoveredDevice[] => {
+      const ip = String(raw.ip || '').trim();
+      const mac = normalizeMac(String(raw.mac || ''));
+      const octets = ip.split('.').map(Number);
+      const openPorts = Array.isArray(raw.openPorts)
+        ? raw.openPorts.map(Number).filter((port) => Number.isInteger(port) && port > 0 && port <= 65_535)
+        : [];
+      const validIp = octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255);
+      const validMac = Boolean(mac && /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac));
+      if (!validIp || !isPrivateIpv4(ip) || !validMac) return [];
+
+      return [{
+        ip,
+        mac,
+        source: ['host-arp'],
+        services: [],
+        openPorts,
+        confidence: 1,
+        identification: {
+          label: String(raw.name || mac),
+          reason: 'IP e MAC observados diretamente na rede local.',
+          certainty: 'confirmed',
+        },
+      }];
+    });
+
+    if (!observations.length) return [];
+
+    const now = this.storage.utcNow();
+    const scanId = this.createScanRecord({ source: 'host-arp' }, 'running', now, now);
+    this.updateScanRecord(scanId, {
+      status: 'finished',
+      result: observations,
+      finished_at: now,
+    }, { upsertInbox: false });
+    return observations;
+  }
+
   listJobs(): DiscoveryJob[] {
     return this.listSavedScans().map((scan) => ({
       id: String(scan.id),

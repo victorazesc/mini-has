@@ -23,7 +23,9 @@ type IntegrationSynchronizer = {
 export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     private localReconcileTimer?: NodeJS.Timeout;
     private localReconcileRunning = false;
+    private networkRefreshRunning = false;
     private lastLocalDiscoveryAt = 0;
+    private lastNetworkRefreshAt = 0;
     private lastCloudProviderSyncAt = 0;
 
     constructor(
@@ -534,9 +536,14 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         };
         const capabilities = { ...item.device.capabilities, ...providerDevice.capabilities };
         const nextSecrets = { ...item.secrets, ...withoutEmptyValues(secrets) };
+        const localDeviceKey =
+            item.device.provider === 'mqtt' && providerDevice.localDeviceKey
+                ? providerDevice.localDeviceKey
+                : item.device.localDeviceKey;
         this.storage.run(
-            'UPDATE devices SET payload_json = ?, secrets_json = ?, capabilities_json = ?, status_json = ?, updated_at = ? WHERE id = ?',
+            'UPDATE devices SET local_device_key = ?, payload_json = ?, secrets_json = ?, capabilities_json = ?, status_json = ?, updated_at = ? WHERE id = ?',
             [
+                localDeviceKey,
                 this.storage.jsonDump(payload),
                 this.storage.jsonDump(nextSecrets),
                 this.storage.jsonDump(capabilities),
@@ -572,10 +579,17 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     linkLocalDevice(deviceId: number, body: JsonObject): Device | null {
-        const localDeviceKey = String(body.localDeviceKey || '').trim();
-        const payload = isObject(body.payload) ? body.payload : {};
         const device = this.getDevice(deviceId);
         if (!device) return null;
+        const requestedPayload = isObject(body.payload) ? body.payload : {};
+        const gatewayIp = isTuyaSubDevice(device) ? privateIp(requestedPayload.ip) : null;
+        const payload = gatewayIp
+            ? Object.fromEntries(Object.entries({ ...requestedPayload, ip: undefined, gatewayIp })
+                .filter(([, value]) => value !== undefined))
+            : requestedPayload;
+        const localDeviceKey = gatewayIp
+            ? tuyaLocalDeviceKey(device, gatewayIp)
+            : String(body.localDeviceKey || '').trim();
         const previousLocalDeviceKey = device.localDeviceKey;
         const nextPayload = { ...device.payload, local: payload, localDeviceKey };
         this.storage.run('UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?', [
@@ -598,24 +612,79 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     autoLinkLocalDevice(deviceId: number): Device | null {
-        const item = this.getDeviceWithSecrets(deviceId);
+        let item = this.getDeviceWithSecrets(deviceId);
         if (!item) return null;
+        const legacyGatewayIp = isTuyaSubDevice(item.device)
+            ? privateIp(nested(item.device.payload, 'local', 'ip'))
+            : null;
+        if (legacyGatewayIp) {
+            const currentLocal = isObject(item.device.payload.local) ? item.device.payload.local : {};
+            const local = Object.fromEntries(
+                Object.entries({ ...currentLocal, ip: undefined, gatewayIp: legacyGatewayIp })
+                    .filter(([, value]) => value !== undefined),
+            );
+            this.storage.run(
+                'UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?',
+                [
+                    tuyaLocalDeviceKey(item.device, legacyGatewayIp),
+                    this.storage.jsonDump({ ...item.device.payload, local }),
+                    this.storage.utcNow(),
+                    deviceId,
+                ],
+            );
+            item = this.getDeviceWithSecrets(deviceId);
+            if (!item) return null;
+        }
         const local = this.findLocalMatch(item.device, item.secrets);
         if (!local) return item.device;
-        const localDeviceKey = `local:${local.ip}:${item.device.externalId}`;
+        const ip = String(firstNonEmpty(local.ip, local.gatewayIp) || '').trim();
+        const localDeviceKey = tuyaLocalDeviceKey(item.device, ip);
         const previousLocalDeviceKey = item.device.localDeviceKey;
-        const nextPayload = { ...item.device.payload, local, localDeviceKey };
-        this.storage.run('UPDATE devices SET local_device_key = ?, payload_json = ?, updated_at = ? WHERE id = ?', [
+        let nextPayload: JsonObject = { ...item.device.payload, local, localDeviceKey };
+        let nextCapabilities: JsonObject = { ...item.device.capabilities };
+
+        if (ip && item.device.provider === 'onvif_camera') {
+            const port = Number(item.device.capabilities.rtspPort || 554);
+            const pathValue = String(item.device.capabilities.rtspPath || item.device.payload.rtspPath || '/cam/realmonitor?channel=1&subtype=0').trim();
+            const rtspPath = pathValue.startsWith('/') ? pathValue : `/${pathValue}`;
+            const rtspUrl = `rtsp://${ip}:${port}${rtspPath}`;
+            const onvifUrl = `http://${ip}/onvif/device_service`;
+            nextPayload = { ...nextPayload, ip, rtspUrl, onvifUrl };
+            nextCapabilities = { ...nextCapabilities, rtspUrl, onvifUrl };
+        } else if (ip && item.device.deviceType === 'printer') {
+            const baseUrl = `http://${ip}`;
+            nextPayload = { ...nextPayload, ip, baseUrl };
+            nextCapabilities = { ...nextCapabilities, baseUrl };
+        } else if (ip && isDiscoverySolarLogger(item.device)) {
+            nextPayload = { ...nextPayload, ip };
+        } else if (ip && item.device.provider === 'intelbras_amt8000') {
+            nextPayload = { ...nextPayload, ip };
+            if (item.device.integrationId) {
+                const row = this.storage.get<JsonObject>('SELECT config_json FROM integrations WHERE id = ?', [item.device.integrationId]);
+                const config = row ? this.storage.jsonLoad<JsonObject>(row.config_json, {}) : {};
+                if (String(config.ip || '') !== ip) {
+                    this.storage.run('UPDATE integrations SET config_json = ?, updated_at = ? WHERE id = ?', [
+                        this.storage.jsonDump({ ...config, ip }),
+                        this.storage.utcNow(),
+                        item.device.integrationId,
+                    ]);
+                }
+            }
+        }
+
+        this.storage.run('UPDATE devices SET local_device_key = ?, payload_json = ?, capabilities_json = ?, updated_at = ? WHERE id = ?', [
             localDeviceKey,
             this.storage.jsonDump(nextPayload),
+            this.storage.jsonDump(nextCapabilities),
             this.storage.utcNow(),
             deviceId,
         ]);
         const updated = this.getDevice(deviceId);
         if (updated && previousLocalDeviceKey !== localDeviceKey) {
-            this.recordDeviceEvent(deviceId, 'auto_linked_local', 'Vinculo local encontrado', local.ip ? `Associado automaticamente ao IP ${local.ip}.` : 'Associado automaticamente a um endpoint local.', 'success', {
+            this.recordDeviceEvent(deviceId, 'auto_linked_local', 'Vinculo local encontrado', ip ? `Associado automaticamente ao endpoint ${ip}.` : 'Associado automaticamente a um endpoint local.', 'success', {
                 localDeviceKey,
-                ip: local.ip,
+                ip: isTuyaSubDevice(item.device) ? null : ip,
+                gatewayIp: isTuyaSubDevice(item.device) ? ip : null,
                 matchBy: local.matchBy,
             });
         }
@@ -624,6 +693,60 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
     autoLinkLocalDevices(): Device[] {
         return this.listDevices().map((device) => this.autoLinkLocalDevice(device.id)).filter(Boolean) as Device[];
+    }
+
+    async refreshNetworkAddresses(body: JsonObject = {}) {
+        if (this.networkRefreshRunning) return { running: true, scanned: false, observed: 0, updated: [] };
+
+        const rawObservations = Array.isArray(body.observations)
+            ? body.observations.filter(isObject)
+            : [];
+        const force = body.force === true || rawObservations.length > 0;
+        const cooldownMs = Math.max(15_000, Number(process.env.NETWORK_REFRESH_COOLDOWN_MS || 60_000));
+        if (!force && Date.now() - this.lastNetworkRefreshAt < cooldownMs) {
+            return { running: false, scanned: false, observed: 0, updated: [], cooldown: true };
+        }
+
+        this.networkRefreshRunning = true;
+        this.lastNetworkRefreshAt = Date.now();
+        try {
+            let observed = 0;
+            let scanned = false;
+            if (rawObservations.length) {
+                observed = this.discovery.rememberNetworkObservations(rawObservations).length;
+            } else {
+                const subnetPrefix = String(body.subnetPrefix || process.env.LOCAL_SUBNET_PREFIX || '').trim();
+                const result = await this.discovery.scanNow({
+                    ...(subnetPrefix ? { subnet_prefix: subnetPrefix } : {}),
+                    scan_ports: true,
+                    timeout_seconds: 1,
+                    probeMode: 'light',
+                    ports: [80, 443, 554, 1883, 6668, 7125, 8266, 9009],
+                }, { upsertInbox: false });
+                observed = result.result.length;
+                scanned = true;
+            }
+
+            const before = new Map(this.listDevices().map((device) => [device.id, {
+                ip: deviceNetworkIp(device),
+                localDeviceKey: device.localDeviceKey,
+            }]));
+            const updated: Array<{ id: number; name: string; from: string | null; to: string | null }> = [];
+
+            for (const current of this.listDevices()) {
+                if (current.provider === 'smartthings_cloud' || current.provider === 'mqtt') continue;
+                const device = this.autoLinkLocalDevice(current.id) || current;
+                const previous = before.get(device.id);
+                const nextIp = deviceNetworkIp(device);
+                if (previous && (previous.ip !== nextIp || previous.localDeviceKey !== device.localDeviceKey)) {
+                    updated.push({ id: device.id, name: device.name, from: previous.ip, to: nextIp });
+                }
+            }
+
+            return { running: false, scanned, observed, updated };
+        } finally {
+            this.networkRefreshRunning = false;
+        }
     }
 
     async reconcileLocalAvailability() {
@@ -668,13 +791,13 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
                 summary.checked += 1;
 
                 if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(item.device.provider)
-                    && !privateIp(nested(item.device.payload, 'local', 'ip'))) {
+                    && !tuyaLocalEndpointIp(item.device)) {
                     await this.tryLinkTuyaFromDiscovery(item.device, item.secrets);
                     item = this.getDeviceWithSecrets(device.id);
                     if (!item) continue;
                 }
 
-                if (isTuyaGateway(item.device) && privateIp(nested(item.device.payload, 'local', 'ip'))) {
+                if (isTuyaGateway(item.device) && tuyaLocalEndpointIp(item.device)) {
                     this.persistConnectivity(item.device, {
                         controlMode: 'local',
                         offlineReady: true,
@@ -700,10 +823,25 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
                     continue;
                 }
 
-                const result = await this.commands.executeDeviceCommand(item.device, item.secrets, {
+                let result = await this.commands.executeDeviceCommand(item.device, item.secrets, {
                     command: 'query',
                     params: target.params,
                 });
+                if (!result.ok && ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(item.device.provider)) {
+                    const previousIp = tuyaLocalEndpointIp(item.device);
+                    const previousVersion = String(nested(item.device.payload, 'local', 'version') || '');
+                    await this.tryLinkTuyaFromDiscovery(item.device, item.secrets);
+                    const relinked = this.getDeviceWithSecrets(item.device.id);
+                    const nextIp = relinked ? tuyaLocalEndpointIp(relinked.device) : null;
+                    const nextVersion = String(nested(relinked?.device.payload || {}, 'local', 'version') || '');
+                    if (relinked && (previousIp !== nextIp || previousVersion !== nextVersion)) {
+                        item = relinked;
+                        result = await this.commands.executeDeviceCommand(item.device, item.secrets, {
+                            command: 'query',
+                            params: { transport: 'local', timeoutMs: 2_000 },
+                        });
+                    }
+                }
                 if (result.ok && String(result.result.transport || '') !== 'cloud') {
                     this.updateDeviceRuntimeState(item.device.id, result);
                     if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(item.device.provider) && result.result.version) {
@@ -775,6 +913,9 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     updateDeviceRuntimeState(deviceId: number, commandResult: CommandResult): Device | null {
         if (!commandResult.ok) {
             const current = this.getDevice(deviceId);
+            if (current?.provider === 'mqtt' && isObject(commandResult.result.statusSummary)) {
+                return this.updateMqttRuntimeState(deviceId, commandResult);
+            }
             if (current?.deviceType === 'printer') {
                 return this.updatePrinterRuntimeState(deviceId, commandResult, false);
             }
@@ -1231,14 +1372,18 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         const dps = isObject(result.dps) ? result.dps : {};
         const currentDps = isObject(current.status.dps) ? current.status.dps : {};
         const mergedDps = { ...stringifyKeys(currentDps), ...stringifyKeys(dps) };
-        const rawStatus = isObject(result.rawStatus) ? result.rawStatus : {};
         const summary = isObject(result.statusSummary) ? result.statusSummary : {};
+        const online = summary.online === true;
+        const rawStatus = online && isObject(result.rawStatus)
+            ? result.rawStatus
+            : (isObject(current.status.raw) ? current.status.raw : {});
         const status = {
             ...current.status,
             ...summary,
             raw: rawStatus,
-            online: summary.online ?? true,
-            lastSeenAt: now,
+            online,
+            lastSeenAt: online ? now : current.status.lastSeenAt,
+            lastCheckedAt: now,
             dps: mergedDps,
         };
         const capabilities = {
@@ -1247,9 +1392,10 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         };
         const payload = {
             ...current.payload,
-            status: rawStatus,
+            status: online ? rawStatus : current.payload.status,
             lastStatus: mergedDps,
-            lastSeenAt: now,
+            lastSeenAt: online ? now : current.payload.lastSeenAt,
+            lastCheckedAt: now,
         };
         this.storage.run(
             `
@@ -1259,7 +1405,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
       `,
             [this.storage.jsonDump(status), this.storage.jsonDump(capabilities), this.storage.jsonDump(payload), now, deviceId],
         );
-        this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {});
+        this.updateEntitiesRuntimeState(deviceId, mergedDps, now, eventSource || {}, online);
         this.logRuntimeStatusEvent(deviceId, current.status, status, { provider: 'mqtt', ...(eventSource || {}) });
         return this.getDevice(deviceId);
     }
@@ -1382,7 +1528,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
                 value,
                 state: stateFromValue(value, row.type),
                 online,
-                lastSeenAt: now,
+                lastSeenAt: online ? now : state.lastSeenAt,
+                lastCheckedAt: now,
                 dps: mergedDps,
             };
             const nextCapabilities = {
@@ -1485,15 +1632,32 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     }
 
     private findLocalMatch(device: Device, _secrets: JsonObject): JsonObject | null {
-        const discoveries: JsonObject[] = this.storage.all<JsonObject>('SELECT device_key, payload_json FROM discovery_devices ORDER BY last_seen_at DESC, id DESC').map((row) => {
+        const discoveryMaxAgeMs = Math.max(60_000, Number(process.env.NETWORK_DISCOVERY_MAX_AGE_MS || 900_000));
+        const discoveries: JsonObject[] = this.storage.all<JsonObject>('SELECT device_key, payload_json, last_seen_at FROM discovery_devices ORDER BY last_seen_at DESC, id DESC').map((row) => {
             const payload = this.storage.jsonLoad<JsonObject>(row.payload_json, {});
-            return { ...payload, deviceKey: row.device_key };
+            return { ...payload, deviceKey: row.device_key, lastSeenAt: row.last_seen_at };
+        }).filter((discovery) => {
+            const seenAt = Date.parse(String(discovery.lastSeenAt || ''));
+            return Number.isFinite(seenAt) && Date.now() - seenAt <= discoveryMaxAgeMs;
         });
         const targetIp = privateIp(firstNonEmpty(nested(device.payload, 'payload', 'raw', 'last_ip'), nested(device.payload, 'payload', 'raw', 'ip'), device.payload.ip));
-        const targetMac = String(firstNonEmpty(device.payload.mac, nested(device.payload, 'local', 'mac'), nested(device.payload, 'payload', 'raw', 'mac')) || '').toUpperCase();
-        for (const discovery of discoveries) {
-            if (targetIp && discovery.ip === targetIp) return localPayload(device, discovery, 'ip', this.storage.utcNow());
-            if (targetMac && String(discovery.mac || '').toUpperCase() === targetMac) return localPayload(device, discovery, 'mac', this.storage.utcNow());
+        const targetMacs = Array.from(new Set([
+            String(device.externalId || '').replace(/^mac:/i, ''),
+            device.payload.mac,
+            nested(device.payload, 'local', 'mac'),
+            nested(device.payload, 'payload', 'raw', 'mac'),
+        ]
+            .map((value) => String(value || '').trim().toUpperCase())
+            .filter((value) => /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(value))));
+        for (const targetMac of targetMacs) {
+            const discovery = discoveries.find(
+                (candidate) => String(candidate.mac || '').toUpperCase() === targetMac,
+            );
+            if (discovery) return localPayload(device, discovery, 'mac', this.storage.utcNow());
+        }
+        if (targetIp) {
+            const discovery = discoveries.find((candidate) => discoveryIp(candidate) === targetIp);
+            if (discovery) return localPayload(device, discovery, 'ip', this.storage.utcNow());
         }
         if (targetIp && ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
             return localPayload(device, {
@@ -1507,7 +1671,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
     private localProbeTarget(device: Device): { probe: boolean; cloudOnly?: boolean; reason?: string; transport?: string; params: JsonObject } {
         if (['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) {
-            const ip = privateIp(firstNonEmpty(nested(device.payload, 'local', 'ip'), nested(device.payload, 'payload', 'raw', 'last_ip')));
+            const ip = tuyaLocalEndpointIp(device)
+                || privateIp(nested(device.payload, 'payload', 'raw', 'last_ip'));
             return ip
                 ? { probe: true, transport: 'local', params: { transport: 'local', timeoutMs: 2_000 } }
                 : { probe: false, cloudOnly: device.provider === 'tuya_cloud', reason: 'IP local Tuya ainda nao encontrado.', params: {} };
@@ -1561,20 +1726,23 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             .map((row): JsonObject => ({ ...this.storage.jsonLoad<JsonObject>(row.payload_json, {}), deviceKey: row.device_key }))
             .filter((candidate) => privateIp(candidate.ip) && Array.isArray(candidate.openPorts) && candidate.openPorts.includes(6668))
             .slice(0, 12);
-        const attempts = candidates.flatMap((candidate) => ['3.3', '3.4', '3.5'].map(async (version) => {
-            const result = await this.commands.executeDeviceCommand(device, secrets, {
-                command: 'query',
-                params: { transport: 'local', ip: candidate.ip, port: 6668, timeoutMs: 1_000, version },
-            });
-            return { candidate, result, version };
-        }));
-        const match = (await Promise.all(attempts)).find(({ result }) => result.ok && result.result.transport === 'local');
-        if (match) {
-            const payload = localPayload(device, { ...match.candidate, version: match.version }, 'tuya_handshake', this.storage.utcNow());
-            return this.linkLocalDevice(device.id, {
-                localDeviceKey: `local:${match.candidate.ip}:${device.externalId}`,
-                payload,
-            }) || device;
+        const linkedIp = tuyaLocalEndpointIp(device);
+        const linkedCandidate = candidates.find((candidate) => privateIp(candidate.ip) === linkedIp);
+        const targets = linkedCandidate ? [linkedCandidate] : candidates;
+        for (const candidate of targets) {
+            for (const version of ['3.3', '3.4', '3.5']) {
+                const result = await this.commands.executeDeviceCommand(device, secrets, {
+                    command: 'query',
+                    params: { transport: 'local', ip: candidate.ip, port: 6668, timeoutMs: 1_000, version },
+                });
+                if (!result.ok || result.result.transport !== 'local') continue;
+
+                const payload = localPayload(device, { ...candidate, version }, 'tuya_handshake', this.storage.utcNow());
+                return this.linkLocalDevice(device.id, {
+                    localDeviceKey: tuyaLocalDeviceKey(device, String(candidate.ip)),
+                    payload,
+                }) || device;
+            }
         }
         return device;
     }
@@ -1895,9 +2063,28 @@ function isTuyaGateway(device: Device): boolean {
     return ['wg', 'wg2', 'gateway'].includes(category);
 }
 
+function isTuyaSubDevice(device: Device): boolean {
+    if (!['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)) return false;
+    return nested(device.payload, 'raw', 'sub') === true
+        || nested(device.payload, 'payload', 'raw', 'sub') === true;
+}
+
+function tuyaLocalEndpointIp(device: Device): string | null {
+    return privateIp(firstNonEmpty(
+        nested(device.payload, 'local', 'gatewayIp'),
+        nested(device.payload, 'local', 'ip'),
+    ));
+}
+
+function tuyaLocalDeviceKey(device: Device, ip: string): string {
+    return isTuyaSubDevice(device)
+        ? `zigbee:${device.externalId}`
+        : `local:${ip}:${device.externalId}`;
+}
+
 function hasLinkedTuyaLocalEndpoint(device: Device): boolean {
     return ['tuya_cloud', 'tuya_local', 'intelbras_izy_tuya'].includes(device.provider)
-        && Boolean(privateIp(nested(device.payload, 'local', 'ip')));
+        && Boolean(tuyaLocalEndpointIp(device));
 }
 
 function stringifyKeys(value: JsonObject): JsonObject {
@@ -2064,8 +2251,9 @@ function redactSecrets(value: any): any {
 }
 
 function localPayload(device: Device, discovery: JsonObject, matchMethod: string, matchedAt: string): JsonObject {
+    const isSubDevice = isTuyaSubDevice(device);
     const local: JsonObject = {
-        ip: discovery.ip,
+        ...(isSubDevice ? { gatewayIp: discovery.ip } : { ip: discovery.ip }),
         mac: discovery.mac,
         source: 'discovery',
         matchMethod,
@@ -2077,9 +2265,21 @@ function localPayload(device: Device, discovery: JsonObject, matchMethod: string
         local.cid = tuyaCid(device);
         local.port = 6668;
         local.primaryDpsId = tuyaPrimaryDpsId(device);
-        local.version = firstNonEmpty(discovery.version, nested(discovery, 'raw', 'version')) || '3.4';
+        local.version = firstNonEmpty(discovery.version, nested(discovery, 'raw', 'version'), nested(device.payload, 'local', 'version')) || '3.4';
     }
     return Object.fromEntries(Object.entries(local).filter(([, value]) => value !== null && value !== undefined && value !== ''));
+}
+
+function discoveryIp(discovery: JsonObject): string | null {
+    return privateIp(discovery.ip);
+}
+
+function deviceNetworkIp(device: Device): string | null {
+    return privateIp(firstNonEmpty(
+        nested(device.payload, 'local', 'ip'),
+        device.payload.ip,
+        nested(device.status, 'raw', 'state', 'ip'),
+    ));
 }
 
 function tuyaCid(device: Device): string | null {

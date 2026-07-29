@@ -21,6 +21,7 @@ services:
       PORT: 8000
       MINI_HAS_DB: /app/data/mini-has.db
       MQTT_URL: mqtt://mqtt:1883
+      LOCAL_SUBNET_PREFIX: 192.168.1
     ports:
       - "8000:8000"
     volumes:

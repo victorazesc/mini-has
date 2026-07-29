@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 import { CommandRequest, CommandResult, Device, JsonObject, StoredIntegration } from '../../types';
 import { dpsIdFromCode } from '../../modules/device/device.utils';
 import { Amt8000Client, Amt8000Status } from '../providers/amt8000.client';
+import { MqttMessage } from '../mqtt/mqtt.service';
 import { ProvidersService } from '../providers/providers.service';
 import { StorageService } from '../storage/storage.service';
 import { DEFAULT_PORT, DEFAULT_TIMEOUT_MS, TuyaLanClient } from '../providers/tuya-lan.client';
@@ -37,7 +38,19 @@ export class CommandsService {
       if (['generic_iot', 'persiana_custom'].includes(device.provider)) return await this.executeHttpCommand(device, request);
       return { ok: false, status: 'unsupported', message: `Provider ${device.provider} ainda nao tem executor.`, result: {} };
     } catch (error) {
-      return { ok: false, status: 'error', message: messageFrom(error), result: { deviceId: device.id, provider: device.provider, deviceType: device.deviceType, action: request.command } };
+      const message = messageFrom(error);
+      return {
+        ok: false,
+        status: 'error',
+        message,
+        result: {
+          deviceId: device.id,
+          provider: device.provider,
+          deviceType: device.deviceType,
+          action: request.command,
+          ...(device.provider === 'mqtt' ? { statusSummary: mqttUnavailableStatus(message) } : {}),
+        },
+      };
     }
   }
 
@@ -255,27 +268,60 @@ export class CommandsService {
     if (!integration) throw new Error('Integracao MQTT nao encontrada.');
     if (request.command === 'query') {
       const snapshot = await this.mqttStatusSnapshot(integration, device);
+      const online = nested(snapshot, 'statusSummary', 'online') === true;
       return {
-        ok: true,
-        status: 'ok',
-        message: snapshot ? 'Status MQTT atualizado.' : 'Status MQTT mantido em cache local.',
-        result: { deviceId: device.id, provider: device.provider, transport: 'mqtt', action: 'query', ...(snapshot || {}) },
+        ok: online,
+        status: online ? 'ok' : 'unavailable',
+        message: online ? 'Status MQTT atualizado.' : 'Dispositivo MQTT sem atualizacao atual; marcado como offline.',
+        result: { deviceId: device.id, provider: device.provider, transport: 'mqtt', action: 'query', ...snapshot },
       };
     }
     const command = mqttCommandFromRequest(device, request);
-    const result = await this.providers.publishMqttCommand(integration, command.topic, command.payload, command.retain);
-    const snapshot = await this.mqttStatusSnapshot(integration, device);
+    const subscriptionTopic = mqttStatusSubscriptionTopic(device);
+    if (!subscriptionTopic) {
+      const result = await this.providers.publishMqttCommand(integration, command.topic, command.payload, command.retain);
+      return {
+        ok: false,
+        status: 'unconfirmed',
+        message: 'Comando MQTT publicado, mas o dispositivo nao possui topico de estado para confirmacao.',
+        result: {
+          deviceId: device.id,
+          provider: device.provider,
+          transport: 'mqtt',
+          action: request.command,
+          dps: command.dps,
+          ...result,
+        },
+      };
+    }
+    const published = await this.providers.publishMqttCommandAndCollect(
+      integration,
+      subscriptionTopic,
+      command.topic,
+      command.payload,
+      command.retain,
+      2_000,
+    );
+    const { messages, ...result } = published;
+    const responseMessages = messages.filter((message: MqttMessage) => message.topic !== command.topic);
+    const snapshot = mqttSnapshotFromMessages(responseMessages, device);
+    const online = nested(snapshot, 'statusSummary', 'online') === true;
+    const confirmed = online && mqttCommandConfirmed(device, request, responseMessages, snapshot);
     return {
-      ok: true,
-      status: 'sent',
-      message: 'Comando MQTT publicado.',
+      ok: confirmed,
+      status: confirmed ? 'sent' : online ? 'unconfirmed' : 'unavailable',
+      message: confirmed
+        ? 'Comando MQTT publicado e estado esperado confirmado.'
+        : online
+          ? 'Dispositivo respondeu, mas nao confirmou o estado esperado para o comando.'
+          : 'Comando MQTT publicado, mas o dispositivo nao confirmou recebimento.',
       result: {
         deviceId: device.id,
         provider: device.provider,
         transport: 'mqtt',
         action: request.command,
-        dps: { ...command.dps, ...((snapshot?.dps || {}) as JsonObject) },
-        ...(snapshot || {}),
+        dps: online ? snapshot.dps || {} : {},
+        ...snapshot,
         ...result,
       },
     };
@@ -443,10 +489,10 @@ export class CommandsService {
     };
   }
 
-  private async mqttStatusSnapshot(integration: StoredIntegration, device: Device): Promise<JsonObject | null> {
+  private async mqttStatusSnapshot(integration: StoredIntegration, device: Device): Promise<JsonObject> {
     const topic = mqttStatusSubscriptionTopic(device);
-    if (!topic) return null;
-    const messages = await this.providers.collectMqttMessages(integration, topic, 800);
+    if (!topic) return mqttUnavailableSnapshot('Device MQTT sem topico de status.');
+    const messages = await this.providers.collectMqttMessages(integration, topic, 1500);
     return mqttSnapshotFromMessages(messages, device);
   }
 
@@ -522,6 +568,7 @@ function tuyaLocalConfig(device: Device, secrets: JsonObject, request: CommandRe
   const params = request.params || {};
   const ip = firstNonEmpty(
     params.ip,
+    nested(device.payload, 'local', 'gatewayIp'),
     nested(device.payload, 'local', 'ip'),
     String(device.localDeviceKey || '').startsWith('ip:') ? String(device.localDeviceKey).replace(/^ip:/, '') : null,
   );
@@ -542,6 +589,7 @@ function tuyaLocalConfig(device: Device, secrets: JsonObject, request: CommandRe
 
 function hasTuyaLocalEndpoint(device: Device): boolean {
   return Boolean(firstNonEmpty(
+    nested(device.payload, 'local', 'gatewayIp'),
     nested(device.payload, 'local', 'ip'),
     String(device.localDeviceKey || '').startsWith('ip:') ? String(device.localDeviceKey).replace(/^ip:/, '') : null,
   ));
@@ -671,7 +719,12 @@ function mqttCommandFromRequest(device: Device, request: CommandRequest): { topi
   const schema = (entity?.commandSchema || {}) as JsonObject;
   const discoveryConfig = ((entity?.capabilities || {}) as JsonObject).config || {};
   const setPositionTopic = schema.setPositionTopic || schema.positionTopic || nested(discoveryConfig, 'set_position_topic') || nested(discoveryConfig, 'set_pos_t') || nested(discoveryConfig, 'position_topic') || nested(discoveryConfig, 'pos_t');
-  const jsonCommandTopic = schema.jsonCommandTopic || mqttJsonCommandTopic(String(schema.commandTopic || ''));
+  const stateTopic = schema.stateTopic || nested(discoveryConfig, 'state_topic') || nested(discoveryConfig, 'stat_t');
+  const positionTopic = schema.positionTopic || nested(discoveryConfig, 'position_topic') || nested(discoveryConfig, 'pos_t');
+  const jsonCommandTopic = schema.jsonCommandTopic
+    || nested(discoveryConfig, 'json_command_topic')
+    || nested(discoveryConfig, 'json_cmd_t')
+    || mqttJsonCommandTopic(String(schema.commandTopic || ''), String(stateTopic || ''), String(positionTopic || ''));
   const topic = String(params.topic || mqttTopicForCommand(request.command, schema, setPositionTopic, jsonCommandTopic) || schema.commandTopic || '').trim();
   if (!topic) throw new Error('Device MQTT sem command_topic. Envie params.topic ou sincronize MQTT Discovery.');
   const dpsId = dpsIdFromCode(String(params.dpsId || params.dpId || schema.switchCode || '1'));
@@ -726,8 +779,10 @@ function mqttPayloadFromRequest(request: CommandRequest, schema: JsonObject, cur
   if (request.command === 'calibrate_closed') return { calibration: { setClosedHere: true } };
   if (request.command === 'calibrate_zero') return { calibration: { zeroHere: true } };
   if (request.command === 'calibrate_max_steps') {
-    const maxSteps = params.maxSteps ?? params.value;
-    if (maxSteps === undefined || maxSteps === null) throw new Error('Parametro maxSteps obrigatorio para calibrate_max_steps.');
+    const maxSteps = Number(params.maxSteps ?? params.value);
+    if (!Number.isFinite(maxSteps) || maxSteps <= 0) {
+      throw new Error('Parametro maxSteps deve ser um numero finito e positivo para calibrate_max_steps.');
+    }
     return { calibration: { maxSteps } };
   }
   if (request.command === 'set') {
@@ -750,8 +805,17 @@ function mqttTopicForCommand(command: string, schema: JsonObject, setPositionTop
   return String(schema.commandTopic || '');
 }
 
-function mqttJsonCommandTopic(commandTopic: string): string {
-  return commandTopic.replace(/\/cover\/set$/, '/command');
+function mqttJsonCommandTopic(commandTopic: string, stateTopic = '', positionTopic = ''): string {
+  const base = mqttCoverBaseTopic(commandTopic, stateTopic, positionTopic);
+  return base ? `${base}/command` : '';
+}
+
+function mqttCoverBaseTopic(commandTopic: string, stateTopic = '', positionTopic = ''): string {
+  for (const topic of [commandTopic, stateTopic, positionTopic]) {
+    const base = topic.trim().replace(/\/cover\/(?:set|state|position)$/, '');
+    if (base && base !== topic.trim()) return base;
+  }
+  return '';
 }
 
 function mqttDpsValue(payload: unknown, schema: JsonObject): unknown {
@@ -771,58 +835,122 @@ function mqttStatusSubscriptionTopic(device: Device): string {
   const commandTopic = String(schema.commandTopic || '').trim();
   const stateTopic = String(schema.stateTopic || '').trim();
   const positionTopic = String(schema.positionTopic || '').trim();
-  const topic = commandTopic || stateTopic || positionTopic;
-  const base = topic
-    .replace(/\/cover\/set$/, '')
-    .replace(/\/cover\/state$/, '')
-    .replace(/\/cover\/position$/, '')
-    .replace(/\/state$/, '');
-  return base && base !== topic ? `${base}/#` : '';
+  const availabilityTopic = String(schema.availabilityTopic || '').trim();
+  const statusTopics = [stateTopic, positionTopic, availabilityTopic].filter(Boolean);
+  if (statusTopics.length === 1) return statusTopics[0];
+  if (statusTopics.length > 1) {
+    const commonPrefix = mqttCommonTopicPrefix(statusTopics);
+    if (commonPrefix) return `${commonPrefix}/#`;
+  }
+  const base = commandTopic.replace(/\/cover\/set$/, '');
+  return base && base !== commandTopic ? `${base}/#` : '';
+}
+
+function mqttCommonTopicPrefix(topics: string[]): string {
+  const segments = topics.map((topic) => topic.split('/').filter(Boolean));
+  const shortest = Math.min(...segments.map((parts) => parts.length));
+  const common: string[] = [];
+  for (let index = 0; index < shortest; index += 1) {
+    const segment = segments[0][index];
+    if (!segments.every((parts) => parts[index] === segment)) break;
+    common.push(segment);
+  }
+  return common.join('/');
 }
 
 function mqttPrimaryCommandSchema(device: Device): JsonObject {
   const entities = Array.isArray(device.payload.entities) ? device.payload.entities : [];
   const entity = entities.find((item) => item && typeof item === 'object' && ((item as JsonObject).commandSchema || {}).commandTopic);
-  return ((entity as JsonObject | undefined)?.commandSchema || {}) as JsonObject;
+  const item = (entity as JsonObject | undefined) || {};
+  const schema = (item.commandSchema || {}) as JsonObject;
+  const config = ((((item.capabilities || {}) as JsonObject).config || {}) as JsonObject);
+  return {
+    ...schema,
+    stateTopic: schema.stateTopic || config.state_topic || config.stat_t,
+    positionTopic: schema.positionTopic || config.position_topic || config.pos_t,
+    setPositionTopic: schema.setPositionTopic || config.set_position_topic || config.set_pos_t,
+    availabilityTopic: schema.availabilityTopic || config.availability_topic || config.avty_t,
+    payloadAvailable: schema.payloadAvailable || config.payload_available || config.pl_avail,
+    payloadNotAvailable: schema.payloadNotAvailable || config.payload_not_available || config.pl_not_avail,
+  };
 }
 
-function mqttSnapshotFromMessages(messages: { topic: string; payload: string }[], device: Device): JsonObject | null {
-  if (!messages.length) return null;
+function mqttSnapshotFromMessages(messages: MqttMessage[], device: Device): JsonObject {
   const schema = mqttPrimaryCommandSchema(device);
   const commandTopic = String(schema.commandTopic || '').trim();
-  const base = commandTopic.replace(/\/cover\/set$/, '');
+  const stateTopic = String(schema.stateTopic || '').trim();
+  const configuredPositionTopic = String(schema.positionTopic || '').trim();
+  const base = device.deviceType === 'cover'
+    ? mqttCoverBaseTopic(commandTopic, stateTopic, configuredPositionTopic)
+    : commandTopic.replace(/\/cover\/set$/, '');
   const jsonStateTopic = base ? `${base}/state` : '';
-  const coverStateTopic = String(schema.stateTopic || (base ? `${base}/cover/state` : '')).trim();
-  const positionTopic = String(schema.positionTopic || (base ? `${base}/cover/position` : '')).trim();
-  const availabilityTopic = base ? `${base}/availability` : '';
+  const coverStateTopic = String(stateTopic || (base ? `${base}/cover/state` : '')).trim();
+  const positionTopic = String(configuredPositionTopic || (base ? `${base}/cover/position` : '')).trim();
+  const availabilityTopic = String(schema.availabilityTopic || (base ? `${base}/availability` : '')).trim();
+  const payloadAvailable = String(schema.payloadAvailable || 'online').trim().toLowerCase();
+  const payloadNotAvailable = String(schema.payloadNotAvailable || 'offline').trim().toLowerCase();
   let rawStatus: JsonObject = {};
   let coverState = '';
   let position: number | null = null;
-  let online: boolean | null = null;
+  let liveAvailability: boolean | null = null;
+  let hasFreshState = false;
+  let hasFreshJsonState = false;
+  let hasFreshCoverState = false;
 
   for (const message of messages) {
+    const retained = message.retain === true;
     if (message.topic === jsonStateTopic) {
       const parsed = parseJsonObject(message.payload);
       if (parsed) rawStatus = parsed;
+      if (!retained) {
+        hasFreshState = true;
+        hasFreshJsonState = true;
+      }
       continue;
     }
     if (message.topic === coverStateTopic) {
       coverState = message.payload.trim().toLowerCase();
+      if (!retained) {
+        hasFreshState = true;
+        hasFreshCoverState = true;
+      }
       continue;
     }
     if (message.topic === positionTopic) {
       const parsedPosition = Number(message.payload);
       if (Number.isFinite(parsedPosition)) position = Math.max(0, Math.min(100, Math.round(parsedPosition)));
+      if (!retained) hasFreshState = true;
       continue;
     }
-    if (message.topic === availabilityTopic) {
-      online = message.payload.trim().toLowerCase() === 'online';
+    if (message.topic === availabilityTopic && !retained) {
+      const availability = message.payload.trim().toLowerCase();
+      if (availability === payloadAvailable) liveAvailability = true;
+      else if (availability === payloadNotAvailable) liveAvailability = false;
     }
   }
 
-  const state = coverState || stateFromCoverPosition(position);
+  const online = liveAvailability ?? hasFreshState;
+  if (!online) {
+    return mqttUnavailableSnapshot(
+      messages.length
+        ? 'Somente mensagens MQTT retidas foram recebidas; nenhuma conexao ou atualizacao atual foi confirmada.'
+        : 'Nenhuma mensagem MQTT atual foi recebida.',
+    );
+  }
+
+  if (hasFreshJsonState) {
+    const jsonPosition = finiteNumber(nested(rawStatus, 'state', 'position'));
+    if (jsonPosition !== null) position = Math.max(0, Math.min(100, Math.round(jsonPosition)));
+  }
+
+  const rawMotionDirection = String(nested(rawStatus, 'state', 'motionDirection') || '').trim().toLowerCase();
+  const state = hasFreshCoverState
+    ? coverState
+    : hasFreshJsonState && ['opening', 'closing', 'stopped'].includes(rawMotionDirection)
+      ? rawMotionDirection
+      : coverState || stateFromCoverPosition(position);
   const statusSummary: JsonObject = {
-    online: online ?? true,
+    online: true,
     raw: rawStatus,
   };
   if (state) statusSummary.state = state;
@@ -831,6 +959,89 @@ function mqttSnapshotFromMessages(messages: { topic: string; payload: string }[]
   const dps: JsonObject = {};
   if (position !== null) dps['1'] = position;
   return { rawStatus, statusSummary, dps };
+}
+
+function mqttCommandConfirmed(device: Device, request: CommandRequest, messages: MqttMessage[], snapshot: JsonObject): boolean {
+  const freshMessages = messages.filter((message) => !message.retain);
+  if (!freshMessages.length) return false;
+
+  const schema = mqttPrimaryCommandSchema(device);
+  const stateTopic = String(schema.stateTopic || '').trim();
+  const availabilityTopic = String(schema.availabilityTopic || '').trim();
+  const freshStateMessages = freshMessages.filter((message) => message.topic !== availabilityTopic);
+  if (!freshStateMessages.length) return false;
+  const freshStateNames = freshMessages
+    .filter((message) => message.topic === stateTopic)
+    .map((message) => message.payload.trim().toLowerCase());
+
+  const summary = (snapshot.statusSummary || {}) as JsonObject;
+  const rawState = nested(snapshot, 'rawStatus', 'state');
+  const state = rawState && typeof rawState === 'object' && !Array.isArray(rawState) ? rawState as JsonObject : {};
+  const position = finiteNumber(state.position ?? summary.position);
+  const targetPosition = finiteNumber(state.targetPosition);
+  const normalizedTicks = finiteNumber(state.normalizedEncoderTicks);
+  const moving = typeof state.moving === 'boolean' ? state.moving : null;
+  const jogMode = state.jogMode === true;
+  const motionDirection = String(state.motionDirection || '').trim().toLowerCase();
+  const command = request.command;
+
+  if (command === 'open') return targetPosition === 0 || freshStateNames.some((name) => ['open', 'opening'].includes(name));
+  if (command === 'close') return targetPosition === 100 || freshStateNames.some((name) => ['closed', 'closing'].includes(name));
+  if (command === 'stop' || command === 'jog_stop') {
+    return moving === false || motionDirection === 'stopped' || freshStateNames.some((name) => ['open', 'closed', 'stopped'].includes(name));
+  }
+  if (command === 'set_position') {
+    const expected = finiteNumber(request.params?.position ?? request.params?.value);
+    return expected !== null && (
+      approximatelyEqual(targetPosition, expected, 1)
+      || (moving === false && approximatelyEqual(position, expected, 2))
+    );
+  }
+  if (command === 'jog_open') return moving === true && jogMode && (motionDirection === 'opening' || freshStateNames.includes('opening'));
+  if (command === 'jog_close') return moving === true && jogMode && (motionDirection === 'closing' || freshStateNames.includes('closing'));
+  if (command === 'calibrate_open') {
+    return moving === false && (approximatelyEqual(position, 0, 2) || normalizedTicks === 0);
+  }
+  if (command === 'calibrate_closed') {
+    return moving === false && state.calibrated === true && approximatelyEqual(position, 100, 2);
+  }
+  if (command === 'calibrate_zero') return moving !== true && normalizedTicks === 0;
+  if (command === 'calibrate_max_steps') {
+    const expected = finiteNumber(request.params?.maxSteps ?? request.params?.value);
+    const openTicks = finiteNumber(state.encoderTicksOpenApplied);
+    const closedTicks = finiteNumber(state.encoderTicksClosedApplied);
+    return expected !== null && (approximatelyEqual(openTicks, expected, 1) || approximatelyEqual(closedTicks, expected, 1));
+  }
+  if (command === 'turn_on' || command === 'turn_off') {
+    const expected = String(command === 'turn_on' ? schema.payloadOn || 'ON' : schema.payloadOff || 'OFF').toLowerCase();
+    return freshMessages.some((message) => message.topic === stateTopic && message.payload.trim().toLowerCase() === expected);
+  }
+  return true;
+}
+
+function finiteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function approximatelyEqual(value: number | null, expected: number, tolerance: number): boolean {
+  return value !== null && Math.abs(value - expected) <= tolerance;
+}
+
+function mqttUnavailableSnapshot(reason: string): JsonObject {
+  return {
+    rawStatus: {},
+    statusSummary: mqttUnavailableStatus(reason),
+    dps: {},
+  };
+}
+
+function mqttUnavailableStatus(reason: string): JsonObject {
+  return {
+    online: false,
+    state: 'unavailable',
+    error: reason,
+  };
 }
 
 function parseJsonObject(value: string): JsonObject | null {

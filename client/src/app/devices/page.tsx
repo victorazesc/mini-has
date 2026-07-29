@@ -17,6 +17,7 @@ import { NewIntegrationDialog } from "@/components/new-integration-dialog"
 import { useInboxDevices } from "@/hooks/use-inbox-devices"
 import Link from "next/link"
 import { useHeaderTitle } from "@/src/providers/header-title-provider"
+import { refreshNetworkAddresses } from "@/src/services/devices.service"
 
 const deviceTypeOptions = [
   { label: "Todos os dispositivos", value: "all" },
@@ -26,6 +27,7 @@ const deviceTypeOptions = [
 export default function Devices() {
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = React.useState("all")
+  const networkRefreshStarted = React.useRef(false)
   const { setTitle, setRightAction } = useHeaderTitle()
 
 
@@ -53,6 +55,14 @@ export default function Devices() {
       setRightAction(null)
     }
   }, [setRightAction, setTitle])
+
+  useEffect(() => {
+    if (networkRefreshStarted.current) return
+    networkRefreshStarted.current = true
+    void refreshNetworkAddresses()
+      .then(() => refetch())
+      .catch(() => undefined)
+  }, [refetch])
 
   return (
     <main className="flex flex-1 flex-col px-3 sm:px-4 lg:px-6">

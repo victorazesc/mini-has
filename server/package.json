@@ -10,17 +10,18 @@
     "start": "node dist/main.js",
     "start:dev": "node --watch -r ts-node/register src/main.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "npm run typecheck"
+    "test": "npm run typecheck && npm run test:unit",
+    "test:unit": "TS_NODE_TRANSPILE_ONLY=1 node -r ts-node/register --test test/*.spec.ts src/modules/mcp/*.spec.ts src/modules/alexa/*.spec.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@nestjs/common": "^11.1.24",
-    "@nestjs/core": "^11.1.24",
-    "@nestjs/platform-express": "^11.1.24",
-    "@nestjs/swagger": "^11.4.4",
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/swagger": "11.4.5",
     "@scalar/nestjs-api-reference": "^1.1.20",
     "better-sqlite3": "^12.10.0",
     "dotenv": "^17.4.2",

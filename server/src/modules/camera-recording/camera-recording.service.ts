@@ -167,8 +167,8 @@ export class CameraRecordingService implements OnApplicationBootstrap, OnModuleD
     private stopWorker(worker: CameraWorker): void {
         worker.stopping = true;
         if (worker.finalizeTimer) clearTimeout(worker.finalizeTimer);
-        if (!worker.recorder.killed) worker.recorder.kill('SIGTERM');
-        if (!worker.detector.killed) worker.detector.kill('SIGTERM');
+        if (worker.recorder.pid && !worker.recorder.killed) worker.recorder.kill('SIGTERM');
+        if (worker.detector.pid && !worker.detector.killed) worker.detector.kill('SIGTERM');
         this.workers.delete(worker.deviceId);
     }
 

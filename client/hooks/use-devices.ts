@@ -58,7 +58,7 @@ export function useSendCommand() {
             return sendCommand(deviceId, command.command, command.params);
         },
 
-        onSuccess: (_data, variables) => {
+        onSettled: (_data, _error, variables) => {
             queryClient.invalidateQueries({ queryKey: ["devices"] });
             queryClient.invalidateQueries({ queryKey: ["entities"] });
             queryClient.invalidateQueries({

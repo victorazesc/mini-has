@@ -339,6 +339,25 @@ export class ProvidersService {
     return { topic, payload, retain };
   }
 
+  async publishMqttCommandAndCollect(
+    integration: StoredIntegration,
+    subscriptionTopic: string,
+    topic: string,
+    payload: unknown,
+    retain = false,
+    waitMs = 2_000,
+  ) {
+    const messages = await this.mqtt.publishAndCollect(
+      this.mqttConnectionOptions(integration),
+      subscriptionTopic,
+      topic,
+      payload,
+      retain,
+      waitMs,
+    );
+    return { topic, payload, retain, messages };
+  }
+
   async collectMqttMessages(integration: StoredIntegration, topic: string, waitMs = 800): Promise<MqttMessage[]> {
     return this.mqtt.collectMessages(this.mqttConnectionOptions(integration), topic, waitMs);
   }
@@ -1039,7 +1058,7 @@ function normalizeMqttDevices(messages: MqttMessage[], brokerUrl: string, discov
           entities: [],
           status: [],
         },
-        status: { online: true, state: 'unknown' },
+        status: { online: false, state: 'unavailable' },
         payload: {
           brokerUrl,
           discoveryPrefix,
@@ -1088,24 +1107,31 @@ function mqttEntityFromConfig(parsed: { topic: string; component: string; object
   const config = parsed.config;
   const commandTopic = mqttConfigString(config, 'command_topic', 'cmd_t');
   const stateTopic = mqttConfigString(config, 'state_topic', 'stat_t');
+  const positionTopic = mqttConfigString(config, 'position_topic', 'pos_t');
+  const jsonCommandTopic = mqttConfigString(config, 'json_command_topic', 'json_cmd_t')
+    || mqttJsonCommandTopic(commandTopic, stateTopic, positionTopic);
   const entityType = mqttDeviceType(parsed.component, config);
   const key = mqttConfigString(config, 'unique_id', 'uniq_id') || parsed.objectId || `entity_${index}`;
   const payloadOn = mqttConfigString(config, 'payload_on', 'pl_on') || 'ON';
   const payloadOff = mqttConfigString(config, 'payload_off', 'pl_off') || 'OFF';
+  const availabilityTopic = mqttConfigString(config, 'availability_topic', 'avty_t');
   const commands = mqttCommandsForEntity(entityType, commandTopic);
   const commandSchema: JsonObject = {
     commands,
     switchCode: `switch_${index}`,
     component: parsed.component,
     commandTopic,
-    jsonCommandTopic: mqttJsonCommandTopic(commandTopic),
+    jsonCommandTopic,
     stateTopic,
+    availabilityTopic,
+    payloadAvailable: mqttConfigString(config, 'payload_available', 'pl_avail') || 'online',
+    payloadNotAvailable: mqttConfigString(config, 'payload_not_available', 'pl_not_avail') || 'offline',
     payloadOn,
     payloadOff,
     payloadOpen: mqttConfigString(config, 'payload_open', 'pl_open') || 'OPEN',
     payloadClose: mqttConfigString(config, 'payload_close', 'pl_close') || 'CLOSE',
     payloadStop: mqttConfigString(config, 'payload_stop', 'pl_stop') || 'STOP',
-    positionTopic: mqttConfigString(config, 'position_topic', 'pos_t'),
+    positionTopic,
     setPositionTopic: mqttConfigString(config, 'set_position_topic', 'set_pos_t'),
   };
   return {
@@ -1113,7 +1139,7 @@ function mqttEntityFromConfig(parsed: { topic: string; component: string; object
     type: entityType,
     name: mqttConfigString(config, 'name', 'name') || parsed.objectId || key,
     commandSchema,
-    state: { online: true, state: 'unknown', dps: { [String(index)]: false } },
+    state: { online: false, state: 'unavailable', dps: { [String(index)]: false } },
     capabilities: { discoveryTopic: parsed.topic, config },
   };
 }
@@ -1130,8 +1156,12 @@ function mqttCommandsForEntity(entityType: string, commandTopic: string): string
   return ['turn_on', 'turn_off', 'toggle', 'set', 'publish'];
 }
 
-function mqttJsonCommandTopic(commandTopic: string): string {
-  return commandTopic.replace(/\/cover\/set$/, '/command');
+function mqttJsonCommandTopic(commandTopic: string, stateTopic = '', positionTopic = ''): string {
+  for (const topic of [commandTopic, stateTopic, positionTopic]) {
+    const base = topic.trim().replace(/\/cover\/(?:set|state|position)$/, '');
+    if (base && base !== topic.trim()) return `${base}/command`;
+  }
+  return '';
 }
 
 function mqttDeviceId(config: JsonObject, topic: string): string {

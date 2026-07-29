@@ -59,6 +59,48 @@ export class MqttService {
       client.close();
     }
   }
+
+  async publishAndCollect(
+    options: MqttConnectionOptions,
+    subscriptionTopic: string,
+    publishTopic: string,
+    payload: unknown,
+    retain: boolean,
+    waitMs: number,
+  ): Promise<MqttMessage[]> {
+    const client = new MqttConnection(options);
+    const messages: MqttMessage[] = [];
+    let published = false;
+    let settle: (() => void) | null = null;
+    try {
+      await client.connect();
+      client.onMessage((message) => {
+        messages.push(message);
+        if (published && !message.retain && message.topic !== publishTopic) settle?.();
+      });
+      await client.subscribe(subscriptionTopic);
+      client.publish(publishTopic, payloadToString(payload), retain);
+      published = true;
+      await new Promise<void>((resolve) => {
+        let quietTimer: ReturnType<typeof setTimeout> | null = null;
+        const timeout = setTimeout(done, waitMs);
+        const scheduleSettle = () => {
+          if (quietTimer) clearTimeout(quietTimer);
+          quietTimer = setTimeout(done, 100);
+        };
+        function done() {
+          clearTimeout(timeout);
+          if (quietTimer) clearTimeout(quietTimer);
+          settle = null;
+          resolve();
+        }
+        settle = scheduleSettle;
+      });
+      return messages;
+    } finally {
+      client.close();
+    }
+  }
 }
 
 class MqttConnection {

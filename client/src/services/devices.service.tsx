@@ -85,6 +85,13 @@ export async function getDevice(deviceId: number): Promise<Device> {
     return response.json();
 }
 
+export async function refreshNetworkAddresses(): Promise<void> {
+    const response = await fetch('/api/devices/refresh-network', { method: 'POST' });
+    if (!response.ok) {
+        throw new Error(await errorMessageFrom(response, 'Erro ao atualizar enderecos da rede'));
+    }
+}
+
 export type DeviceConfiguration = {
     cameraConfig?: {
         ip: string;

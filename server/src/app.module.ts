@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AutomationModule } from './modules/automation/automation.module';
+import { AlexaModule } from './modules/alexa/alexa.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { CameraRecordingModule } from './modules/camera-recording/camera-recording.module';
 import { DeviceModule } from './modules/device/device.module';
@@ -11,12 +13,14 @@ import { HomeModule } from './modules/home/home.module';
 import { InboxModule } from './modules/inbox/inbox.module';
 import { IntegrationProviderModule } from './modules/integration-provider/integration-provider.module';
 import { IntegrationModule } from './modules/integration/integration.module';
+import { McpModule } from './modules/mcp/mcp.module';
 import { RoomModule } from './modules/room/room.module';
 import { SceneModule } from './modules/scene/scene.module';
 import { SolarModule } from './modules/solar/solar.module';
 
 @Module({
   imports: [
+    AuthModule,
     HomeModule,
     HealthModule,
     SceneModule,
@@ -32,6 +36,8 @@ import { SolarModule } from './modules/solar/solar.module';
     DiscoveryModule,
     FloorModule,
     RoomModule,
+    McpModule,
+    AlexaModule,
   ],
 })
 export class AppModule { }

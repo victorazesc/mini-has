@@ -1,0 +1,46 @@
+[Unit]
+Description=Mini-HAS backend
+After=network-online.target mosquitto.service
+Wants=network-online.target
+Requires=mosquitto.service
+
+[Service]
+Type=simple
+User=mini-has-server
+Group=mini-has-server
+WorkingDirectory=/opt/mini-has/current/server
+EnvironmentFile=-/etc/mini-has/server-integrations.env
+EnvironmentFile=/etc/mini-has/server.env
+ExecStart=/usr/bin/env NODE_ENV=production HOST=127.0.0.1 PORT=8000 MINI_HAS_DB=/var/lib/mini-has/server/mini-has.db MQTT_URL=mqtt://192.168.1.57:1883 LOCAL_SUBNET_PREFIX=192.168.1 MINI_HAS_TRUST_PROXY=true MINI_HAS_API_DOCS=false CAMERA_RECORDING_ENABLED=false /opt/mini-has/runtime/node/bin/node /opt/mini-has/current/server/dist/main.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0027
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=CAP_NET_RAW
+AmbientCapabilities=CAP_NET_RAW
+ReadWritePaths=/var/lib/mini-has/server
+
+CPUQuota=100%
+MemoryHigh=640M
+MemoryMax=768M
+TasksMax=256
+Nice=5
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

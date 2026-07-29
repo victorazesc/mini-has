@@ -1,0 +1,12 @@
+services:
+  server:
+    network_mode: host
+    environment:
+      MQTT_URL: mqtt://127.0.0.1:1883
+      LOCAL_SUBNET_PREFIX: 192.168.1
+
+  client:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SERVER_URL: http://host.docker.internal:8000

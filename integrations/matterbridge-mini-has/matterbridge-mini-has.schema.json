@@ -1,0 +1,100 @@
+{
+  "title": "Mini-HAS Matter Bridge",
+  "description": "Expõe luzes, tomadas e persianas do Mini-HAS para controladores Matter.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "readOnly": true,
+      "ui:widget": "hidden"
+    },
+    "type": {
+      "type": "string",
+      "readOnly": true,
+      "ui:widget": "hidden"
+    },
+    "baseUrl": {
+      "title": "Mini-HAS API",
+      "type": "string",
+      "format": "uri",
+      "default": "http://127.0.0.1:8000"
+    },
+    "pollIntervalSeconds": {
+      "title": "Intervalo de atualização (segundos)",
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 60,
+      "default": 3
+    },
+    "inventoryTimeoutMs": {
+      "title": "Timeout de leitura (ms)",
+      "type": "integer",
+      "minimum": 500,
+      "maximum": 30000,
+      "default": 3000
+    },
+    "commandTimeoutMs": {
+      "title": "Timeout de comando (ms)",
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 30000,
+      "default": 12000
+    },
+    "lightEntityIds": {
+      "title": "Entidades tratadas como luz",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "uniqueItems": true
+    },
+    "excludedDeviceIds": {
+      "title": "IDs de dispositivos excluídos",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "uniqueItems": true
+    },
+    "excludedEntityIds": {
+      "title": "IDs de entidades excluídas",
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "uniqueItems": true
+    },
+    "whiteList": {
+      "title": "Dispositivos permitidos",
+      "description": "Se preenchida, somente estes nomes ou IDs serão expostos.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "selectFrom": "name"
+    },
+    "blackList": {
+      "title": "Dispositivos bloqueados",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "selectFrom": "name"
+    },
+    "debug": {
+      "title": "Logs de depuração",
+      "type": "boolean",
+      "default": false
+    },
+    "unregisterOnShutdown": {
+      "title": "Remover dispositivos ao parar",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

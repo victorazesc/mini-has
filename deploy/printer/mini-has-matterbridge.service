@@ -1,0 +1,41 @@
+[Unit]
+Description=Mini-HAS Matter Bridge
+After=network-online.target avahi-daemon.service mini-has-server.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=mini-has-matterbridge
+Group=mini-has-matterbridge
+WorkingDirectory=/var/lib/mini-has/matterbridge
+Environment=HOME=/var/lib/mini-has/matterbridge
+Environment=NODE_ENV=production
+Environment=MINI_HAS_API_BASE_URL=http://127.0.0.1:8000
+Environment=NPM_CONFIG_PREFIX=/opt/matterbridge/releases/3.10.2
+Environment=PATH=/opt/mini-has/runtime/node/bin:/opt/matterbridge/releases/3.10.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/mini-has/runtime/node/bin/node /opt/matterbridge/current/lib/node_modules/matterbridge/bin/matterbridge.js --service --nosudo --bridge --mdnsinterface eth0 --port 5540 --frontend 8283 --bind 127.0.0.1 --delay 30 --novirtual --no-ansi
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mini-has/matterbridge
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+CPUQuota=100%
+CPUWeight=10
+MemoryHigh=384M
+MemoryMax=512M
+TasksMax=128
+Nice=10
+IOSchedulingClass=idle
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mini-has-matterbridge
+
+[Install]
+WantedBy=multi-user.target

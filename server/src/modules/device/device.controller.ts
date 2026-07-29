@@ -25,6 +25,11 @@ export class DeviceController {
         return this.deviceService.reconcileLocalAvailability();
     }
 
+    @Post('refresh-network')
+    refreshNetworkAddresses(@Body() body: JsonObject) {
+        return this.deviceService.refreshNetworkAddresses(body);
+    }
+
     @Post()
     createDevice(@Body() body: JsonObject) {
         return this.deviceService.createDevice(body);

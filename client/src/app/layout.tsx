@@ -3,12 +3,8 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/src/providers/theme-provider";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
 import { ReactQueryProvider } from "../providers/react-query";
-import { HeaderTitleProvider } from "@/src/providers/header-title-provider";
-import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { AuthenticatedShell } from "@/components/authenticated-shell";
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -58,29 +54,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SidebarProvider
-              style={
-                {
-                  "--sidebar-width": "calc(var(--spacing) * 72)",
-                  "--header-height": "calc(var(--spacing) * 12)",
-                } as React.CSSProperties
-              }
-            >
-              <AppSidebar variant="inset" />
-              <SidebarInset>
-                <HeaderTitleProvider>
-                  <SiteHeader />
-                  <div className="flex flex-1 flex-col">
-                    <div className="@container/main flex flex-1 flex-col gap-2">
-                      <div className="flex flex-col gap-4 py-3 pb-24 md:gap-6 md:py-6">
-                        {children}
-                      </div>
-                    </div>
-                  </div>
-                </HeaderTitleProvider>
-              </SidebarInset>
-              <MobileBottomNav />
-            </SidebarProvider>
+            <AuthenticatedShell>{children}</AuthenticatedShell>
           </ThemeProvider>
         </ReactQueryProvider>
       </body>

@@ -1,0 +1,40 @@
+[Unit]
+Description=Mini-HAS Cloudflare Tunnel
+After=network-online.target mini-has-client.service
+Wants=network-online.target
+Requires=mini-has-client.service
+
+[Service]
+Type=simple
+User=mini-has-tunnel
+Group=mini-has-tunnel
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 --config /etc/mini-has/cloudflared/config.yml run
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0027
+
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+
+CPUQuota=25%
+MemoryHigh=96M
+MemoryMax=128M
+TasksMax=100
+Nice=5
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
