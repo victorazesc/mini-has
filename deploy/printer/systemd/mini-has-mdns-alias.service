@@ -10,7 +10,7 @@ NotifyAccess=main
 User=mini-has-server
 Group=mini-has-server
 ExecStart=/usr/bin/python3 /opt/mini-has/runtime/publish-mdns-alias.py --alias=casa.local --target=printer.local
-Restart=on-failure
+Restart=always
 RestartSec=5
 TimeoutStartSec=20
 TimeoutStopSec=10

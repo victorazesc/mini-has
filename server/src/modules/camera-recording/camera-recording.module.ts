@@ -7,5 +7,6 @@ import { CameraRecordingService } from './camera-recording.service';
     imports: [RoomModule],
     controllers: [CameraRecordingController],
     providers: [CameraRecordingService],
+    exports: [CameraRecordingService],
 })
 export class CameraRecordingModule { }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cameraObservationDescriptionPtBr, isLikelyEnglishCameraText } from "@/lib/camera-semantics"
 import { cn } from "@/lib/utils"
 import { DeviceHistoryEntry } from "@/src/services/devices.service"
 import { CircleCheckIcon, Clock3Icon, CommandIcon, Link2Icon, PowerIcon, SearchIcon, TriangleAlertIcon, WifiIcon, WifiOffIcon } from "lucide-react"
@@ -118,7 +119,7 @@ function HighlightedHistory({ items }: { items: DeviceHistoryEntry[] }) {
                                     <h4 className="font-medium leading-none">{item.title}</h4>
                                     {sourceBadge(item) ? <Badge variant="secondary">{sourceBadge(item)}</Badge> : null}
                                 </div>
-                                {item.message ? <p className="text-sm text-muted-foreground">{item.message}</p> : null}
+                                {historyMessage(item) ? <p className="text-sm text-muted-foreground">{historyMessage(item)}</p> : null}
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                     <Clock3Icon className="size-3.5" />
                                     <time dateTime={item.createdAt}>{historyDateFormatter.format(new Date(item.createdAt))}</time>
@@ -173,7 +174,7 @@ function HistoryList({ items, emptyText }: { items: DeviceHistoryEntry[]; emptyT
                                                         </Badge>
                                                     ) : null}
                                                 </div>
-                                                {item.message ? <p className="text-sm text-muted-foreground">{item.message}</p> : null}
+                                                {historyMessage(item) ? <p className="text-sm text-muted-foreground">{historyMessage(item)}</p> : null}
                                                 {historyMeta(item) ? (
                                                     <p className="text-xs text-muted-foreground/90">{historyMeta(item)}</p>
                                                 ) : null}
@@ -193,6 +194,34 @@ function HistoryList({ items, emptyText }: { items: DeviceHistoryEntry[]; emptyT
             ))}
         </div>
     )
+}
+
+function historyMessage(item: DeviceHistoryEntry): string {
+    const message = String(item.message || "").trim()
+    if (item.eventType !== "camera_motion_recorded") return message
+    const analysisStatus = String(item.payload?.analysisStatus || "").trim()
+    if (analysisStatus === "pending") return "Movimento gravado. Análise detalhada em andamento."
+    if (analysisStatus === "deferred") return "Movimento gravado. Análise detalhada aguardando disponibilidade."
+    if (analysisStatus === "failed") return "Movimento gravado. Não foi possível concluir a análise detalhada."
+    if (analysisStatus === "unconfirmed") return "Movimento gravado. A descrição detalhada não foi confirmada."
+    const semantic = item.payload?.semantic
+    const analyzer = semantic && typeof semantic === "object" && !Array.isArray(semantic)
+        ? (semantic as Record<string, unknown>).analyzer
+        : undefined
+    if (
+        analyzer
+        && typeof analyzer === "object"
+        && !Array.isArray(analyzer)
+        && String((analyzer as Record<string, unknown>).name || "") === "local-vehicle-event"
+    ) {
+        return "Movimento gravado. A descrição detalhada não foi confirmada."
+    }
+    if (!isLikelyEnglishCameraText(message)) return message
+    return cameraObservationDescriptionPtBr(
+        semantic && typeof semantic === "object" && !Array.isArray(semantic)
+            ? semantic as Record<string, unknown>
+            : undefined,
+    ) || "Movimento detectado diante da câmera."
 }
 
 function HistoryItemIcon({ item }: { item: DeviceHistoryEntry }) {

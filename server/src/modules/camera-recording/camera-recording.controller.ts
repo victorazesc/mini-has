@@ -11,15 +11,15 @@ export class CameraRecordingController {
     }
 
     @Get(':recording_id/video')
-    video(@Param('device_id') deviceId: string, @Param('recording_id') recordingId: string, @Req() request: any, @Res() response: any) {
-        if (!this.recordings.streamFile(Number(deviceId), Number(recordingId), 'video', request, response)) {
+    async video(@Param('device_id') deviceId: string, @Param('recording_id') recordingId: string, @Req() request: any, @Res() response: any) {
+        if (!(await this.recordings.streamFile(Number(deviceId), Number(recordingId), 'video', request, response))) {
             throw new NotFoundException('Gravacao nao encontrada.');
         }
     }
 
     @Get(':recording_id/thumbnail')
-    thumbnail(@Param('device_id') deviceId: string, @Param('recording_id') recordingId: string, @Req() request: any, @Res() response: any) {
-        if (!this.recordings.streamFile(Number(deviceId), Number(recordingId), 'thumbnail', request, response)) {
+    async thumbnail(@Param('device_id') deviceId: string, @Param('recording_id') recordingId: string, @Req() request: any, @Res() response: any) {
+        if (!(await this.recordings.streamFile(Number(deviceId), Number(recordingId), 'thumbnail', request, response))) {
             throw new NotFoundException('Miniatura nao encontrada.');
         }
     }

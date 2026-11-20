@@ -21,6 +21,12 @@ export type CameraProbeResult = {
   rtspProbeError?: string | null;
 };
 
+export type OnvifMotionEvent = {
+  active: boolean;
+  topic: string;
+  observedAt?: string | null;
+};
+
 type PtzContext = { ptzUrl: string; profileToken: string };
 type MediaContext = { ptzUrl: string | null; mediaUrl: string; profileToken: string };
 type StreamConfig = { rtspUrl: string; rtspPort: number; rtspPath: string };
@@ -351,6 +357,52 @@ export class OnvifCameraClient {
     await this.sendStopPtz(await this.ptzContext());
   }
 
+  async createMotionPullPoint(): Promise<string> {
+    const eventsUrl = await this.eventsServiceUrl();
+    const response = await this.soapRequest(
+      eventsUrl,
+      'http://www.onvif.org/ver10/events/wsdl/EventPortType/CreatePullPointSubscriptionRequest',
+      '<tev:CreatePullPointSubscription xmlns:tev="http://www.onvif.org/ver10/events/wsdl"><tev:InitialTerminationTime>PT10M</tev:InitialTerminationTime></tev:CreatePullPointSubscription>',
+    );
+    const subscriptionUrl = xmlUnescape(
+      response.match(
+        /<(?:\w+:)?SubscriptionReference\b[\s\S]*?<(?:\w+:)?Address\b[^>]*>([^<]+)</i,
+      )?.[1]?.trim() || '',
+    );
+
+    if (!subscriptionUrl) {
+      throw new Error('Camera ONVIF nao retornou o endereco da assinatura de eventos.');
+    }
+
+    return this.validatedCameraUrl(subscriptionUrl, 'assinatura de eventos');
+  }
+
+  async pullMotionEvents(subscriptionUrl: string): Promise<OnvifMotionEvent[]> {
+    const validatedUrl = this.validatedCameraUrl(subscriptionUrl, 'assinatura de eventos');
+    const response = await this.soapRequest(
+      validatedUrl,
+      'http://www.onvif.org/ver10/events/wsdl/PullPointSubscription/PullMessagesRequest',
+      '<tev:PullMessages xmlns:tev="http://www.onvif.org/ver10/events/wsdl"><tev:Timeout>PT10S</tev:Timeout><tev:MessageLimit>20</tev:MessageLimit></tev:PullMessages>',
+      15_000,
+    );
+
+    return parseMotionEvents(response);
+  }
+
+  async unsubscribeMotionPullPoint(subscriptionUrl: string): Promise<void> {
+    const validatedUrl = this.validatedCameraUrl(subscriptionUrl, 'assinatura de eventos');
+
+    try {
+      await this.soapRequest(
+        validatedUrl,
+        'http://docs.oasis-open.org/wsn/bw-2/SubscriptionManager/UnsubscribeRequest',
+        '<wsnt:Unsubscribe xmlns:wsnt="http://docs.oasis-open.org/wsn/b-2"/>',
+      );
+    } catch {
+      // A assinatura tambem expira no servidor; encerramento e apenas best-effort.
+    }
+  }
+
   rtspUrl(): string {
     const path = this.normalizedStreamPath();
     return `rtsp://${this.ip}:${this.port}${path}`;
@@ -497,6 +549,44 @@ export class OnvifCameraClient {
     return { ptzUrl, mediaUrl, profileToken };
   }
 
+  private async eventsServiceUrl(): Promise<string> {
+    if (!this.username || !this.password) {
+      throw new Error('Credenciais ONVIF obrigatorias para assinar eventos.');
+    }
+
+    const capabilities = await this.soapRequest(
+      `http://${this.ip}/onvif/device_service`,
+      'http://www.onvif.org/ver10/device/wsdl/GetCapabilities',
+      '<td:GetCapabilities><td:Category>All</td:Category></td:GetCapabilities>',
+    );
+    const eventsUrl = serviceXAddr(capabilities, 'Events');
+
+    if (!eventsUrl) {
+      throw new Error('Camera ONVIF sem servico de eventos.');
+    }
+
+    return this.validatedCameraUrl(eventsUrl, 'servico de eventos');
+  }
+
+  private validatedCameraUrl(value: string, label: string): string {
+    let parsed: URL;
+
+    try {
+      parsed = new URL(value);
+    } catch {
+      throw new Error(`Camera ONVIF retornou URL invalida para ${label}.`);
+    }
+
+    if (
+      parsed.protocol !== 'http:' ||
+      normalizedHostname(parsed.hostname) !== normalizedHostname(this.ip)
+    ) {
+      throw new Error(`Camera ONVIF retornou URL externa para ${label}.`);
+    }
+
+    return parsed.toString();
+  }
+
   private async sendStopPtz(context: PtzContext): Promise<void> {
     await this.soapRequest(
       context.ptzUrl,
@@ -505,9 +595,14 @@ export class OnvifCameraClient {
     );
   }
 
-  private async soapRequest(url: string, action: string, body: string): Promise<string> {
+  private async soapRequest(
+    url: string,
+    action: string,
+    body: string,
+    timeoutMs = this.timeoutMs,
+  ): Promise<string> {
     const envelope = soapEnvelope(this.username, this.password, body);
-    const first = await postSoap(url, action, envelope, this.timeoutMs);
+    const first = await postSoap(url, action, envelope, timeoutMs);
 
     if (first.statusCode === 401 && first.authenticate) {
       const challenge = parseDigestChallenge(first.authenticate);
@@ -530,7 +625,7 @@ export class OnvifCameraClient {
         url,
         action,
         envelope,
-        this.timeoutMs,
+        timeoutMs,
         authorization,
       );
 
@@ -619,6 +714,71 @@ function serviceXAddr(xml: string, service: string): string {
   return xmlUnescape(
     xml.match(new RegExp(`<(?:\\w+:)?${service}\\b[\\s\\S]*?<(?:\\w+:)?XAddr>([^<]+)`, 'i'))?.[1]?.trim() || '',
   );
+}
+
+function parseMotionEvents(xml: string): OnvifMotionEvent[] {
+  const events: OnvifMotionEvent[] = [];
+  const notifications = xml.match(
+    /<(?:[\w.-]+:)?NotificationMessage\b[\s\S]*?<\/(?:[\w.-]+:)?NotificationMessage>/gi,
+  ) || [];
+
+  for (const notification of notifications) {
+    const topic = xmlUnescape(
+      notification.match(
+        /<(?:[\w.-]+:)?Topic\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?Topic>/i,
+      )?.[1]?.trim() || '',
+    );
+
+    if (!isMotionTopic(topic) || !hasActiveMotionState(notification)) continue;
+
+    const observedAt = xmlUnescape(
+      attributeValue(notification, 'UtcTime') ||
+      attributeValue(notification, 'CurrentTime') ||
+      '',
+    );
+
+    events.push({
+      active: true,
+      topic,
+      ...(observedAt ? { observedAt } : {}),
+    });
+  }
+
+  return events;
+}
+
+function isMotionTopic(topic: string): boolean {
+  return (
+    /MotionAlarm/i.test(topic) ||
+    /(?:^|[/.:#])Motion(?:$|[/.:#])/i.test(topic)
+  );
+}
+
+function hasActiveMotionState(notification: string): boolean {
+  const simpleItems = notification.match(/<(?:[\w.-]+:)?SimpleItem\b[^>]*\/?>/gi) || [];
+
+  return simpleItems.some((item) => {
+    const name = attributeValue(item, 'Name').toLowerCase();
+    const value = attributeValue(item, 'Value').toLowerCase();
+
+    return (
+      (name === 'state' || name === 'ismotion' || name === 'motion') &&
+      (value === 'true' || value === '1' || value === 'active')
+    );
+  });
+}
+
+function attributeValue(value: string, attribute: string): string {
+  const escapedAttribute = attribute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = value.match(
+    new RegExp(`\\b${escapedAttribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i'),
+  );
+
+  return match?.[1] ?? match?.[2] ?? '';
+}
+
+function normalizedHostname(value: string): string {
+  return value.trim().toLowerCase().replace(/^\[|\]$/g, '');
 }
 
 function xmlEscape(value: string): string {

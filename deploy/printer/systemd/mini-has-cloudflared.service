@@ -1,15 +1,14 @@
 [Unit]
 Description=Mini-HAS Cloudflare Tunnel
 After=network-online.target mini-has-client.service
-Wants=network-online.target
-Requires=mini-has-client.service
+Wants=network-online.target mini-has-client.service
 
 [Service]
 Type=simple
 User=mini-has-tunnel
 Group=mini-has-tunnel
 ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20241 --config /etc/mini-has/cloudflared/config.yml run
-Restart=on-failure
+Restart=always
 RestartSec=5
 TimeoutStopSec=20
 KillSignal=SIGTERM

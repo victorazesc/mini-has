@@ -6,7 +6,7 @@ import { env } from "process";
 
 import { getFloorModelUploadDir } from "@/src/lib/floor-model-storage";
 
-const MAX_MODEL_SIZE = 80 * 1024 * 1024;
+const MAX_MODEL_SIZE = 130 * 1024 * 1024;
 
 function getSafeFileName(floorId: number, fileName: string) {
     const baseName = fileName

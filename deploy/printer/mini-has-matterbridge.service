@@ -1,7 +1,7 @@
 [Unit]
 Description=Mini-HAS Matter Bridge
 After=network-online.target avahi-daemon.service mini-has-server.service
-Wants=network-online.target
+Wants=network-online.target mini-has-server.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
@@ -16,7 +16,7 @@ Environment=MINI_HAS_API_BASE_URL=http://127.0.0.1:8000
 Environment=NPM_CONFIG_PREFIX=/opt/matterbridge/releases/3.10.2
 Environment=PATH=/opt/mini-has/runtime/node/bin:/opt/matterbridge/releases/3.10.2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/opt/mini-has/runtime/node/bin/node /opt/matterbridge/current/lib/node_modules/matterbridge/bin/matterbridge.js --service --nosudo --bridge --mdnsinterface eth0 --port 5540 --frontend 8283 --bind 127.0.0.1 --delay 30 --novirtual --no-ansi
-Restart=on-failure
+Restart=always
 RestartSec=10
 TimeoutStopSec=60
 NoNewPrivileges=true

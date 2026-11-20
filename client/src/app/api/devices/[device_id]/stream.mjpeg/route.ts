@@ -28,6 +28,7 @@ export async function GET(
         headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate",
             "Content-Type": response.headers.get("content-type") || "multipart/x-mixed-replace; boundary=ffmpeg",
+            "X-Accel-Buffering": "no",
         },
     });
 }

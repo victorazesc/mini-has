@@ -27,6 +27,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
     private lastLocalDiscoveryAt = 0;
     private lastNetworkRefreshAt = 0;
     private lastCloudProviderSyncAt = 0;
+    private readonly cameraStreams = new Map<string, ReturnType<typeof spawn>>();
+    private readonly cameraStreamKillTimers = new WeakMap<ReturnType<typeof spawn>, NodeJS.Timeout>();
 
     constructor(
         private readonly storage: StorageService,
@@ -126,6 +128,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
     onModuleDestroy(): void {
         if (this.localReconcileTimer) clearInterval(this.localReconcileTimer);
+        for (const stream of this.cameraStreams.values()) this.stopCameraStream(stream);
+        this.cameraStreams.clear();
     }
 
     listDevices(): Device[] {
@@ -193,8 +197,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
         parsed.searchParams.set('channel', parsed.searchParams.get('channel') || '1');
 
-        // Por enquanto força main stream, porque subtype=1 está retornando input inválido no ffmpeg.
-        parsed.searchParams.set('subtype', highQuality ? '0' : '0');
+        parsed.searchParams.set('subtype', highQuality ? '0' : '1');
 
         return parsed.toString();
     }
@@ -207,7 +210,10 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         let inputUrl: string;
 
         try {
-            inputUrl = this.cameraRtspUrl(item, highQuality);
+            // MJPEG e o caminho de compatibilidade do iPhone. Usa sempre o
+            // substream H.264, cujo GOP e mantido em 1s nas cameras, para nao
+            // disputar CPU com gravacao, IA e Klipper.
+            inputUrl = this.cameraRtspUrl(item, false);
         } catch (error) {
             response.status(422).json({ message: error instanceof Error ? error.message : String(error) });
             return true;
@@ -224,17 +230,31 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             'error',
             '-rtsp_transport',
             'tcp',
+            '-fflags',
+            'nobuffer',
+            '-flags',
+            'low_delay',
+            '-analyzeduration',
+            '0',
+            '-probesize',
+            '65536',
+            '-threads',
+            '2',
+            '-filter_threads',
+            '1',
             '-i',
             inputUrl,
             '-an',
             '-vf',
-            highQuality ? 'fps=15' : 'fps=8,scale=640:-2',
+            highQuality ? 'fps=15' : 'fps=15,scale=640:-2',
             '-q:v',
-            highQuality ? '2' : '5',
+            highQuality ? '4' : '5',
             '-f',
             'mpjpeg',
             'pipe:1',
         ], { stdio: ['ignore', 'pipe', 'pipe'] });
+        const streamKey = `${deviceId}:mjpeg:${highQuality ? 'high' : 'standard'}`;
+        this.replaceCameraStream(streamKey, ffmpeg);
 
         let stderr = '';
 
@@ -246,12 +266,11 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         response.setHeader('Content-Type', 'multipart/x-mixed-replace; boundary=ffmpeg');
         response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         response.setHeader('Connection', 'close');
+        response.setHeader('X-Accel-Buffering', 'no');
 
         ffmpeg.stdout.pipe(response);
 
-        const stop = () => {
-            if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
-        };
+        const stop = () => this.stopCameraStream(ffmpeg);
 
         const maxDurationTimer = setTimeout(
             stop,
@@ -264,6 +283,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             clearTimeout(maxDurationTimer);
             stop();
         });
+        response.on('error', stop);
+        response.req?.on('aborted', stop);
 
         ffmpeg.on('error', (error) => {
             console.error(`Falha ao iniciar stream da camera ${deviceId}: ${error.message}`);
@@ -273,6 +294,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
         ffmpeg.on('exit', (code) => {
             clearTimeout(maxDurationTimer);
+            this.releaseCameraStream(streamKey, ffmpeg);
 
             if (code && code !== 255) {
                 const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
@@ -312,6 +334,18 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             'error',
             '-rtsp_transport',
             'tcp',
+            '-fflags',
+            'nobuffer',
+            '-flags',
+            'low_delay',
+            '-analyzeduration',
+            '0',
+            '-probesize',
+            '65536',
+            '-threads',
+            '2',
+            '-filter_threads',
+            '1',
             '-i',
             inputUrl,
             '-an',
@@ -333,6 +367,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             'mp4',
             'pipe:1',
         ], { stdio: ['ignore', 'pipe', 'pipe'] });
+        const streamKey = `${deviceId}:mp4:${highQuality ? 'high' : 'standard'}`;
+        this.replaceCameraStream(streamKey, ffmpeg);
 
         let stderr = '';
 
@@ -344,12 +380,11 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         response.setHeader('Content-Type', 'video/mp4');
         response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         response.setHeader('Connection', 'close');
+        response.setHeader('X-Accel-Buffering', 'no');
 
         ffmpeg.stdout.pipe(response);
 
-        const stop = () => {
-            if (!ffmpeg.killed) ffmpeg.kill('SIGTERM');
-        };
+        const stop = () => this.stopCameraStream(ffmpeg);
 
         const maxDurationTimer = setTimeout(
             stop,
@@ -362,6 +397,8 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
             clearTimeout(maxDurationTimer);
             stop();
         });
+        response.on('error', stop);
+        response.req?.on('aborted', stop);
 
         ffmpeg.on('error', (error) => {
             console.error(`Falha ao iniciar stream MP4 da camera ${deviceId}: ${error.message}`);
@@ -371,6 +408,7 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
 
         ffmpeg.on('exit', (code) => {
             clearTimeout(maxDurationTimer);
+            this.releaseCameraStream(streamKey, ffmpeg);
 
             if (code && code !== 255) {
                 const safeError = stderr.trim().replace(/rtsp:\/\/[^@\s]+@/gi, 'rtsp://***@');
@@ -381,6 +419,31 @@ export class DeviceService implements OnApplicationBootstrap, OnModuleDestroy {
         });
 
         return true;
+    }
+
+    private replaceCameraStream(streamKey: string, stream: ReturnType<typeof spawn>): void {
+        const existing = this.cameraStreams.get(streamKey);
+        if (existing && existing !== stream) this.stopCameraStream(existing);
+        this.cameraStreams.set(streamKey, stream);
+    }
+
+    private releaseCameraStream(streamKey: string, stream: ReturnType<typeof spawn>): void {
+        const killTimer = this.cameraStreamKillTimers.get(stream);
+        if (killTimer) clearTimeout(killTimer);
+        this.cameraStreamKillTimers.delete(stream);
+        if (this.cameraStreams.get(streamKey) === stream) this.cameraStreams.delete(streamKey);
+    }
+
+    private stopCameraStream(stream: ReturnType<typeof spawn>): void {
+        if (stream.exitCode !== null || this.cameraStreamKillTimers.has(stream)) return;
+
+        stream.kill('SIGTERM');
+        const killTimer = setTimeout(() => {
+            if (stream.exitCode === null) stream.kill('SIGKILL');
+            this.cameraStreamKillTimers.delete(stream);
+        }, 2_500);
+        killTimer.unref();
+        this.cameraStreamKillTimers.set(stream, killTimer);
     }
 
     listDeviceHistory(deviceId: number, limit = 40): DeviceHistoryEntry[] {
